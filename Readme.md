@@ -47,7 +47,6 @@ TimeSheet/
 
 **Enums**:
 - `WorkDayState` - Possible states in a workday
-- `UserAction` - User-facing commands
 
 ---
 
