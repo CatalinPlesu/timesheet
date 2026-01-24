@@ -8,9 +8,9 @@ A Clean Architecture application for tracking daily work routines with support f
 
 **Purpose**: Track daily work transitions (commuting, working, breaks) with flexible state management for office and remote work.
 
-**Tech Stack**: .NET 8, Clean Architecture, SQLite
+**Tech Stack**: .NET 8, Clean Architecture, SQLite, Telegram Bot, Terminal UI
 
-**MVP Focus**: Core domain with full state machine (8 states + edge cases), basic persistence
+**MVP Focus**: Core domain with full state machine (8 states + edge cases), basic persistence, Telegram/TUI interfaces
 
 ---
 
@@ -21,10 +21,12 @@ TimeSheet/
 ├── Core/
 │   ├── Domain/              # Business logic, entities (no dependencies)
 │   └── Application/         # Use cases, interfaces (depends on Domain)
-└── Infrastructure/
-    └── Persistence/         # EF Core, repositories (depends on Domain)
+├── Infrastructure/
+│   └── Persistence/         # EF Core, repositories (depends on Domain)
+└── Presentation/
+    ├── Telegram/            # Telegram bot (depends on Application) - MVP Ready
+    └── Tui/                 # Terminal UI (depends on Application) - MVP Ready
 ```
-*Note: Presentation layer (Telegram/TUI) will be added post-MVP*
 
 **Dependency Rule**: Dependencies flow inward (Presentation → Application → Domain)
 
@@ -104,7 +106,7 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 
 ---
 
-## ✅ Implementation Checklist (MVP - ~1 Hour)
+## ✅ Implementation Checklist (MVP - ~2 Hours)
 
 ### Phase 1: Domain Foundation (35 min)
 - [ ] `WorkDayState` enum (11 states: 8 regular + 3 special)
@@ -128,6 +130,17 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 - [ ] `GetCurrentStatusQuery` + handler
 - [ ] Basic integration test
 
+### Phase 4: Telegram Bot (30 min)
+- [ ] Bot command handlers (/start, /commute, /lunch, /done, /home, /emergency, /status)
+- [ ] User authentication/registration via Telegram
+- [ ] Message formatting and responses
+- [ ] Context-aware command behavior
+
+### Phase 5: Terminal UI (Optional - 30 min)
+- [ ] CLI command parsing
+- [ ] Interactive mode
+- [ ] Status display
+
 ---
 
 ## 🧪 Testing Strategy
@@ -149,22 +162,23 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 
 1. **Domain First**: Implement WorkDay with all 8 states + edge cases
 2. **Test Coverage**: Focus on transition validation and edge cases
-3. **Keep It Simple**: Skip analytics, UI, and notifications for MVP
-4. **SQLite Storage**: Basic persistence only
+3. **Telegram/TUI**: Simple interfaces for time tracking
+4. **SQLite Storage**: Basic persistence
 
 ---
 
 ## 📝 MVP Scope
 
-### ✅ Included (Essential for 1-hour MVP):
+### ✅ Included (Essential for MVP):
 - Full 8-state machine (NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome)
 - Edge cases: Remote work, Emergency exit, No lunch
 - User entity (name + timezone)
 - Basic persistence (SQLite)
+- Telegram bot interface
+- Terminal UI (TUI) interface
 - Command/query pattern
 
 ### ❌ Post-MVP (Future):
-- Telegram bot / Terminal UI interfaces
 - Analytics and reporting
 - Notifications and reminders
 - Advanced preferences (schedules, holidays)
