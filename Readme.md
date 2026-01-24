@@ -136,7 +136,7 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 - [ ] Message formatting and responses
 - [ ] Context-aware command behavior
 
-### Phase 5: Terminal UI (Optional - 30 min)
+### Phase 5: Terminal UI (30 min)
 - [ ] CLI command parsing
 - [ ] Interactive mode
 - [ ] Status display
