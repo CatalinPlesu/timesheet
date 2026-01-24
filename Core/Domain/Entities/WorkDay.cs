@@ -5,20 +5,22 @@ namespace TimeSheet.Core.Domain.Entities;
 
 public class WorkDay : Entity<WorkDayId>
 {
-  private List<StateTransition> transitions { get; set; } = [];
-  public IReadOnlyCollection<StateTransition> Transitions => transitions.AsReadOnly();
+  // EF Core needs to be able to set this
+  public List<StateTransition> _transitions { get; set; } = null!;
+  public IReadOnlyCollection<StateTransition> Transitions => _transitions.AsReadOnly();
 
   public DateOnly Date { get; private set; }
   public UserId UserId { get; private set; }
 
   public WorkDayState CurrentState =>
-    transitions.Count > 0 ? transitions.Last().ToState : WorkDayState.NotStarted;
+    _transitions.Count > 0 ? _transitions.Last().ToState : WorkDayState.NotStarted;
 
   // Private constructor for EF Core
   private WorkDay()
   {
     UserId = UserId.New();
     Date = DateOnly.FromDateTime(DateTime.UtcNow);
+    _transitions = new List<StateTransition>();
   }
 
   public static WorkDay StartToday(UserId userId)
@@ -31,7 +33,8 @@ public class WorkDay : Entity<WorkDayId>
     return new WorkDay
     {
       UserId = userId,
-      Date = date
+      Date = date,
+      _transitions = new List<StateTransition>()
     };
   }
 
@@ -40,9 +43,9 @@ public class WorkDay : Entity<WorkDayId>
     var fromState = CurrentState;
 
     // Validate chronological order
-    if (transitions.Count > 0)
+    if (_transitions.Count > 0)
     {
-      var lastTransition = transitions.Last();
+      var lastTransition = _transitions.Last();
       if (time <= lastTransition.Timestamp)
       {
         throw new InvalidOperationException("Transition timestamp must be after the last transition");
@@ -55,7 +58,7 @@ public class WorkDay : Entity<WorkDayId>
       throw new InvalidOperationException($"Invalid state transition from {fromState} to {toState}");
     }
 
-    transitions.Add(new StateTransition(fromState, toState, time));
+    _transitions.Add(new StateTransition(fromState, toState, time));
     MarkAsUpdated();
   }
 

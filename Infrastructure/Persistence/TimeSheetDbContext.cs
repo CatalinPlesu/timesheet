@@ -61,8 +61,11 @@ public class TimeSheetDbContext : DbContext
       // Unique constraint on UserId + Date
       entity.HasIndex(w => new { w.UserId, w.Date }).IsUnique();
 
-      // Configure StateTransitions as owned entities
-      entity.OwnsMany(w => w.Transitions, transitionBuilder =>
+      // Ignore the public Transitions property and configure the _transitions field
+      entity.Ignore(w => w.Transitions);
+      
+      // Configure StateTransitions as owned entities using the _transitions field
+      entity.OwnsMany<StateTransition>("_transitions", transitionBuilder =>
       {
         transitionBuilder.WithOwner();
         transitionBuilder.Property<int>("InternalId");

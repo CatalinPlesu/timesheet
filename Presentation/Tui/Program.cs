@@ -23,8 +23,8 @@ var commandHandler = new RecordTransitionCommandHandler(workDayRepo);
 var queryHandler = new GetCurrentStatusQueryHandler(workDayRepo);
 
 // Get or create default user
-var defaultUserId = UserId.From(Guid.Parse("00000000-0000-0000-0000-000000000001"));
-var user = await userRepo.GetByIdAsync(defaultUserId);
+var users = await dbContext.Users.ToListAsync();
+var user = users.FirstOrDefault();
 if (user == null)
 {
   user = User.Create("Default User", 0);
