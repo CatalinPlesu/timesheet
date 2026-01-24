@@ -184,7 +184,7 @@ Telegram Bot provides a conversational interface for time tracking, allowing use
 
 ### Environment Variables
 - `TELEGRAM_BOT_TOKEN`: Bot API token
-- `BOT_WEBHOOK_URL**: Webhook endpoint URL
+- `BOT_WEBHOOK_URL`: Webhook endpoint URL
 - `BOT_ADMIN_IDS`: Admin user IDs for privileged commands
 - `DEFAULT_TIMEZONE`: Default timezone for new users
 - `NOTIFICATION_ENABLED`: Enable/disable notifications

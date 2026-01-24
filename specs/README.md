@@ -1,50 +1,51 @@
 # TimeSheet Feature Specifications
 
 ## Overview
-This folder contains comprehensive specifications for each feature in the TimeSheet application. Each specification follows a structured format to ensure clear implementation guidelines.
+This folder contains specifications for the TimeSheet MVP application. The MVP includes full state machine with edge cases, plus Telegram and Terminal UI interfaces.
 
-## Feature List
-- [WorkDay State Machine](./workday-state-machine.md) - Core state transition logic
-- [User Management](./user-management.md) - User profiles, preferences, and identities
-- [Time Tracking](./time-tracking.md) - Work time recording and management
-- [Analytics & Reporting](./analytics-reporting.md) - Insights and statistics
-- [Telegram Bot](./telegram-bot.md) - Telegram interface
-- [Terminal UI](./terminal-ui.md) - Command-line interface
-- [Persistence](./persistence.md) - Data storage and retrieval
-- [Notifications](./notifications.md) - Alert and notification system
+---
 
-## Specification Format
-Each feature specification includes:
+## 📋 MVP Core Features (~2 Hours)
 
-### 1. Feature Overview
-- Purpose and business value
-- Key concepts and terminology
-- User stories and scenarios
+Essential features for complete time tracking system:
 
-### 2. Technical Requirements
-- API contracts and interfaces
-- Data models and schemas
-- Business rules and constraints
+### Core Domain (~1 Hour)
+- [WorkDay State Machine](./workday-state-machine.md) - **Full 8-state model with edge cases**
+- [User Management](./user-management.md) - Basic user with timezone
+- [Time Tracking](./time-tracking.md) - State transition recording
+- [Persistence](./persistence.md) - SQLite storage with EF Core
 
-### 3. Implementation Details
-- Architecture patterns
-- Dependencies and relationships
-- Error handling strategies
+### User Interfaces (~1 Hour)
+- [Telegram Bot](./telegram-bot.md) - Telegram interface for remote tracking
+- [Terminal UI](./terminal-ui.md) - Command-line interface for local tracking
 
-### 4. Testing Strategy
-- Unit test scenarios
-- Integration test cases
-- Edge cases and validation
+---
 
-### 5. Performance Considerations
-- Scalability requirements
-- Optimization opportunities
-- Resource usage expectations
+## 🚀 Post-MVP Features
 
-## Additional Resources
-- [Architecture Overview](../../Readme.md#-architecture)
-- [Domain Model](../../Readme.md#-domain-model)
-- [Implementation Checklist](../../Readme.md#-implementation-checklist)
+Deferred to post-MVP implementation:
+
+- [Analytics & Reporting](./analytics-reporting.md) - Work pattern insights
+- [Notifications](./notifications.md) - Alert system
+
+---
+
+## MVP Philosophy
+
+**What's Included:**
+- ✅ Complete state machine (8 states + special states)
+- ✅ Edge cases: remote work, emergencies, flexible transitions
+- ✅ Core domain logic with comprehensive validation
+- ✅ Basic persistence layer
+- ✅ Telegram bot interface
+- ✅ Terminal UI interface
+
+**What's Deferred:**
+- ❌ Analytics and reporting
+- ❌ Notification system
+- ❌ Advanced preferences
+
+The goal is a **complete working system** with solid domain model and usable interfaces for real-world time tracking.
 
 ---
 

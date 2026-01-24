@@ -1,14 +1,16 @@
 # TimeSheet - Working Hours Tracker
 
-A Clean Architecture application for tracking daily work routines and analyzing work-life balance patterns.
+A Clean Architecture application for tracking daily work routines with support for remote work and edge cases.
 
 ---
 
 ## 🎯 Project Overview
 
-**Purpose**: Track daily work transitions (commuting, working, breaks) to gain insights into work patterns and maintain work-life balance.
+**Purpose**: Track daily work transitions (commuting, working, breaks) with flexible state management for office and remote work.
 
 **Tech Stack**: .NET 8, Clean Architecture, SQLite, Telegram Bot, Terminal UI
+
+**MVP Focus**: Core domain with full state machine (8 states + edge cases), basic persistence, Telegram/TUI interfaces
 
 ---
 
@@ -17,13 +19,13 @@ A Clean Architecture application for tracking daily work routines and analyzing 
 ```
 TimeSheet/
 ├── Core/
-│   ├── Domain/              # Business logic, entities, domain services (no dependencies)
-│   └── Application/         # Use cases, DTOs, interfaces (depends on Domain)
+│   ├── Domain/              # Business logic, entities (no dependencies)
+│   └── Application/         # Use cases, interfaces (depends on Domain)
 ├── Infrastructure/
 │   └── Persistence/         # EF Core, repositories (depends on Domain)
 └── Presentation/
-    ├── Telegram/            # Telegram bot (depends on Application)
-    └── Tui/                 # Terminal UI (depends on Application)
+    ├── Telegram/            # Telegram bot (depends on Application) - MVP Ready
+    └── Tui/                 # Terminal UI (depends on Application) - MVP Ready
 ```
 
 **Dependency Rule**: Dependencies flow inward (Presentation → Application → Domain)
@@ -35,18 +37,14 @@ TimeSheet/
 ### Core Concepts
 
 **Aggregates**:
-- `User` - Identity, preferences, external IDs
+- `User` - Identity and timezone
 - `WorkDay` - Daily work session with state transitions
-
-**Value Objects**:
-- `UserPreferences` - Consolidated timezone, work schedule, and notification settings
-- `ExternalIdentity` - Links to external services
 
 **Entities**:
 - `StateTransition` - Records state changes with timestamps
 
 **Enums**:
-- `WorkDayState` - Possible states in a workday
+- `WorkDayState` - All workday states (8 regular + 3 special)
 
 ---
 
@@ -80,70 +78,14 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 ### User Aggregate
 
 **Responsibilities**:
-- Manage external identities (Telegram, TUI)
-- Store consolidated preferences (timezone, schedule, notifications)
-- Provide defaults for new WorkDays
+- Manage identity and timezone
 
 **Key Properties**:
-- `Identities` - Multiple login methods
-- `Preferences` - Consolidated preferences value object
+- `Name` - User name
+- `UtcOffsetHours` - Timezone offset
 
 **Key Methods**:
-- `Create(name, preferences)` - Factory
-- `AddExternalIdentity(provider, externalId)`
-- `UpdatePreferences(preferences)`
-
----
-
-### UserPreferences Value Object
-
-**Configuration**:
-- `UtcOffsetHours` - User's timezone offset
-- `ExpectedDailyWorkHours` - Target hours (e.g., 8h)
-- `TypicalWorkStartTime` - Default start time
-- `TypicalLunchHour` - Default lunch time
-- `WeekStart` - First day of work week
-- `DaysWorkingPerWeek` - How many days per week
-- `Holidays` - Set of holiday dates
-- `NotifyWhenWorkHoursComplete` - Alert when target reached
-
----
-
-## 🎮 User Commands (Telegram/TUI)
-
-Context-aware commands that map to domain transitions:
-
-| Command | Description | Context Behavior |
-|---------|-------------|------------------|
-| `/commute` | Start travel | To work OR to home (based on current state) |
-| `/start` | Start working | Remote work, after arrival, or after lunch |
-| `/lunch` | Take lunch break | - |
-| `/done` | Finish work | Remote: end day, Office: start commute |
-| `/home` | Arrived home | - |
-| `/emergency` | Stop tracking | Emergency exit to AtHome |
-| `/status` | Current state | Shows progress, next expected action |
-
-**Time Adjustments**: `/start -5m` (5 minutes ago), `/start +3m` (3 minutes future)
-
----
-
-## 📊 Domain Services
-
-### WorkDayAnalyticsService
-
-**Single-day metrics**:
-- `CalculateActualWorkTime(workDay, preferences)` - Exclude lunch if configured
-- `CalculateCommuteDuration(workDay, direction)` - To work vs to home
-- `CalculateLunchDuration(workDay)`
-
-**Multi-day analytics**:
-- `AnalyzeWorkPatterns(workDays, preferences)` - Average work time, trends
-- `AnalyzeCommutePatterns(workDays)` - Identify optimal commute times
-
-**Notification checks**:
-- Work hours complete (based on ExpectedDailyWorkHours)
-- Forgot lunch (4+ hours working without break)
-- Forgot to clock out
+- `Create(name, utcOffsetHours)` - Factory
 
 ---
 
@@ -151,157 +93,98 @@ Context-aware commands that map to domain transitions:
 
 ### Commands (Write Operations)
 
-**RecordUserActionCommand**:
-- Maps user actions to domain transitions
-- Handles context-aware logic (e.g., `/start` behavior)
-- Validates against current state
-
-**AdjustLastTransitionCommand**:
-- Corrects timing of last transition
-- Validates chronological order
-
-**StopTrackingCommand**:
-- Emergency exit from any state
+**RecordTransitionCommand**:
+- Records state transitions for a workday
+- Validates against current state and business rules
+- Handles edge cases (remote work, emergencies)
 
 ### Queries (Read Operations)
 
 **GetCurrentStatusQuery**:
-- Current state
-- Time in current state
-- Work time so far
-- Next expected action
-
-**GetTodayTimelineQuery**:
-- All transitions for today
-- Calculated durations
-
-**GetWorkStatsQuery**:
-- Date range statistics
-- Daily averages
-- Commute trends
+- Current state and today's transitions
+- Next expected actions
 
 ---
 
-## 🏗️ Implementation Notes
+## ✅ Implementation Checklist (MVP - ~2 Hours)
 
-### Domain Layer
-- **No infrastructure dependencies** (no EF, no external libs)
-- Entities validate themselves through methods
-- Factory methods (`Create`, `StartNew`) for construction
-- Rich domain model (behavior, not anemic)
-
-### Repositories
-- **Interfaces in Domain** (e.g., `IWorkDayRepository`, `IUserRepository`)
-- **Implementations in Infrastructure.Persistence**
-- Return domain entities, never expose EF details
-- Use async/await for all operations
-
-### Application Services
-- Orchestrate domain objects
-- Handle transaction boundaries
-- Map between domain and DTOs
-- No business logic (delegate to domain)
-
----
-
-## ✅ Implementation Checklist
-
-### Phase 1: Domain Foundation
-- [ ] `WorkDayState` enum
-- [ ] `StateTransition` entity with `Create()` factory
+### Phase 1: Domain Foundation (35 min)
+- [ ] `WorkDayState` enum (11 states: 8 regular + 3 special)
+- [ ] `StateTransition` entity with timestamp
 - [ ] `WorkDay` aggregate with transition validation
-- [ ] `User` aggregate with external identities
-- [ ] `UserPreferences` value object
-- [ ] Unit tests for all domain logic
+  - All 8-state transitions
+  - Remote work support (skip commute)
+  - Emergency exit (any → AtHome)
+  - No lunch option
+- [ ] `User` entity with name and timezone
+- [ ] Unit tests for state transitions and edge cases
 
-### Phase 2: Persistence
-- [ ] Repository interfaces in Domain
+### Phase 2: Persistence (15 min)
+- [ ] Repository interfaces in Domain (IUserRepository, IWorkDayRepository)
 - [ ] EF Core DbContext
 - [ ] Repository implementations
-- [ ] Migrations
-- [ ] Integration tests
+- [ ] Initial migration
 
-### Phase 3: Application Layer
-- [ ] `RecordUserActionCommand` + handler
+### Phase 3: Application Layer (10 min)
+- [ ] `RecordTransitionCommand` + handler
 - [ ] `GetCurrentStatusQuery` + handler
-- [ ] Domain service implementations
-- [ ] Application tests
+- [ ] Basic integration test
 
-### Phase 4: Telegram Bot
-- [ ] Command registration
-- [ ] Message formatting
-- [ ] User session management
-- [ ] Bot tests
+### Phase 4: Telegram Bot (30 min)
+- [ ] Bot command handlers (/start, /commute, /lunch, /done, /home, /emergency, /status)
+- [ ] User authentication/registration via Telegram
+- [ ] Message formatting and responses
+- [ ] Context-aware command behavior
+
+### Phase 5: Terminal UI (30 min)
+- [ ] CLI command parsing
+- [ ] Interactive mode
+- [ ] Status display
 
 ---
 
 ## 🧪 Testing Strategy
 
 **Domain Tests** (Unit):
-- State transition validation
+- All state transition paths (8 states)
+- Edge cases: remote work, emergency exit, no lunch
 - Business rule enforcement
-- Edge cases (emergency exits, remote work)
+- Chronological validation
 
 **Application Tests** (Integration):
 - Command handlers with in-memory repos
 - Query handlers
-- Domain service logic
-
-**Presentation Tests** (E2E):
-- Bot command flows
-- User scenarios
+- End-to-end state flows
 
 ---
 
 ## 🚀 Getting Started
 
-1. **Start with Domain**: Build entities with `throw new NotImplementedException()` stubs
-2. **Write Tests First**: Define expected behavior before implementation
-3. **One Class at a Time**: Don't build everything at once
-4. **Validate Early**: Test business rules in domain, not in application layer
+1. **Domain First**: Implement WorkDay with all 8 states + edge cases
+2. **Test Coverage**: Focus on transition validation and edge cases
+3. **Telegram/TUI**: Simple interfaces for time tracking
+4. **SQLite Storage**: Basic persistence
 
 ---
 
-## 📝 Key Insights
+## 📝 MVP Scope
 
-### DDD Principles Applied
-- **Ubiquitous Language**: `WorkDay`, `StateTransition`, `UserAction` (not "record", "log")
-- **Aggregates**: `WorkDay` and `User` enforce consistency boundaries
-- **Value Objects**: `UserPreferences`, `ExternalIdentity` (immutable, no identity)
-- **Domain Services**: Cross-aggregate operations (analytics)
-- **Factory Methods**: Enforce valid construction
+### ✅ Included (Essential for MVP):
+- Full 8-state machine (NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome)
+- Edge cases: Remote work, Emergency exit, No lunch
+- User entity (name + timezone)
+- Basic persistence (SQLite)
+- Telegram bot interface
+- Terminal UI (TUI) interface
+- Command/query pattern
 
-### Clean Architecture Benefits
-- **Testable**: Domain has zero dependencies
-- **Flexible**: Swap Telegram for Discord without changing domain
-- **Maintainable**: Business logic isolated from infrastructure
-
-### Validation Strategy
-- **Domain validates state transitions**: `WorkDay.RecordTransition()`
-- **Application validates user actions**: Can `/start` be performed now?
-- **Presentation validates input format**: Is `-5m` a valid time adjustment?
+### ❌ Post-MVP (Future):
+- Analytics and reporting
+- Notifications and reminders
+- Advanced preferences (schedules, holidays)
+- Deployment configurations
 
 ---
 
-## 🤔 Edge Cases Handled
-
-- **Remote work**: Skip commute states
-- **No lunch break**: Direct Working → CommutingHome
-- **Emergency exit**: Any state → AtHome
-- **Time adjustments**: Record actions in the past
-- **Chronological validation**: Prevent out-of-order transitions
-- **Date boundaries**: Transitions must match WorkDay date
-
----
-
-## 📚 Resources
-
-- **Clean Architecture**: Uncle Bob's principles
-- **DDD**: Eric Evans - Domain-Driven Design
-- **C# Patterns**: Switch expressions, LINQ, factory methods
-- **Testing**: xUnit, FluentAssertions
-
----
-
-**Version**: 1.0  
+**Version**: 1.0 MVP with Edge Cases  
 **Last Updated**: January 2026

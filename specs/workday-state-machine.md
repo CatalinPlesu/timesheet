@@ -27,8 +27,8 @@ The WorkDay State Machine is the core business logic that manages the lifecycle 
 
 ### Valid State Transitions
 - **Regular Progression**: NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome
-- **Remote Work**: NotStarted → Working → CommutingHome → AtHome
-- **Direct Progress (No Lunch)**: NotStarted → Working → CommutingHome → AtHome
+- **Remote Work**: NotStarted → Working → AtHome (skip all commute states)
+- **Direct Progress (No Lunch)**: NotStarted → CommutingToWork → AtWork → Working → CommutingHome → AtHome
 - **Emergency Exit**: AnyState → AtHome
 - **Special Days**: AnyState → SickDay/Vacation/Holiday → AtHome
 
@@ -121,35 +121,23 @@ The WorkDay State Machine is the core business logic that manages the lifecycle 
 
 ---
 
-## Implementation Checklist
+## Implementation Checklist (MVP)
 
-### Phase 1: Core Logic
-- Implement WorkDayState enum
-- Create StateTransition value object
-- Implement WorkDay aggregate with transition validation
-- Add factory methods (Create, StartToday)
-- Implement IsValidTransition method
-- Add comprehensive unit tests
-
-### Phase 2: Business Rules
-- Implement emergency exit logic
-- Add remote work support
-- Handle special day states
-- Add timezone conversion utilities
-- Implement chronological validation
-
-### Phase 3: Integration
-- Create WorkDayStateMachine domain service
-- Add repository interfaces
-- Implement application layer commands
-- Add integration tests
-- Performance benchmarking
-
-### Phase 4: Enhanced Features
-- Add transition time adjustments
-- Implement state-specific business rules
-- Add audit logging for transitions
-- Implement state persistence optimization
+### Core Implementation (~35 min)
+- [ ] Implement WorkDayState enum (11 states)
+- [ ] Create StateTransition entity
+- [ ] Implement WorkDay aggregate with:
+  - Factory method `StartNew()`
+  - `RecordTransition()` with full validation
+  - Support for all 8 regular states
+  - Remote work logic (skip commute)
+  - Emergency exit (any → AtHome)
+  - No lunch option (Working → CommutingHome)
+- [ ] Add comprehensive unit tests for:
+  - All valid transition paths
+  - Edge cases (remote, emergency, no lunch)
+  - Invalid transition rejection
+  - Chronological validation
 
 ---
 
