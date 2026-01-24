@@ -6,11 +6,11 @@ namespace TimeSheet.Core.Domain.Entities;
 public class WorkDay : Entity<WorkDayId>
 {
   // EF Core needs to be able to set this
-  public List<StateTransition> _transitions { get; set; } = null!;
+  public List<StateTransition> _transitions { get; set; } = new();
   public IReadOnlyCollection<StateTransition> Transitions => _transitions.AsReadOnly();
 
   public DateOnly Date { get; private set; }
-  public UserId UserId { get; private set; }
+  public UserId UserId { get; private set; } = null!;
 
   public WorkDayState CurrentState =>
     _transitions.Count > 0 ? _transitions.Last().ToState : WorkDayState.NotStarted;
@@ -18,9 +18,7 @@ public class WorkDay : Entity<WorkDayId>
   // Private constructor for EF Core
   private WorkDay()
   {
-    UserId = UserId.New();
-    Date = DateOnly.FromDateTime(DateTime.UtcNow);
-    _transitions = new List<StateTransition>();
+    // EF Core will populate these properties
   }
 
   public static WorkDay StartToday(UserId userId)
