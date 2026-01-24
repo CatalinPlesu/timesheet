@@ -27,8 +27,8 @@ The WorkDay State Machine is the core business logic that manages the lifecycle 
 
 ### Valid State Transitions
 - **Regular Progression**: NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome
-- **Remote Work**: NotStarted → Working → CommutingHome → AtHome
-- **Direct Progress (No Lunch)**: NotStarted → Working → CommutingHome → AtHome
+- **Remote Work**: NotStarted → Working → AtHome (skip all commute states)
+- **Direct Progress (No Lunch)**: NotStarted → CommutingToWork → AtWork → Working → CommutingHome → AtHome
 - **Emergency Exit**: AnyState → AtHome
 - **Special Days**: AnyState → SickDay/Vacation/Holiday → AtHome
 
