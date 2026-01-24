@@ -1,16 +1,16 @@
 # TimeSheet - Working Hours Tracker
 
-A Clean Architecture application for tracking daily work routines.
+A Clean Architecture application for tracking daily work routines with support for remote work and edge cases.
 
 ---
 
 ## 🎯 Project Overview
 
-**Purpose**: Track daily work transitions (working, breaks) with simple state management.
+**Purpose**: Track daily work transitions (commuting, working, breaks) with flexible state management for office and remote work.
 
 **Tech Stack**: .NET 8, Clean Architecture, SQLite
 
-**Scope**: Basic MVP - core time tracking only, no UI/notifications for now
+**MVP Focus**: Core domain with full state machine (8 states + edge cases), basic persistence
 
 ---
 
@@ -24,6 +24,7 @@ TimeSheet/
 └── Infrastructure/
     └── Persistence/         # EF Core, repositories (depends on Domain)
 ```
+*Note: Presentation layer (Telegram/TUI) will be added post-MVP*
 
 **Dependency Rule**: Dependencies flow inward (Presentation → Application → Domain)
 
@@ -34,14 +35,14 @@ TimeSheet/
 ### Core Concepts
 
 **Aggregates**:
-- `User` - Basic identity with timezone
+- `User` - Identity and timezone
 - `WorkDay` - Daily work session with state transitions
 
 **Entities**:
 - `StateTransition` - Records state changes with timestamps
 
 **Enums**:
-- `WorkDayState` - Possible states (NotStarted, Working, OnLunch, Finished)
+- `WorkDayState` - All workday states (8 regular + 3 special)
 
 ---
 
@@ -49,32 +50,33 @@ TimeSheet/
 
 **States** (WorkDayState):
 ```
-NotStarted → Working → OnLunch → Working → Finished
+NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome
 ```
 
 **Valid Transitions**:
-- Simple progression: NotStarted → Working
-- Optional lunch: Working → OnLunch → Working
-- End day: Working → Finished
+- Linear progression through states
+- Remote work: `NotStarted → Working` (skip commute)
+- No lunch: `Working → CommutingHome`
+- Emergency exit: `Any → AtHome`
 
 **Business Rules**:
 1. Transitions must be chronological
 2. One WorkDay per user per date
 3. Transitions must follow valid state flow
 4. All timestamps stored as UTC DateTime
+5. TimeOnly used for transition times within the day
 
 **Key Methods**:
 - `StartNew(userId, date)` - Factory method
-- `RecordTransition(toState, timestamp)` - Main business logic
-- `CurrentState` - Derived from latest transition
+- `RecordTransition(toState, time)` - Main business logic with TimeOnly
+- `CurrentState` - Derived from latest transition (property)
 
 ---
 
 ### User Aggregate
 
 **Responsibilities**:
-- Manage identity and basic profile
-- Store timezone preference for timestamp display
+- Manage identity and timezone
 
 **Key Properties**:
 - `Name` - User name
@@ -91,49 +93,32 @@ NotStarted → Working → OnLunch → Working → Finished
 
 **RecordTransitionCommand**:
 - Records state transitions for a workday
-- Validates chronological order
+- Validates against current state and business rules
+- Handles edge cases (remote work, emergencies)
 
 ### Queries (Read Operations)
 
 **GetCurrentStatusQuery**:
-- Current state
-- Today's transitions
+- Current state and today's transitions
+- Next expected actions
 
 ---
 
-## 🏗️ Implementation Notes
+## ✅ Implementation Checklist (MVP - ~1 Hour)
 
-### Domain Layer
-- **No infrastructure dependencies** (no EF, no external libs)
-- Entities validate themselves through methods
-- Factory methods (`Create`, `StartNew`) for construction
-- Rich domain model (behavior, not anemic)
-
-### Repositories
-- **Interfaces in Domain** (e.g., `IWorkDayRepository`, `IUserRepository`)
-- **Implementations in Infrastructure.Persistence**
-- Return domain entities, never expose EF details
-- Use async/await for all operations
-
-### Application Services
-- Orchestrate domain objects
-- Handle transaction boundaries
-- Map between domain and DTOs
-- No business logic (delegate to domain)
-
----
-
-## ✅ Implementation Checklist (MVP)
-
-### Phase 1: Domain Foundation (30 min)
-- [ ] `WorkDayState` enum (NotStarted, Working, OnLunch, Finished)
+### Phase 1: Domain Foundation (35 min)
+- [ ] `WorkDayState` enum (11 states: 8 regular + 3 special)
 - [ ] `StateTransition` entity with timestamp
-- [ ] `WorkDay` aggregate with basic transition validation
+- [ ] `WorkDay` aggregate with transition validation
+  - All 8-state transitions
+  - Remote work support (skip commute)
+  - Emergency exit (any → AtHome)
+  - No lunch option
 - [ ] `User` entity with name and timezone
-- [ ] Basic unit tests
+- [ ] Unit tests for state transitions and edge cases
 
-### Phase 2: Persistence (20 min)
-- [ ] Repository interfaces in Domain
+### Phase 2: Persistence (15 min)
+- [ ] Repository interfaces in Domain (IUserRepository, IWorkDayRepository)
 - [ ] EF Core DbContext
 - [ ] Repository implementations
 - [ ] Initial migration
@@ -148,42 +133,44 @@ NotStarted → Working → OnLunch → Working → Finished
 ## 🧪 Testing Strategy
 
 **Domain Tests** (Unit):
-- State transition validation
-- Chronological order enforcement
+- All state transition paths (8 states)
+- Edge cases: remote work, emergency exit, no lunch
+- Business rule enforcement
+- Chronological validation
 
 **Application Tests** (Integration):
 - Command handlers with in-memory repos
 - Query handlers
+- End-to-end state flows
 
 ---
 
 ## 🚀 Getting Started
 
-1. **Start with Domain**: Build entities with core logic
-2. **Write Tests First**: Define expected behavior
-3. **One Class at a Time**: Keep it simple
-4. **SQLite for Storage**: No external dependencies
+1. **Domain First**: Implement WorkDay with all 8 states + edge cases
+2. **Test Coverage**: Focus on transition validation and edge cases
+3. **Keep It Simple**: Skip analytics, UI, and notifications for MVP
+4. **SQLite Storage**: Basic persistence only
 
 ---
 
 ## 📝 MVP Scope
 
-### Included:
-- ✅ Basic workday state tracking (NotStarted → Working → OnLunch → Finished)
-- ✅ User management with timezone
-- ✅ SQLite persistence
-- ✅ Simple command/query pattern
+### ✅ Included (Essential for 1-hour MVP):
+- Full 8-state machine (NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working → CommutingHome → AtHome)
+- Edge cases: Remote work, Emergency exit, No lunch
+- User entity (name + timezone)
+- Basic persistence (SQLite)
+- Command/query pattern
 
-### Future Enhancements (Not MVP):
-- ❌ Telegram bot / Terminal UI
-- ❌ Analytics and reporting
-- ❌ Notifications
-- ❌ Commute tracking
-- ❌ Multiple external identities
-- ❌ Advanced preferences (work schedules, holidays, etc.)
-- ❌ Deployment and production features
+### ❌ Post-MVP (Future):
+- Telegram bot / Terminal UI interfaces
+- Analytics and reporting
+- Notifications and reminders
+- Advanced preferences (schedules, holidays)
+- Deployment configurations
 
 ---
 
-**Version**: 1.0 MVP  
+**Version**: 1.0 MVP with Edge Cases  
 **Last Updated**: January 2026

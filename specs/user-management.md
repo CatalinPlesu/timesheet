@@ -1,25 +1,39 @@
 # User Management Specification (MVP)
 
-## Overview
-User Management handles basic user profiles with timezone information.
+## 1. Feature Overview
+
+### Purpose
+User Management handles basic user profiles with timezone information for timestamp display.
+
+### Key Concepts
+- **User**: Basic aggregate with identity and timezone
+- **Timezone**: UTC offset for displaying local times
+
+### User Stories
+- **As a developer**, I want simple user management without complex preferences
+- **As a user**, I want my times displayed in my local timezone
 
 ---
 
-## Core Operations
+## 2. Technical Requirements
 
-### Create User
-- Create a new user with name and timezone
-- Return user ID for future operations
+### Data Models
+- **User Entity**: Name and timezone offset only
 
-### Get User
-- Retrieve user by ID
-- Return user profile information
+### Business Rules
+1. **Required Fields**: Name and UtcOffsetHours are required
+2. **Valid Timezone**: UtcOffsetHours must be between -12 and +14
+3. **Non-Empty Name**: Name cannot be empty
+
+### API Requirements
+- User creation with validation
+- User lookup by ID
 
 ---
 
-## Domain Model
+## 3. Implementation Details
 
-### User Entity
+### Domain Model
 ```csharp
 public class User
 {
@@ -31,18 +45,7 @@ public class User
 }
 ```
 
----
-
-## Business Rules
-
-1. **Required Fields**: Name and UtcOffsetHours are required
-2. **Valid Timezone**: UtcOffsetHours must be between -12 and +14
-3. **Non-Empty Name**: Name cannot be empty or whitespace
-
----
-
-## Repository Interface
-
+### Repository Interface
 ```csharp
 public interface IUserRepository
 {
@@ -54,24 +57,13 @@ public interface IUserRepository
 
 ---
 
-## Implementation Checklist
+## 4. Implementation Checklist (MVP)
 
-- [ ] Implement `User` entity with:
-  - Factory method `Create()`
-  - Validation for name and timezone
-- [ ] Define `IUserRepository` interface in Domain
-- [ ] Write unit tests for User creation and validation
-
----
-
-## Testing
-
-### Unit Tests
-- Creating user with valid data should succeed
-- Creating user with empty name should fail
-- Creating user with invalid timezone should fail
-- User properties should be immutable after creation
+### User Entity (~5 min)
+- [ ] Implement User entity with validation
+- [ ] Factory method `Create()` with name/timezone validation
+- [ ] Unit tests for creation and validation
 
 ---
 
-*Related: [WorkDay State Machine](./workday-state-machine.md), [Persistence](./persistence.md)*
+*Related Features: [WorkDay State Machine](./workday-state-machine.md), [Persistence](./persistence.md)*

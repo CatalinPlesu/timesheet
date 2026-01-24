@@ -1,24 +1,18 @@
 # Time Tracking Specification (MVP)
 
-## Overview
-Time Tracking manages recording work state transitions with timestamps.
+## 1. Feature Overview
+
+### Purpose
+Time Tracking manages recording of work state transitions with full support for edge cases (remote work, emergencies).
+
+### Key Concepts
+- **State Transition Recording**: Capture all 8 regular states plus edge cases
+- **Validation**: Ensure transitions follow business rules
+- **Edge Case Support**: Handle remote work and emergencies
 
 ---
 
-## Core Operations
-
-### Record Transition
-- Record a state change for a workday
-- Validate transition is valid for current state
-- Ensure chronological order
-
-### Get Current Status
-- Retrieve current state for a user's workday
-- Show today's transitions
-
----
-
-## Domain Model
+## 2. Technical Requirements
 
 ### Commands
 ```csharp
@@ -46,43 +40,27 @@ public class CurrentStatusResult
 }
 ```
 
----
-
-## Business Rules
-
-1. **Validate Transition**: Check if transition is valid from current state
+### Business Rules
+1. **Validate Transition**: Check if valid from current state (including edge cases)
 2. **Chronological Order**: Timestamp must be after last transition
-3. **Create If Needed**: If no workday exists for date, create one
-4. **Same Date**: All transitions must be on the same date as the workday
+3. **Create If Needed**: Auto-create WorkDay if it doesn't exist
+4. **Edge Case Support**: Handle remote work skips and emergency exits
 
 ---
 
-## Implementation Checklist
+## 3. Implementation Checklist (MVP)
 
+### Application Layer (~10 min)
 - [ ] Implement `RecordTransitionCommand` handler
-  - Find or create WorkDay for user and date
+  - Find or create WorkDay
   - Call `WorkDay.RecordTransition()`
+  - Handle edge cases
   - Save to repository
 - [ ] Implement `GetCurrentStatusQuery` handler
-  - Find WorkDay for user and date
+  - Find WorkDay
   - Return current state and transitions
-- [ ] Write integration tests with in-memory repository
+- [ ] Integration test with in-memory repository
 
 ---
 
-## Testing
-
-### Unit Tests
-- Recording valid transition should succeed
-- Recording invalid transition should fail
-- Out-of-order transitions should be rejected
-- Creating new workday should default to NotStarted
-
-### Integration Tests
-- Full workflow: Create workday → Record transitions → Query status
-- Multiple transitions in sequence
-- Query non-existent workday returns NotStarted
-
----
-
-*Related: [WorkDay State Machine](./workday-state-machine.md), [Persistence](./persistence.md)*
+*Related Features: [WorkDay State Machine](./workday-state-machine.md), [Persistence](./persistence.md)*

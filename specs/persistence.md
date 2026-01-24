@@ -1,39 +1,38 @@
 # Persistence Specification (MVP)
 
-## Overview
-Persistence layer provides SQLite storage for Users and WorkDays using Entity Framework Core.
+## 1. Feature Overview
+
+### Purpose
+Persistence provides SQLite storage for Users and WorkDays using Entity Framework Core.
 
 ---
 
-## Technology
+## 2. Technical Requirements
 
-- **Database**: SQLite (embedded, no server needed)
-- **ORM**: Entity Framework Core
-- **Migrations**: Code-first migrations
+### Repository Interfaces
+```csharp
+public interface IUserRepository
+{
+    Task<User> GetByIdAsync(Guid userId);
+    Task<User> AddAsync(User user);
+    Task SaveChangesAsync();
+}
 
----
+public interface IWorkDayRepository
+{
+    Task<WorkDay> GetByUserAndDateAsync(Guid userId, DateOnly date);
+    Task<WorkDay> AddAsync(WorkDay workDay);
+    Task SaveChangesAsync();
+}
+```
 
-## Repository Implementations
-
-### IUserRepository
-- `GetByIdAsync(userId)` - Find user by ID
-- `AddAsync(user)` - Add new user
-- `SaveChangesAsync()` - Commit changes
-
-### IWorkDayRepository
-- `GetByUserAndDateAsync(userId, date)` - Find workday
-- `AddAsync(workDay)` - Add new workday
-- `SaveChangesAsync()` - Commit changes
-
----
-
-## DbContext
-
+### DbContext
 ```csharp
 public class TimeSheetDbContext : DbContext
 {
     public DbSet<User> Users { get; set; }
     public DbSet<WorkDay> WorkDays { get; set; }
+    public DbSet<StateTransition> StateTransitions { get; set; }
     
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
@@ -42,7 +41,13 @@ public class TimeSheetDbContext : DbContext
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // Configure entity mappings
+        // WorkDay has collection of StateTransitions
+        modelBuilder.Entity<WorkDay>()
+            .HasMany<StateTransition>()
+            .WithOne()
+            .HasForeignKey("WorkDayId");
+            
+        // Unique constraint on UserId+Date
         modelBuilder.Entity<WorkDay>()
             .HasIndex(w => new { w.UserId, w.Date })
             .IsUnique();
@@ -52,7 +57,7 @@ public class TimeSheetDbContext : DbContext
 
 ---
 
-## Database Schema
+## 3. Database Schema
 
 ### Users Table
 - Id (Guid, PK)
@@ -67,8 +72,8 @@ public class TimeSheetDbContext : DbContext
 ### StateTransitions Table
 - Id (Guid, PK)
 - WorkDayId (Guid, FK)
-- FromState (int/enum)
-- ToState (int/enum)
+- FromState (int)
+- ToState (int)
 - Timestamp (DateTime)
 
 ### Indexes
@@ -77,24 +82,16 @@ public class TimeSheetDbContext : DbContext
 
 ---
 
-## Implementation Checklist
+## 4. Implementation Checklist (MVP)
 
-- [ ] Create `TimeSheetDbContext` with DbSets
-- [ ] Implement repository interfaces in Infrastructure layer
-- [ ] Add entity configurations for EF Core
+### Persistence Layer (~15 min)
+- [ ] Define repository interfaces in Domain layer
+- [ ] Create `TimeSheetDbContext` with entity configurations
+- [ ] Implement `UserRepository` and `WorkDayRepository`
+- [ ] Configure entity relationships and indexes
 - [ ] Create initial migration
-- [ ] Write integration tests with in-memory database
+- [ ] Integration test with in-memory database
 
 ---
 
-## Testing
-
-### Integration Tests
-- Save and retrieve User
-- Save and retrieve WorkDay
-- Unique constraint on UserId+Date enforced
-- Transitions are persisted correctly
-
----
-
-*Related: [User Management](./user-management.md), [Time Tracking](./time-tracking.md)*
+*Related Features: [User Management](./user-management.md), [Time Tracking](./time-tracking.md)*
