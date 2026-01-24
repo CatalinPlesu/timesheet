@@ -185,24 +185,5 @@ NotStarted → Working → OnLunch → Working → Finished
 
 ---
 
-## 📝 MVP Scope
-
-### Included:
-- ✅ Basic workday state tracking (NotStarted → Working → OnLunch → Finished)
-- ✅ User management with timezone
-- ✅ SQLite persistence
-- ✅ Simple command/query pattern
-
-### Future Enhancements (Not MVP):
-- ❌ Telegram bot / Terminal UI
-- ❌ Analytics and reporting
-- ❌ Notifications
-- ❌ Commute tracking
-- ❌ Multiple external identities
-- ❌ Advanced preferences (work schedules, holidays, etc.)
-- ❌ Deployment and production features
-
----
-
 **Version**: 1.0 MVP  
 **Last Updated**: January 2026

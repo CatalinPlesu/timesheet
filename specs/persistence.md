@@ -63,10 +63,17 @@ public class TimeSheetDbContext : DbContext
 - Id (Guid, PK)
 - UserId (Guid, FK)
 - Date (Date)
-- StateTransitions (JSON or separate table)
+
+### StateTransitions Table
+- Id (Guid, PK)
+- WorkDayId (Guid, FK)
+- FromState (int/enum)
+- ToState (int/enum)
+- Timestamp (DateTime)
 
 ### Indexes
 - Unique index on (UserId, Date) for WorkDays
+- Index on WorkDayId for StateTransitions
 
 ---
 
