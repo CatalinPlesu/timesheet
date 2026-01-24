@@ -39,8 +39,8 @@ TimeSheet/
 - `WorkDay` - Daily work session with state transitions
 
 **Value Objects**:
-- `UserPreferences` - Work schedule, notification settings
-- `ExternalIdentity` - Links to Telegram/TUI
+- `UserPreferences` - Consolidated timezone, work schedule, and notification settings
+- `ExternalIdentity` - Links to external services
 
 **Entities**:
 - `StateTransition` - Records state changes with timestamps
@@ -67,11 +67,12 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 1. Transitions must be chronological
 2. One WorkDay per user per date
 3. Transitions must follow valid state flow
-4. All timestamps in UTC
+4. All timestamps stored as UTC DateTime
+5. TimeOnly used for transition times within the day
 
 **Key Methods**:
 - `StartNew(userId, date)` - Factory method
-- `RecordTransition(toState, utcNow, timeAdjustment?)` - Main business logic
+- `RecordTransition(toState, time)` - Main business logic with TimeOnly
 - `CurrentState` - Derived from latest transition (property)
 
 ---
@@ -80,16 +81,16 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 
 **Responsibilities**:
 - Manage external identities (Telegram, TUI)
-- Store work preferences
+- Store consolidated preferences (timezone, schedule, notifications)
 - Provide defaults for new WorkDays
 
 **Key Properties**:
-- `ExternalIds` - Multiple login methods
-- `Preferences` - UserPreferences value object
+- `Identities` - Multiple login methods
+- `Preferences` - Consolidated preferences value object
 
 **Key Methods**:
-- `Create(name, timeZone, workDuration)` - Factory
-- `LinkExternalIdentity(provider, externalId)`
+- `Create(name, preferences)` - Factory
+- `AddExternalIdentity(provider, externalId)`
 - `UpdatePreferences(preferences)`
 
 ---
@@ -97,13 +98,14 @@ NotStarted → CommutingToWork → AtWork → Working → OnLunch → Working �
 ### UserPreferences Value Object
 
 **Configuration**:
-- `TimeZoneId` - User's timezone
-- `ExpectedWorkDuration` - Target hours (e.g., 8h)
-- `HasLunchBreak` - Whether lunch is tracked
-- `LunchBreakDuration` - Default lunch length
-- `NotifyOnMissedTransitions` - Alert settings
-- `NotifyWhenWorkHoursComplete` - 8-hour alert
-- `WorkDaysSchedule` - Which days are work days
+- `UtcOffsetHours` - User's timezone offset
+- `ExpectedDailyWorkHours` - Target hours (e.g., 8h)
+- `TypicalWorkStartTime` - Default start time
+- `TypicalLunchHour` - Default lunch time
+- `WeekStart` - First day of work week
+- `DaysWorkingPerWeek` - How many days per week
+- `Holidays` - Set of holiday dates
+- `NotifyWhenWorkHoursComplete` - Alert when target reached
 
 ---
 
@@ -138,10 +140,8 @@ Context-aware commands that map to domain transitions:
 - `AnalyzeWorkPatterns(workDays, preferences)` - Average work time, trends
 - `AnalyzeCommutePatterns(workDays)` - Identify optimal commute times
 
-### WorkDayNotificationService
-
-**Checks**:
-- Work hours complete (8h reached)
+**Notification checks**:
+- Work hours complete (based on ExpectedDailyWorkHours)
 - Forgot lunch (4+ hours working without break)
 - Forgot to clock out
 
