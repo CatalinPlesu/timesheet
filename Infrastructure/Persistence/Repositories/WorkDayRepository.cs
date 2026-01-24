@@ -17,6 +17,7 @@ public class WorkDayRepository : IWorkDayRepository
   public async Task<WorkDay?> GetByUserAndDateAsync(UserId userId, DateOnly date, CancellationToken cancellationToken = default)
   {
     return await _context.WorkDays
+      .Include("Transitions")
       .FirstOrDefaultAsync(w => w.UserId == userId && w.Date == date, cancellationToken);
   }
 

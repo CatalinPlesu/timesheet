@@ -32,8 +32,12 @@ public class TimeSheetDbContext : DbContext
       // Configure external identities as owned entities
       entity.OwnsMany(u => u.Identities, identityBuilder =>
       {
+        identityBuilder.WithOwner();
+        identityBuilder.Property<int>("InternalId");
+        identityBuilder.HasKey("InternalId");
         identityBuilder.Property(i => i.IdentityProvider).IsRequired();
         identityBuilder.Property(i => i.Id).IsRequired();
+        identityBuilder.ToTable("UserIdentities");
       });
     });
 
@@ -60,9 +64,13 @@ public class TimeSheetDbContext : DbContext
       // Configure StateTransitions as owned entities
       entity.OwnsMany(w => w.Transitions, transitionBuilder =>
       {
+        transitionBuilder.WithOwner();
+        transitionBuilder.Property<int>("InternalId");
+        transitionBuilder.HasKey("InternalId");
         transitionBuilder.Property(t => t.FromState).IsRequired();
         transitionBuilder.Property(t => t.ToState).IsRequired();
         transitionBuilder.Property(t => t.Timestamp).IsRequired();
+        transitionBuilder.ToTable("StateTransitions");
       });
     });
   }
