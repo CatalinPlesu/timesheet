@@ -10,6 +10,8 @@ public class NotificationSchedulerService : BackgroundService
 {
   private readonly IServiceProvider _services;
   private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+  private readonly HashSet<string> _sentNotificationsToday = new();
+  private DateOnly _currentDay = DateOnly.FromDateTime(DateTime.UtcNow);
 
   public NotificationSchedulerService(IServiceProvider services)
   {
@@ -43,6 +45,14 @@ public class NotificationSchedulerService : BackgroundService
 
     var users = await userRepo.GetAllAsync(cancellationToken);
     var now = DateTime.UtcNow;
+    var today = DateOnly.FromDateTime(now);
+    
+    // Reset notification tracking on new day
+    if (today != _currentDay)
+    {
+      _currentDay = today;
+      _sentNotificationsToday.Clear();
+    }
 
     foreach (var user in users)
     {
@@ -51,12 +61,14 @@ public class NotificationSchedulerService : BackgroundService
       var currentTime = TimeOnly.FromDateTime(userLocalTime);
 
       var prefs = user.NotificationPreferences;
+      var telegramId = GetTelegramId(user);
+      if (!telegramId.HasValue) continue;
 
       // Check lunch reminder
       if (prefs.LunchReminderEnabled && IsTimeToNotify(currentTime, prefs.LunchReminderTime))
       {
-        var telegramId = GetTelegramId(user);
-        if (telegramId.HasValue)
+        var notificationKey = $"{telegramId}-lunch-{today}";
+        if (!_sentNotificationsToday.Contains(notificationKey))
         {
           await notificationService.SendNotificationAsync(
             telegramId.Value,
@@ -64,14 +76,15 @@ public class NotificationSchedulerService : BackgroundService
             "Time for lunch! Don't forget to use /lunch to track your break.",
             cancellationToken
           );
+          _sentNotificationsToday.Add(notificationKey);
         }
       }
 
       // Check end of day reminder
       if (prefs.EndOfDayReminderEnabled && IsTimeToNotify(currentTime, prefs.EndOfDayReminderTime))
       {
-        var telegramId = GetTelegramId(user);
-        if (telegramId.HasValue)
+        var notificationKey = $"{telegramId}-endofday-{today}";
+        if (!_sentNotificationsToday.Contains(notificationKey))
         {
           await notificationService.SendNotificationAsync(
             telegramId.Value,
@@ -79,6 +92,7 @@ public class NotificationSchedulerService : BackgroundService
             "End of day approaching! Remember to use /home to track your commute.",
             cancellationToken
           );
+          _sentNotificationsToday.Add(notificationKey);
         }
       }
     }
