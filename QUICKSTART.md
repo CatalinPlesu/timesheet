@@ -38,13 +38,12 @@ dotnet run
 
 ### Available Commands
 
-**Work Tracking:**
+**Work Tracking (Context-Aware):**
+- `commute` or `start` - Start commuting to work / Arrive at work
 - `work` or `working` - Start working
-- `commute` or `start` - Start commuting to work
-- `atwork` - Arrive at work (auto-implied when needed)
 - `lunch` - Take lunch break
-- `home` - Start commuting home
-- `done` or `end` - Arrive home / finish work day
+- `home` - Start commuting home / Arrive home
+- `done` or `end` - Finish work day (force arrive home)
 - `emergency` - Emergency exit (go home immediately)
 - `sickday` - Mark as sick day
 - `vacation` - Mark as vacation
@@ -56,23 +55,38 @@ dotnet run
 **Control:**
 - `exit` or `quit` - Exit interactive mode
 
-### Implicit Transitions
+### Context-Aware & Implicit Transitions
 
-The system is smart and automatically fills in implied transitions, so you don't need to manually go through every single state:
+The system is intelligent and adapts based on your current state:
 
+**Context-Aware Commands:**
+- `commute` twice → first starts commute, second marks arrival
+- `home` twice → first starts commute home, second marks arrival
+
+**Implicit State Filling:**
 - `commute` → `work` automatically records `atwork` in between
-- `lunch` → `home` automatically records `work` in between
+- `lunch` → `home` automatically records resuming `work` first
 - You can skip unnecessary steps - the app knows what you mean!
 
 ### Example Workflows
 
-**Office Work (Simplified):**
+**Office Work (Ultra Compact):**
+```bash
+dotnet run commute   # Start commute
+dotnet run commute   # Arrive at work
+dotnet run work      # Start working
+dotnet run lunch     # Take lunch
+dotnet run home      # Start commute home
+dotnet run home      # Arrive home - done!
+```
+
+**Office Work (Auto-Fill):**
 ```bash
 dotnet run commute   # Start commute
 dotnet run work      # Start working (auto-records "atwork")
 dotnet run lunch     # Take lunch
 dotnet run home      # Start commute home (auto-records "work")
-dotnet run done      # Arrive home
+dotnet run home      # Arrive home
 ```
 
 **Remote Work:**

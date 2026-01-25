@@ -104,14 +104,23 @@ class BotService : BackgroundService
 
     try
     {
+      // Get current state for context-aware commands
+      WorkDayState currentState = WorkDayState.NotStarted;
+      if (user != null)
+      {
+        var statusQuery = new GetCurrentStatusQuery(user.Id, DateOnly.FromDateTime(DateTime.UtcNow));
+        var status = await queryHandler.HandleAsync(statusQuery, cancellationToken);
+        currentState = status.CurrentState;
+      }
+
       var response = text.Split(' ')[0] switch
       {
         "/start" => await HandleStart(userId, message.From.FirstName, userRepo, cancellationToken),
-        "/commute" => await HandleTransition(user!, WorkDayState.CommutingToWork, commandHandler, cancellationToken),
+        "/commute" => await HandleContextualCommute(user!, currentState, commandHandler, cancellationToken),
         "/atwork" => await HandleTransition(user!, WorkDayState.AtWork, commandHandler, cancellationToken),
         "/work" => await HandleTransition(user!, WorkDayState.Working, commandHandler, cancellationToken),
         "/lunch" => await HandleTransition(user!, WorkDayState.OnLunch, commandHandler, cancellationToken),
-        "/home" => await HandleTransition(user!, WorkDayState.CommutingHome, commandHandler, cancellationToken),
+        "/home" => await HandleContextualHome(user!, currentState, commandHandler, cancellationToken),
         "/done" => await HandleTransition(user!, WorkDayState.AtHome, commandHandler, cancellationToken),
         "/emergency" => await HandleTransition(user!, WorkDayState.AtHome, commandHandler, cancellationToken),
         "/sickday" => await HandleTransition(user!, WorkDayState.SickDay, commandHandler, cancellationToken),
@@ -184,6 +193,34 @@ class BotService : BackgroundService
     return $"{stateMessage} recorded at {now:HH:mm}";
   }
 
+  private async Task<string> HandleContextualHome(DomainUser user, WorkDayState currentState, RecordTransitionCommandHandler handler, CancellationToken cancellationToken)
+  {
+    // Context-aware /home command:
+    // - If commuting home → arrived home (AtHome)
+    // - Otherwise → start commuting home (CommutingHome)
+    var targetState = currentState switch
+    {
+      WorkDayState.CommutingHome => WorkDayState.AtHome,
+      _ => WorkDayState.CommutingHome
+    };
+    
+    return await HandleTransition(user, targetState, handler, cancellationToken);
+  }
+
+  private async Task<string> HandleContextualCommute(DomainUser user, WorkDayState currentState, RecordTransitionCommandHandler handler, CancellationToken cancellationToken)
+  {
+    // Context-aware /commute command:
+    // - If commuting to work → arrived at work (AtWork)
+    // - Otherwise → start commuting to work (CommutingToWork)
+    var targetState = currentState switch
+    {
+      WorkDayState.CommutingToWork => WorkDayState.AtWork,
+      _ => WorkDayState.CommutingToWork
+    };
+    
+    return await HandleTransition(user, targetState, handler, cancellationToken);
+  }
+
   private async Task<string> HandleStatus(DomainUser user, GetCurrentStatusQueryHandler handler, CancellationToken cancellationToken)
   {
     var query = new GetCurrentStatusQuery(user.Id, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -223,25 +260,29 @@ class BotService : BackgroundService
     📋 TimeSheet Bot Commands:
 
     /start - Register or login
-    /commute - Start commuting to work
-    /atwork - Arrive at work (auto-implied when needed)
+    /commute - Start commuting to work / Arrive at work
+    /atwork - Arrive at work (explicit)
     /work - Start working
     /lunch - Take lunch break
-    /home - Start commuting home
-    /done - Arrive home / finish work day
+    /home - Start commuting home / Arrive home
+    /done - Finish work day (force arrive home)
     /emergency - Emergency exit (go home immediately)
     /sickday - Mark as sick day
     /vacation - Mark as vacation
     /status - View today's status
     /help - Show this help message
 
-    💡 Tips:
-    - Office work: /commute → /work → /lunch → /work → /home → /done
-    - Remote work: /work → /lunch → /work → /done
+    💡 Context-Aware Commands:
+    • /commute twice → first starts commute, second marks arrival
+    • /home twice → first starts commute home, second marks arrival
     
-    ℹ️ The system automatically fills in implied transitions.
-    For example, /commute then /work will automatically
-    record /atwork in between.
+    💡 Quick Examples:
+    Office work: /commute → /commute → /work → /lunch → /home → /home
+    Compact flow: /commute → /work → /lunch → /home (auto-fills!)
+    Remote work: /work → /lunch → /done
+    
+    ℹ️ Commands adapt to your current state. The system
+    automatically fills in implied transitions as needed.
     """;
   }
 }

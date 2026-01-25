@@ -50,13 +50,19 @@ async Task HandleCommand(string command, User user, RecordTransitionCommandHandl
   try
   {
     var now = DateTime.UtcNow;
+    
+    // For context-aware commands, get current state first
+    var statusQuery = new GetCurrentStatusQuery(user.Id, DateOnly.FromDateTime(now));
+    var currentStatus = await queryHandler.HandleAsync(statusQuery);
+    var currentState = currentStatus.CurrentState;
+    
     var result = command.ToLower() switch
     {
-      "start" or "commute" => await RecordTransition(user, WorkDayState.CommutingToWork, handler),
+      "start" or "commute" => await HandleContextualCommute(user, currentState, handler),
       "atwork" => await RecordTransition(user, WorkDayState.AtWork, handler),
       "work" or "working" => await RecordTransition(user, WorkDayState.Working, handler),
       "lunch" => await RecordTransition(user, WorkDayState.OnLunch, handler),
-      "home" => await RecordTransition(user, WorkDayState.CommutingHome, handler),
+      "home" => await HandleContextualHome(user, currentState, handler),
       "done" or "end" => await RecordTransition(user, WorkDayState.AtHome, handler),
       "emergency" => await RecordTransition(user, WorkDayState.AtHome, handler),
       "sickday" => await RecordTransition(user, WorkDayState.SickDay, handler),
@@ -80,6 +86,34 @@ async Task HandleCommand(string command, User user, RecordTransitionCommandHandl
       Console.WriteLine($"   Inner exception: {ex.InnerException.Message}");
     }
   }
+}
+
+async Task<string> HandleContextualHome(User user, WorkDayState currentState, RecordTransitionCommandHandler handler)
+{
+  // Context-aware "home" command:
+  // - If commuting home → arrived home (AtHome)
+  // - If at work/working/lunch → start commuting home (CommutingHome)
+  var targetState = currentState switch
+  {
+    WorkDayState.CommutingHome => WorkDayState.AtHome,
+    _ => WorkDayState.CommutingHome
+  };
+  
+  return await RecordTransition(user, targetState, handler);
+}
+
+async Task<string> HandleContextualCommute(User user, WorkDayState currentState, RecordTransitionCommandHandler handler)
+{
+  // Context-aware "commute" command:
+  // - If commuting to work → arrived at work (AtWork)
+  // - Otherwise → start commuting to work (CommutingToWork)
+  var targetState = currentState switch
+  {
+    WorkDayState.CommutingToWork => WorkDayState.AtWork,
+    _ => WorkDayState.CommutingToWork
+  };
+  
+  return await RecordTransition(user, targetState, handler);
 }
 
 async Task RunInteractiveMode(User user, RecordTransitionCommandHandler handler, GetCurrentStatusQueryHandler queryHandler)
@@ -174,30 +208,33 @@ string ShowHelp()
   📋 TimeSheet CLI Commands:
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  Work Tracking:
-    start, commute    - Start commuting to work
-    atwork           - Arrive at work (auto-implied when needed)
-    work, working    - Start working
-    lunch            - Take lunch break
-    home             - Start commuting home
-    done, end        - Arrive home / finish work day
-    emergency        - Emergency exit (go home immediately)
-    sickday          - Mark as sick day
-    vacation         - Mark as vacation
+  Work Tracking (Context-Aware):
+    commute, start    - Start commuting to work / Arrive at work
+    work, working     - Start working
+    lunch             - Take lunch break
+    home              - Start commuting home / Arrive home
+    done, end         - Finish work day (force arrive home)
+    emergency         - Emergency exit (go home immediately)
+    sickday           - Mark as sick day
+    vacation          - Mark as vacation
 
   Information:
-    status           - View today's status and transitions
-    help             - Show this help message
+    status            - View today's status and transitions
+    help              - Show this help message
 
   Control:
-    exit, quit       - Exit the program
+    exit, quit        - Exit the program
 
-  💡 Quick Start Examples:
-    Office work:    commute → work → lunch → work → home → done
-    Remote work:    work → lunch → work → done
+  💡 Context-Aware Commands:
+    • "commute" twice → first starts commute, second marks arrival
+    • "home" twice → first starts commute home, second marks arrival
     
-  ℹ️  Note: The system automatically fills in implied transitions.
-      For example, "commute" then "work" will automatically
-      record "atwork" in between.
+  💡 Quick Start Examples:
+    Office work:    commute → commute → work → lunch → home → home
+    Compact flow:   commute → work → lunch → home (auto-fills states!)
+    Remote work:    work → lunch → done
+    
+  ℹ️  Note: Commands adapt to your current state. The system
+      automatically fills in implied transitions as needed.
   """;
 }
