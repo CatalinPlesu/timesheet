@@ -39,6 +39,9 @@ public class TimeSheetDbContext : DbContext
         identityBuilder.Property(i => i.Id).IsRequired();
         identityBuilder.ToTable("UserIdentities");
       });
+      
+      // Configure to use the private backing field for Identities
+      entity.Navigation(u => u.Identities).UsePropertyAccessMode(PropertyAccessMode.Field);
     });
 
     // WorkDay configuration

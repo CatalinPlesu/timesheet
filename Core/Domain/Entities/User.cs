@@ -6,8 +6,8 @@ namespace TimeSheet.Core.Domain.Entities;
 
 public class User : Entity<UserId>
 {
-  private List<ExternalIdentity> identities { get; set; } = [];
-  public IReadOnlyCollection<ExternalIdentity> Identities { get => identities.AsReadOnly(); }
+  private readonly List<ExternalIdentity> _identities = [];
+  public IReadOnlyCollection<ExternalIdentity> Identities => _identities;
 
   public string Name { get; private set; } = string.Empty;
   public int UtcOffsetHours { get; private set; }
@@ -36,7 +36,7 @@ public class User : Entity<UserId>
 
   public void AddExternalIdentity(IdentityProvider provider, long externalId)
   {
-    identities.Add(new ExternalIdentity(provider, externalId));
+    _identities.Add(new ExternalIdentity(provider, externalId));
   }
 }
 
