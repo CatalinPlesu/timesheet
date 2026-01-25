@@ -44,11 +44,45 @@ builder.Services.AddHostedService<NotificationSchedulerService>();
 
 var host = builder.Build();
 
-// Ensure database is created
+// Ensure database is created and schema is up to date
 using (var scope = host.Services.CreateScope())
 {
   var db = scope.ServiceProvider.GetRequiredService<TimeSheetDbContext>();
-  db.Database.EnsureCreated();
+  
+  // Check if database exists
+  var dbExists = await db.Database.CanConnectAsync();
+  
+  if (!dbExists)
+  {
+    // Create new database with current schema
+    await db.Database.EnsureCreatedAsync();
+    Console.WriteLine("Database created successfully.");
+  }
+  else
+  {
+    // Database exists - apply schema updates manually for MVP
+    try
+    {
+      // Test if new columns exist by attempting a simple query
+      var testUser = await db.Users.FirstOrDefaultAsync();
+      Console.WriteLine("Database schema is up to date.");
+    }
+    catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.Message.Contains("no such column"))
+    {
+      // Schema is outdated - add missing notification preference columns
+      Console.WriteLine("Updating database schema for notification preferences...");
+      
+      // SQLite requires separate ALTER TABLE statements
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_LunchReminderEnabled INTEGER NOT NULL DEFAULT 1;");
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_LunchReminderTime TEXT NOT NULL DEFAULT '12:00:00';");
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_EndOfDayReminderEnabled INTEGER NOT NULL DEFAULT 1;");
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_EndOfDayReminderTime TEXT NOT NULL DEFAULT '17:00:00';");
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_ClockOutReminderEnabled INTEGER NOT NULL DEFAULT 1;");
+      await db.Database.ExecuteSqlRawAsync("ALTER TABLE Users ADD COLUMN NotificationPreferences_GoalAchievedNotificationEnabled INTEGER NOT NULL DEFAULT 1;");
+      
+      Console.WriteLine("Database schema updated successfully.");
+    }
+  }
 }
 
 await host.RunAsync();
