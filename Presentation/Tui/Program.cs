@@ -176,12 +176,12 @@ string ShowHelp()
 
   Work Tracking:
     start, commute    - Start commuting to work
-    atwork           - Arrive at work
-    work, working    - Start working (use for remote work)
+    atwork           - Arrive at work (auto-implied when needed)
+    work, working    - Start working
     lunch            - Take lunch break
     home             - Start commuting home
-    done, end        - Finish work day (at home)
-    emergency        - Emergency exit (go home)
+    done, end        - Arrive home / finish work day
+    emergency        - Emergency exit (go home immediately)
     sickday          - Mark as sick day
     vacation         - Mark as vacation
 
@@ -193,7 +193,11 @@ string ShowHelp()
     exit, quit       - Exit the program
 
   💡 Quick Start Examples:
-    Remote work:    start → work → done
-    Office work:    start → commute → atwork → work → lunch → work → home → done
+    Office work:    commute → work → lunch → work → home → done
+    Remote work:    work → lunch → work → done
+    
+  ℹ️  Note: The system automatically fills in implied transitions.
+      For example, "commute" then "work" will automatically
+      record "atwork" in between.
   """;
 }

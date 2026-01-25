@@ -39,12 +39,12 @@ dotnet run
 ### Available Commands
 
 **Work Tracking:**
-- `work` or `working` - Start working (for remote work)
+- `work` or `working` - Start working
 - `commute` or `start` - Start commuting to work
-- `atwork` - Arrive at work
+- `atwork` - Arrive at work (auto-implied when needed)
 - `lunch` - Take lunch break
 - `home` - Start commuting home
-- `done` or `end` - Finish work day (at home)
+- `done` or `end` - Arrive home / finish work day
 - `emergency` - Emergency exit (go home immediately)
 - `sickday` - Mark as sick day
 - `vacation` - Mark as vacation
@@ -56,16 +56,22 @@ dotnet run
 **Control:**
 - `exit` or `quit` - Exit interactive mode
 
+### Implicit Transitions
+
+The system is smart and automatically fills in implied transitions, so you don't need to manually go through every single state:
+
+- `commute` → `work` automatically records `atwork` in between
+- `lunch` → `home` automatically records `work` in between
+- You can skip unnecessary steps - the app knows what you mean!
+
 ### Example Workflows
 
-**Office Work:**
+**Office Work (Simplified):**
 ```bash
 dotnet run commute   # Start commute
-dotnet run atwork    # Arrive at office
-dotnet run work      # Start working
+dotnet run work      # Start working (auto-records "atwork")
 dotnet run lunch     # Take lunch
-dotnet run work      # Resume work
-dotnet run home      # Start commute home
+dotnet run home      # Start commute home (auto-records "work")
 dotnet run done      # Arrive home
 ```
 
@@ -73,7 +79,6 @@ dotnet run done      # Arrive home
 ```bash
 dotnet run work      # Start working from home
 dotnet run lunch     # Take lunch
-dotnet run work      # Resume work
 dotnet run done      # Finish work day
 ```
 

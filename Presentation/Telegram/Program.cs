@@ -224,20 +224,24 @@ class BotService : BackgroundService
 
     /start - Register or login
     /commute - Start commuting to work
-    /atwork - Arrive at work
-    /work - Start working (use for remote work)
+    /atwork - Arrive at work (auto-implied when needed)
+    /work - Start working
     /lunch - Take lunch break
     /home - Start commuting home
-    /done - Finish work day (at home)
-    /emergency - Emergency exit (go home)
+    /done - Arrive home / finish work day
+    /emergency - Emergency exit (go home immediately)
     /sickday - Mark as sick day
     /vacation - Mark as vacation
     /status - View today's status
     /help - Show this help message
 
     💡 Tips:
-    - For remote work: /start → /work → /done
-    - For office work: /start → /commute → /atwork → /work → /lunch → /work → /home → /done
+    - Office work: /commute → /work → /lunch → /work → /home → /done
+    - Remote work: /work → /lunch → /work → /done
+    
+    ℹ️ The system automatically fills in implied transitions.
+    For example, /commute then /work will automatically
+    record /atwork in between.
     """;
   }
 }
