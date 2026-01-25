@@ -29,6 +29,17 @@ public class TimeSheetDbContext : DbContext
       entity.Property(u => u.Name).IsRequired().HasMaxLength(200);
       entity.Property(u => u.UtcOffsetHours).IsRequired();
 
+      // Configure notification preferences as owned entity
+      entity.OwnsOne(u => u.NotificationPreferences, prefs =>
+      {
+        prefs.Property(p => p.LunchReminderEnabled).IsRequired();
+        prefs.Property(p => p.LunchReminderTime).IsRequired();
+        prefs.Property(p => p.EndOfDayReminderEnabled).IsRequired();
+        prefs.Property(p => p.EndOfDayReminderTime).IsRequired();
+        prefs.Property(p => p.ClockOutReminderEnabled).IsRequired();
+        prefs.Property(p => p.GoalAchievedNotificationEnabled).IsRequired();
+      });
+
       // Configure external identities as owned entities
       entity.OwnsMany(u => u.Identities, identityBuilder =>
       {

@@ -27,6 +27,11 @@ public class UserRepository : IUserRepository
       .FirstOrDefaultAsync(cancellationToken);
   }
 
+  public async Task<List<User>> GetAllAsync(CancellationToken cancellationToken = default)
+  {
+    return await _context.Users.ToListAsync(cancellationToken);
+  }
+
   public async Task<User> AddAsync(User user, CancellationToken cancellationToken = default)
   {
     await _context.Users.AddAsync(user, cancellationToken);

@@ -11,6 +11,7 @@ public class User : Entity<UserId>
 
   public string Name { get; private set; } = string.Empty;
   public int UtcOffsetHours { get; private set; }
+  public NotificationPreferences NotificationPreferences { get; private set; } = new();
 
   // Private constructor for EF Core
   private User() { }
@@ -37,6 +38,11 @@ public class User : Entity<UserId>
   public void AddExternalIdentity(IdentityProvider provider, long externalId)
   {
     _identities.Add(new ExternalIdentity(provider, externalId));
+  }
+
+  public void UpdateNotificationPreferences(NotificationPreferences preferences)
+  {
+    NotificationPreferences = preferences ?? throw new ArgumentNullException(nameof(preferences));
   }
 }
 

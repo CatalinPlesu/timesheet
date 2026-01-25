@@ -6,12 +6,14 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TimeSheet.Core.Application.Commands;
+using TimeSheet.Core.Application.Notifications;
 using TimeSheet.Core.Application.Queries;
 using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Core.Domain.SharedKernel;
 using TimeSheet.Infrastructure.Persistence;
 using TimeSheet.Infrastructure.Persistence.Repositories;
+using TimeSheet.Presentation.Telegram.Services;
 using DomainUser = TimeSheet.Core.Domain.Entities.User;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -36,7 +38,9 @@ builder.Services.AddScoped<RecordTransitionCommandHandler>();
 builder.Services.AddScoped<GetCurrentStatusQueryHandler>();
 
 builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
+builder.Services.AddScoped<INotificationService, TelegramNotificationService>();
 builder.Services.AddHostedService<BotService>();
+builder.Services.AddHostedService<NotificationSchedulerService>();
 
 var host = builder.Build();
 
