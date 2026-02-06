@@ -38,14 +38,15 @@ public abstract class MutableEntity : CreatedEntity
 
     /// <summary>
     /// Marks this entity as modified by setting the UpdatedAt timestamp to the current UTC time.
-    /// This method should be called by derived entities whenever their state changes.
+    /// This method is called by derived entities when their state changes, and by the persistence
+    /// layer (EF Core) to automatically update timestamps on SaveChanges.
     /// </summary>
     /// <remarks>
     /// NOTE: Uses DateTimeOffset.UtcNow which captures system time. This makes the mutation
     /// non-deterministic and harder to test. Consider introducing an ITimeProvider abstraction
     /// in a future refactoring for better testability.
     /// </remarks>
-    protected void MarkAsModified()
+    public void MarkAsModified()
     {
         UpdatedAt = DateTimeOffset.UtcNow;
     }
