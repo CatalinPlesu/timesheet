@@ -1,15 +1,17 @@
+using TimeSheet.Core.Application.Options;
+
 namespace TimeSheet.Infrastructure.Persistence;
 
 /// <summary>
 /// Configuration options for database connection and behavior.
 /// Bound from the "Database" section in appsettings.json.
 /// </summary>
-public sealed class DatabaseOptions
+public sealed class DatabaseOptions : IOptionsWithSectionName
 {
     /// <summary>
     /// Configuration section name for binding.
     /// </summary>
-    public const string SectionName = "Database";
+    public static string SectionName => "Database";
 
     /// <summary>
     /// Gets or sets the SQLite database connection string.

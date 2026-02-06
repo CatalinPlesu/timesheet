@@ -15,5 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TimeSheet.Core.Application\TimeSheet.Core.Application.csproj" />
+    <ProjectReference Include="..\TimeSheet.Infrastructure.Persistence\TimeSheet.Infrastructure.Persistence.csproj" />
   </ItemGroup>
 </Project>

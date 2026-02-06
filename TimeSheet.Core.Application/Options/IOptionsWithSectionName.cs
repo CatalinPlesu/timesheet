@@ -1,4 +1,4 @@
-namespace TimeSheet.Presentation.Telegram.Options;
+namespace TimeSheet.Core.Application.Options;
 
 public interface IOptionsWithSectionName
 {

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using TimeSheet.Core.Application.Options;
 
 namespace TimeSheet.Presentation.Telegram.Options;
 
