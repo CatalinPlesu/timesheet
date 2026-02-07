@@ -12,7 +12,8 @@ public class UpdateHandler(
     RegistrationCommandHandler registrationCommandHandler,
     AboutCommandHandler aboutCommandHandler,
     HelpCommandHandler helpCommandHandler,
-    EditCommandHandler editCommandHandler)
+    EditCommandHandler editCommandHandler,
+    DeleteCommandHandler deleteCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -103,6 +104,10 @@ public class UpdateHandler(
         {
             await editCommandHandler.HandleEditAsync(botClient, message, cancellationToken);
         }
+        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase))
+        {
+            await deleteCommandHandler.HandleDeleteAsync(botClient, message, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
@@ -138,6 +143,10 @@ public class UpdateHandler(
         if (data.StartsWith("edit:", StringComparison.OrdinalIgnoreCase))
         {
             await editCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
+        else if (data.StartsWith("delete:", StringComparison.OrdinalIgnoreCase))
+        {
+            await deleteCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
         }
         else
         {

@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AboutCommandHandler>();
         services.AddSingleton<HelpCommandHandler>();
         services.AddSingleton<EditCommandHandler>();
+        services.AddSingleton<DeleteCommandHandler>();
     }
 
     private static IServiceCollection AddValidatedConfiguration<T>(this IServiceCollection services)
