@@ -34,6 +34,10 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         • Repeating the same command *stops* it (toggle behavior)
         • Valid sequences: `/commute` → `/work` → `/lunch` → `/work` → `/commute`
 
+        *Editing & Corrections:*
+        `/edit` — Edit most recent entry (or `/edit N` for N entries back)
+        `/delete` — Delete most recent entry (or `/delete N` for N entries back)
+
         *Other Commands:*
         `/about` — Bot information
         `/help` — This help message
