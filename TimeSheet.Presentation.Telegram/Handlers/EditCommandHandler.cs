@@ -125,7 +125,7 @@ public class EditCommandHandler(
             var sessionDetails = FormatSessionDetails(sessionToEdit, displayLabel);
 
             // Create inline keyboard with adjustment buttons
-            var keyboard = CreateAdjustmentKeyboard(sessionToEdit.Id);
+            var keyboard = CreateAdjustmentKeyboard(sessionToEdit.Id, sessionToEdit.EndedAt.HasValue);
 
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
@@ -171,10 +171,11 @@ public class EditCommandHandler(
 
         try
         {
-            // Parse callback data: "edit:{sessionId}:{adjustment}"
-            // Example: "edit:abc123:+5" means add 5 minutes to session abc123
+            // Parse callback data: "edit:{sessionId}:{field}:{adjustment}"
+            // field: "s" = start time, "e" = end time, "noop" = label button (no action)
+            // Example: "edit:abc123:s:+5" means add 5 minutes to start time of session abc123
             var parts = data.Split(':');
-            if (parts.Length != 3)
+            if (parts.Length != 4)
             {
                 logger.LogWarning("Invalid callback data format: {Data}", data);
                 await botClient.AnswerCallbackQuery(
@@ -185,7 +186,8 @@ public class EditCommandHandler(
             }
 
             var sessionIdStr = parts[1];
-            var adjustmentStr = parts[2];
+            var field = parts[2];
+            var adjustmentStr = parts[3];
 
             if (!Guid.TryParse(sessionIdStr, out var sessionId))
             {
@@ -193,6 +195,25 @@ public class EditCommandHandler(
                 await botClient.AnswerCallbackQuery(
                     callbackQueryId: callbackQuery.Id,
                     text: "Invalid session ID",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Handle noop (label button click)
+            if (field == "noop")
+            {
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            if (field is not ("s" or "e"))
+            {
+                logger.LogWarning("Invalid field in callback data: {Field}", field);
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    text: "Invalid button data",
                     cancellationToken: cancellationToken);
                 return;
             }
@@ -238,17 +259,20 @@ public class EditCommandHandler(
                 return;
             }
 
-            // Apply the adjustment using reflection (TrackingSession properties are init-only)
-            // We need to create a new entity with adjusted timestamps
-            var newStartedAt = session.StartedAt.AddMinutes(adjustmentMinutes);
-            var newEndedAt = session.EndedAt?.AddMinutes(adjustmentMinutes);
+            // Apply the adjustment to start or end time independently
+            var newStartedAt = field == "s"
+                ? session.StartedAt.AddMinutes(adjustmentMinutes)
+                : session.StartedAt;
+            var newEndedAt = field == "e"
+                ? session.EndedAt?.AddMinutes(adjustmentMinutes)
+                : session.EndedAt;
 
             // Validate the adjustment
             if (newEndedAt.HasValue && newEndedAt.Value < newStartedAt)
             {
                 await botClient.AnswerCallbackQuery(
                     callbackQueryId: callbackQuery.Id,
-                    text: "Adjustment would create invalid duration (end before start)",
+                    text: "Adjustment would make end time before start time",
                     showAlert: true,
                     cancellationToken: cancellationToken);
                 return;
@@ -272,7 +296,7 @@ public class EditCommandHandler(
 
             // Update the message with new details
             var updatedDetails = FormatSessionDetails(adjustedSession, "Editing entry");
-            var keyboard = CreateAdjustmentKeyboard(sessionId);
+            var keyboard = CreateAdjustmentKeyboard(sessionId, adjustedSession.EndedAt.HasValue);
 
             if (callbackQuery.Message != null)
             {
@@ -285,19 +309,21 @@ public class EditCommandHandler(
             }
 
             // Answer the callback query with visual feedback
+            var fieldLabel = field == "s" ? "start" : "end";
             var feedbackText = adjustmentMinutes > 0
-                ? $"⏰ Adjusted by +{adjustmentMinutes} minutes"
-                : $"⏰ Adjusted by {adjustmentMinutes} minutes";
+                ? $"Adjusted {fieldLabel} by +{adjustmentMinutes}m"
+                : $"Adjusted {fieldLabel} by {adjustmentMinutes}m";
 
             await botClient.AnswerCallbackQuery(
                 callbackQueryId: callbackQuery.Id,
                 text: feedbackText,
-                showAlert: false, // Small popup instead of full alert
+                showAlert: false,
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
-                "User {UserId} adjusted session {SessionId} by {Minutes} minutes",
+                "User {UserId} adjusted {Field} of session {SessionId} by {Minutes} minutes",
                 userId,
+                fieldLabel,
                 sessionId,
                 adjustmentMinutes);
         }
@@ -360,24 +386,38 @@ public class EditCommandHandler(
     }
 
     /// <summary>
-    /// Creates an inline keyboard with time adjustment buttons.
+    /// Creates an inline keyboard with time adjustment buttons for start and end times.
     /// </summary>
-    private static InlineKeyboardMarkup CreateAdjustmentKeyboard(Guid sessionId)
+    private static InlineKeyboardMarkup CreateAdjustmentKeyboard(Guid sessionId, bool hasEndTime)
     {
-        return new InlineKeyboardMarkup(new[]
+        var rows = new List<InlineKeyboardButton[]>
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("-30m", $"{CallbackPrefix}{sessionId}:-30"),
-                InlineKeyboardButton.WithCallbackData("-5m", $"{CallbackPrefix}{sessionId}:-5"),
-                InlineKeyboardButton.WithCallbackData("-1m", $"{CallbackPrefix}{sessionId}:-1"),
+                InlineKeyboardButton.WithCallbackData("Start:", $"{CallbackPrefix}{sessionId}:noop"),
+                InlineKeyboardButton.WithCallbackData("-30m", $"{CallbackPrefix}{sessionId}:s:-30"),
+                InlineKeyboardButton.WithCallbackData("-5m", $"{CallbackPrefix}{sessionId}:s:-5"),
+                InlineKeyboardButton.WithCallbackData("-1m", $"{CallbackPrefix}{sessionId}:s:-1"),
+                InlineKeyboardButton.WithCallbackData("+1m", $"{CallbackPrefix}{sessionId}:s:+1"),
+                InlineKeyboardButton.WithCallbackData("+5m", $"{CallbackPrefix}{sessionId}:s:+5"),
+                InlineKeyboardButton.WithCallbackData("+30m", $"{CallbackPrefix}{sessionId}:s:+30"),
             },
-            new[]
+        };
+
+        if (hasEndTime)
+        {
+            rows.Add(new[]
             {
-                InlineKeyboardButton.WithCallbackData("+1m", $"{CallbackPrefix}{sessionId}:+1"),
-                InlineKeyboardButton.WithCallbackData("+5m", $"{CallbackPrefix}{sessionId}:+5"),
-                InlineKeyboardButton.WithCallbackData("+30m", $"{CallbackPrefix}{sessionId}:+30"),
-            }
-        });
+                InlineKeyboardButton.WithCallbackData("End:", $"{CallbackPrefix}{sessionId}:noop"),
+                InlineKeyboardButton.WithCallbackData("-30m", $"{CallbackPrefix}{sessionId}:e:-30"),
+                InlineKeyboardButton.WithCallbackData("-5m", $"{CallbackPrefix}{sessionId}:e:-5"),
+                InlineKeyboardButton.WithCallbackData("-1m", $"{CallbackPrefix}{sessionId}:e:-1"),
+                InlineKeyboardButton.WithCallbackData("+1m", $"{CallbackPrefix}{sessionId}:e:+1"),
+                InlineKeyboardButton.WithCallbackData("+5m", $"{CallbackPrefix}{sessionId}:e:+5"),
+                InlineKeyboardButton.WithCallbackData("+30m", $"{CallbackPrefix}{sessionId}:e:+30"),
+            });
+        }
+
+        return new InlineKeyboardMarkup(rows);
     }
 }

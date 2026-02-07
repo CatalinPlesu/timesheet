@@ -32,24 +32,22 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Contains("Most recent entry:", responses[0].Text);
         Assert.Contains("Work session", responses[0].Text);
 
-        // Verify inline keyboard is present
+        // Verify inline keyboard is present with start and end rows
         Assert.NotNull(responses[0].ReplyMarkup);
         var keyboard = Assert.IsType<InlineKeyboardMarkup>(responses[0].ReplyMarkup);
-        Assert.Equal(2, keyboard.InlineKeyboard.Count()); // 2 rows
+        Assert.Equal(2, keyboard.InlineKeyboard.Count()); // 2 rows (start + end)
 
-        // First row: -30m, -5m, -1m
-        var firstRow = keyboard.InlineKeyboard.ElementAt(0).ToList();
-        Assert.Equal(3, firstRow.Count);
-        Assert.Equal("-30m", firstRow[0].Text);
-        Assert.Equal("-5m", firstRow[1].Text);
-        Assert.Equal("-1m", firstRow[2].Text);
+        // First row: Start label + adjustment buttons
+        var startRow = keyboard.InlineKeyboard.ElementAt(0).ToList();
+        Assert.Equal(7, startRow.Count);
+        Assert.Equal("Start:", startRow[0].Text);
+        Assert.Equal("-30m", startRow[1].Text);
+        Assert.Equal("+30m", startRow[6].Text);
 
-        // Second row: +1m, +5m, +30m
-        var secondRow = keyboard.InlineKeyboard.ElementAt(1).ToList();
-        Assert.Equal(3, secondRow.Count);
-        Assert.Equal("+1m", secondRow[0].Text);
-        Assert.Equal("+5m", secondRow[1].Text);
-        Assert.Equal("+30m", secondRow[2].Text);
+        // Second row: End label + adjustment buttons
+        var endRow = keyboard.InlineKeyboard.ElementAt(1).ToList();
+        Assert.Equal(7, endRow.Count);
+        Assert.Equal("End:", endRow[0].Text);
     }
 
     [Fact]
@@ -119,7 +117,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
     }
 
     [Fact]
-    public async Task CallbackQuery_Add5Minutes_UpdatesSession()
+    public async Task CallbackQuery_AdjustStartEarlier_UpdatesSession()
     {
         // Arrange - create a session to edit
         const long userId = 20005;
@@ -146,8 +144,8 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         Fixture.MockBotClient.ClearResponses();
 
-        // Act - send callback query to add 5 minutes
-        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:+5", userId: userId);
+        // Act - move start time earlier by 5 minutes (safe: won't exceed end)
+        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:s:-5", userId: userId);
 
         // Assert - should have updated message and callback answer
         Assert.Equal(2, responses.Count);
@@ -158,21 +156,21 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         // Second response: callback answer with feedback
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("⏰ Adjusted by +5 minutes", responses[1].Text);
+        Assert.Equal("Adjusted start by -5m", responses[1].Text);
 
-        // Verify the session was updated in the database - use fresh scope
+        // Verify only the start time was updated in the database
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())
         {
             var trackingSessionRepository = verifyScope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var updatedSessions = await trackingSessionRepository.GetRecentSessionsAsync(userId, 1);
             var updatedSession = updatedSessions[0];
-            Assert.Equal(originalStartTime.AddMinutes(5), updatedSession.StartedAt);
-            Assert.Equal(originalEndTime.AddMinutes(5), updatedSession.EndedAt);
+            Assert.Equal(originalStartTime.AddMinutes(-5), updatedSession.StartedAt);
+            Assert.Equal(originalEndTime, updatedSession.EndedAt); // End time unchanged
         }
     }
 
     [Fact]
-    public async Task CallbackQuery_Subtract30Minutes_UpdatesSession()
+    public async Task CallbackQuery_AdjustEndLater_UpdatesSession()
     {
         // Arrange - create a session to edit
         const long userId = 20006;
@@ -185,6 +183,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         // Get the session ID
         Guid sessionId;
         DateTime originalStartTime;
+        DateTime originalEndTime;
 
         using (var scope = Fixture.ServiceProvider.CreateScope())
         {
@@ -192,26 +191,28 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
             var sessions = await trackingSessionRepository.GetRecentSessionsAsync(userId, 1);
             sessionId = sessions[0].Id;
             originalStartTime = sessions[0].StartedAt;
+            originalEndTime = sessions[0].EndedAt!.Value;
         }
 
         Fixture.MockBotClient.ClearResponses();
 
-        // Act
-        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:-30", userId: userId);
+        // Act - move end time later by 30 minutes (safe: won't go before start)
+        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:e:+30", userId: userId);
 
         // Assert
         Assert.Equal(2, responses.Count);
         Assert.Equal(ResponseType.EditedMessage, responses[0].Type);
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("⏰ Adjusted by -30 minutes", responses[1].Text);
+        Assert.Equal("Adjusted end by +30m", responses[1].Text);
 
-        // Verify the session was updated - use fresh scope
+        // Verify only end time was updated - use fresh scope
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())
         {
             var trackingSessionRepository = verifyScope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var updatedSessions = await trackingSessionRepository.GetRecentSessionsAsync(userId, 1);
             var updatedSession = updatedSessions[0];
-            Assert.Equal(originalStartTime.AddMinutes(-30), updatedSession.StartedAt);
+            Assert.Equal(originalStartTime, updatedSession.StartedAt); // Start unchanged
+            Assert.Equal(originalEndTime.AddMinutes(30), updatedSession.EndedAt); // End adjusted
         }
     }
 
@@ -239,25 +240,25 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         Fixture.MockBotClient.ClearResponses();
 
-        // Act - click +5m three times
-        await SendCallbackQueryAsync($"edit:{sessionId}:+5", userId: userId);
+        // Act - click start -5m three times (moving start earlier is always safe)
+        await SendCallbackQueryAsync($"edit:{sessionId}:s:-5", userId: userId);
         await Task.Delay(50); // Allow DB to commit
         Fixture.MockBotClient.ClearResponses();
 
-        await SendCallbackQueryAsync($"edit:{sessionId}:+5", userId: userId);
+        await SendCallbackQueryAsync($"edit:{sessionId}:s:-5", userId: userId);
         await Task.Delay(50); // Allow DB to commit
         Fixture.MockBotClient.ClearResponses();
 
-        await SendCallbackQueryAsync($"edit:{sessionId}:+5", userId: userId);
+        await SendCallbackQueryAsync($"edit:{sessionId}:s:-5", userId: userId);
         await Task.Delay(50); // Allow DB to commit
 
-        // Assert - total adjustment should be +15 minutes - use fresh scope
+        // Assert - total adjustment should be -15 minutes - use fresh scope
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())
         {
             var trackingSessionRepository = verifyScope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var updatedSessions = await trackingSessionRepository.GetRecentSessionsAsync(userId, 1);
             var updatedSession = updatedSessions[0];
-            Assert.Equal(originalStartTime.AddMinutes(15), updatedSession.StartedAt);
+            Assert.Equal(originalStartTime.AddMinutes(-15), updatedSession.StartedAt);
         }
     }
 
@@ -268,7 +269,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         const long userId = 20008;
 
         // Act
-        var responses = await SendCallbackQueryAsync("edit:some-id:+5", userId: userId);
+        var responses = await SendCallbackQueryAsync("edit:some-id:s:+5", userId: userId);
 
         // Assert
         Assert.Single(responses);
@@ -285,7 +286,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         await RegisterTestUserAsync(telegramUserId: userId);
 
         // Act - use an invalid session ID
-        var responses = await SendCallbackQueryAsync("edit:invalid-guid:+5", userId: userId);
+        var responses = await SendCallbackQueryAsync("edit:invalid-guid:s:+5", userId: userId);
 
         // Assert
         Assert.Single(responses);
@@ -302,7 +303,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         var nonExistentId = Guid.NewGuid();
 
         // Act
-        var responses = await SendCallbackQueryAsync($"edit:{nonExistentId}:+5", userId: userId);
+        var responses = await SendCallbackQueryAsync($"edit:{nonExistentId}:s:+5", userId: userId);
 
         // Assert
         Assert.Single(responses);
@@ -330,7 +331,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         var sessionId = sessions[0].Id;
 
         // Act - user B tries to edit user A's session
-        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:+5", userId: userB);
+        var responses = await SendCallbackQueryAsync($"edit:{sessionId}:s:+5", userId: userB);
 
         // Assert
         Assert.Single(responses);
