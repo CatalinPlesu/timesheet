@@ -38,6 +38,9 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         `/edit` — Edit most recent entry (or `/edit N` for N entries back)
         `/delete` — Delete most recent entry (or `/delete N` for N entries back)
 
+        *Admin Commands:*
+        `/generate` — Generate a new registration mnemonic (admin-only)
+
         *Other Commands:*
         `/about` — Bot information
         `/help` — This help message
