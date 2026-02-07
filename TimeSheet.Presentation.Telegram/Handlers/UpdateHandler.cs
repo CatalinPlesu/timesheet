@@ -10,7 +10,8 @@ public class UpdateHandler(
     IServiceScopeFactory serviceScopeFactory,
     TrackingCommandHandler trackingCommandHandler,
     RegistrationCommandHandler registrationCommandHandler,
-    AboutCommandHandler aboutCommandHandler)
+    AboutCommandHandler aboutCommandHandler,
+    HelpCommandHandler helpCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -46,10 +47,16 @@ public class UpdateHandler(
             userId ?? 0,
             messageText);
 
-        // /about is available to everyone (registered or not)
+        // /about and /help are available to everyone (registered or not)
         if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase))
         {
             await aboutCommandHandler.HandleAboutAsync(botClient, message, cancellationToken);
+            return;
+        }
+
+        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase))
+        {
+            await helpCommandHandler.HandleHelpAsync(botClient, message, cancellationToken);
             return;
         }
 
