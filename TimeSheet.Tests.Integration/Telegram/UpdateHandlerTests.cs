@@ -26,7 +26,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Command processing is now implemented - verify response is sent
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("Started working", responses[0].Text);
+        Assert.Contains("Started tracking working", responses[0].Text);
     }
 
     [Fact]

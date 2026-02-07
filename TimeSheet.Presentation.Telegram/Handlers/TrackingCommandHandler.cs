@@ -160,9 +160,7 @@ public class TrackingCommandHandler(
     /// </summary>
     private static string FormatSessionStarted(TrackingResult.SessionStarted result, string stateName)
     {
-        var session = result.StartedSession;
-        var time = FormatTime(session.StartedAt);
-        return $"Started {stateName} at {time}";
+        return $"Started tracking {stateName}";
     }
 
     /// <summary>
@@ -176,9 +174,7 @@ public class TrackingCommandHandler(
         var previousStateName = GetStateName(previousSession.State);
         var duration = FormatDuration(previousSession.StartedAt, previousSession.EndedAt!.Value);
 
-        var newTime = FormatTime(result.StartedSession.StartedAt);
-
-        return $"Ended {previousStateName} ({duration}), started {stateName} at {newTime}";
+        return $"Stopped {previousStateName} ({duration}), started tracking {stateName}";
     }
 
     /// <summary>
@@ -190,7 +186,7 @@ public class TrackingCommandHandler(
         var stateName = GetStateName(session.State);
         var duration = FormatDuration(session.StartedAt, session.EndedAt!.Value);
 
-        return $"Ended {stateName}, duration: {duration}";
+        return $"Stopped {stateName}, duration: {duration}";
     }
 
     /// <summary>
