@@ -30,6 +30,7 @@ try
     // Register hosted services
     builder.Services.AddHostedService<Worker>();
     builder.Services.AddHostedService<AutoShutdownWorker>();
+    builder.Services.AddHostedService<LunchReminderWorker>();
 
     var host = builder.Build();
     host.Run();

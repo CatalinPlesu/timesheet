@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
+using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Options;
 using TimeSheet.Presentation.Telegram.Handlers;
 using TimeSheet.Presentation.Telegram.Options;
@@ -22,6 +23,7 @@ public static class ServiceCollectionExtensions
     private static void AddPresentationInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<RegistrationSessionStore>();
+        services.AddSingleton<INotificationService, NotificationService>();
     }
 
     private static void AddOptions(this IServiceCollection services)
