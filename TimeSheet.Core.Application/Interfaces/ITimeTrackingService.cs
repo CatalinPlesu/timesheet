@@ -1,4 +1,5 @@
 using TimeSheet.Core.Application.Models;
+using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Core.Application.Interfaces;
@@ -26,5 +27,17 @@ public interface ITimeTrackingService
         long userId,
         TrackingState targetState,
         DateTime timestamp,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all tracking sessions for a user on a specific day.
+    /// </summary>
+    /// <param name="userId">The Telegram user ID.</param>
+    /// <param name="date">The date to retrieve sessions for (UTC).</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of all sessions from the specified day, ordered chronologically.</returns>
+    Task<List<TrackingSession>> GetTodaysSessionsAsync(
+        long userId,
+        DateTime date,
         CancellationToken cancellationToken = default);
 }

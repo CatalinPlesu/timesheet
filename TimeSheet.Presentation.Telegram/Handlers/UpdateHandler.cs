@@ -14,7 +14,8 @@ public class UpdateHandler(
     HelpCommandHandler helpCommandHandler,
     EditCommandHandler editCommandHandler,
     DeleteCommandHandler deleteCommandHandler,
-    GenerateCommandHandler generateCommandHandler)
+    GenerateCommandHandler generateCommandHandler,
+    ListCommandHandler listCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -112,6 +113,10 @@ public class UpdateHandler(
         else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
         {
             await generateCommandHandler.HandleGenerateAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase))
+        {
+            await listCommandHandler.HandleListAsync(botClient, message, cancellationToken);
         }
         else
         {

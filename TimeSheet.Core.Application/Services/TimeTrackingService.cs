@@ -1,5 +1,6 @@
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
+using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Core.Domain.Services;
 
@@ -103,5 +104,14 @@ public class TimeTrackingService(
         await trackingSessionRepository.AddAsync(newSession, cancellationToken);
 
         return new TrackingResult.SessionStarted(newSession, startNewSession.SessionToEnd);
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<TrackingSession>> GetTodaysSessionsAsync(
+        long userId,
+        DateTime date,
+        CancellationToken cancellationToken = default)
+    {
+        return await trackingSessionRepository.GetSessionsByDateAsync(userId, date, cancellationToken);
     }
 }

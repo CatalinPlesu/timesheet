@@ -60,4 +60,18 @@ public class TrackingSessionRepository(AppDbContext dbContext)
             .Take(count)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<List<TrackingSession>> GetSessionsByDateAsync(long userId, DateTime date, CancellationToken cancellationToken = default)
+    {
+        var startOfDay = date.Date;
+        var endOfDay = startOfDay.AddDays(1);
+
+        return await DbSet
+            .Where(s => s.UserId == userId
+                     && s.StartedAt >= startOfDay
+                     && s.StartedAt < endOfDay)
+            .OrderBy(s => s.StartedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

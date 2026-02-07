@@ -43,4 +43,13 @@ public interface ITrackingSessionRepository : IRepository<TrackingSession>
     /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>A list of the most recent sessions.</returns>
     Task<List<TrackingSession>> GetRecentSessionsAsync(long userId, int count, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all tracking sessions for a user on a specific day, ordered chronologically.
+    /// </summary>
+    /// <param name="userId">The Telegram user ID.</param>
+    /// <param name="date">The date to retrieve sessions for (UTC).</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of all sessions from the specified day.</returns>
+    Task<List<TrackingSession>> GetSessionsByDateAsync(long userId, DateTime date, CancellationToken cancellationToken = default);
 }
