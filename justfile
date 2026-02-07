@@ -101,18 +101,35 @@ build proj="":
       if [ -n "$SLN" ]; then dotnet build "$SLN"; else echo "✗ No solution found. Try: just build <project.csproj>"; exit 1; fi; \
     fi
 
-# Run the test project
+# Run all tests (unit + integration)
 test *args:
     @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
     if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
-    RKEY=$(echo "$ROOT" | sed 's|/|__|g'); \
-    TEST=$(skate get "${RKEY}-test@{{_db}}" 2>/dev/null); \
-    if [ -z "$TEST" ]; then \
-      PROJS=$(find "$ROOT" -name "*.csproj" | sort); \
-      for proj in $PROJS; do if grep -qE "xunit|nunit|mstest|MSTest" "$proj" 2>/dev/null; then TEST="$proj"; break; fi; done; \
-    fi; \
-    if [ -z "$TEST" ]; then echo "✗ No test project found. Run 'just setup' to configure."; exit 1; fi; \
-    dotnet test "$TEST" {{args}}
+    SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
+    if [ -n "$SLN" ]; then dotnet test "$SLN" {{args}}; else echo "✗ No solution found."; exit 1; fi
+
+# Run only unit tests
+test-unit *args:
+    @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
+    if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
+    UNIT=$(find "$ROOT" -name "*.Tests.Unit.csproj" | head -n1); \
+    if [ -z "$UNIT" ]; then echo "✗ No unit test project found."; exit 1; fi; \
+    dotnet test "$UNIT" {{args}}
+
+# Run only integration tests
+test-integration *args:
+    @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
+    if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
+    INTEGRATION=$(find "$ROOT" -name "*.Tests.Integration.csproj" | head -n1); \
+    if [ -z "$INTEGRATION" ]; then echo "✗ No integration test project found."; exit 1; fi; \
+    dotnet test "$INTEGRATION" {{args}}
+
+# Run tests in watch mode
+test-watch *args:
+    @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
+    if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
+    SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
+    if [ -n "$SLN" ]; then dotnet watch test "$SLN" {{args}}; else echo "✗ No solution found."; exit 1; fi
 
 # Run the startup project in watch mode
 watch *args:
@@ -148,7 +165,7 @@ migrations:
     if [ -z "$STARTUP" ]; then echo "✗ No startup project found. Run 'just setup' to configure."; exit 1; fi; \
     dotnet ef migrations list --project "$DATA" --startup-project "$STARTUP"
 
-# Add a new EF Core migration (usage: just migrate AddUserTable)
+# Add a new EF Core migration (usage: just migrate AddUserTable or just migration-add AddUserTable)
 migrate name:
     @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
     if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
@@ -165,6 +182,10 @@ migrate name:
     skate set "${RKEY}-mig-stack@{{_db}}" "$NEW_STACK"; \
     echo "  ✓ '{{name}}' pushed onto migration stack"
 
+# Alias for migrate command
+migration-add name:
+    @just migrate {{name}}
+
 # Apply all pending EF Core migrations
 update:
     @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
@@ -177,6 +198,10 @@ update:
     if [ -z "$DATA" ]; then echo "✗ No data project found. Run 'just setup' to configure."; exit 1; fi; \
     if [ -z "$STARTUP" ]; then echo "✗ No startup project found. Run 'just setup' to configure."; exit 1; fi; \
     dotnet ef database update --project "$DATA" --startup-project "$STARTUP"
+
+# Alias for update command
+db-update:
+    @just update
 
 # Undo the last migration YOU added (uses migration stack)
 rollback:
@@ -199,6 +224,10 @@ rollback:
     NEW_STACK=$(printf '%s' "$STACK" | sed '$d'); \
     if [ -z "$NEW_STACK" ]; then skate delete "${RKEY}-mig-stack@{{_db}}" 2>/dev/null || true; else skate set "${RKEY}-mig-stack@{{_db}}" "$NEW_STACK"; fi; \
     echo "  ✓ Rollback complete."
+
+# Alias for rollback command
+migration-remove:
+    @just rollback
 
 # Fix migration conflicts by regenerating pending migrations
 resolve name="MergeResolution":
@@ -286,12 +315,19 @@ new *args:
 tool *args:
     @dotnet tool {{args}}
 
-# Run dotnet format on solution
+# Format code with dotnet format
 format *args:
     @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
     if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
     SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
     if [ -n "$SLN" ]; then dotnet format "$SLN" {{args}}; else echo "✗ No solution file found."; exit 1; fi
+
+# Check code formatting without making changes (lint)
+lint *args:
+    @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \
+    if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.sln "$DIR"/*.slnx 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; if [ -z "$ROOT" ]; then DIR="$PWD"; while [ "$DIR" != "/" ]; do if ls "$DIR"/*.csproj 2>/dev/null | head -n1 >/dev/null 2>&1; then ROOT="$DIR"; break; fi; DIR=$(dirname "$DIR"); done; fi; fi; \
+    SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
+    if [ -n "$SLN" ]; then dotnet format "$SLN" --verify-no-changes {{args}}; else echo "✗ No solution file found."; exit 1; fi
 
 # Restore NuGet packages
 restore:
