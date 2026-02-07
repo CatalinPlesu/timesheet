@@ -53,4 +53,16 @@ public interface IUserSettingsService
         long telegramUserId,
         int? hour,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the target work hours per day setting for a user.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="hours">The target work hours per day (null = disable target).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user, or null if the user was not found.</returns>
+    Task<User?> UpdateTargetWorkHoursAsync(
+        long telegramUserId,
+        decimal? hours,
+        CancellationToken cancellationToken = default);
 }

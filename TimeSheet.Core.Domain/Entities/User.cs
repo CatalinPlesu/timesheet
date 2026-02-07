@@ -60,6 +60,13 @@ public sealed class User : CreatedEntity
     public int? LunchReminderHour { get; private set; }
 
     /// <summary>
+    /// Gets the target work hours per day.
+    /// When reached, the user will be notified once.
+    /// Null means no target is configured.
+    /// </summary>
+    public decimal? TargetWorkHours { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="User"/> class.
     /// Used when creating a new user during registration.
     /// </summary>
@@ -92,6 +99,7 @@ public sealed class User : CreatedEntity
     /// <param name="maxCommuteHours">The maximum allowed hours for a commute session (null = no limit).</param>
     /// <param name="maxLunchHours">The maximum allowed hours for a lunch session (null = no limit).</param>
     /// <param name="lunchReminderHour">The hour (0-23) at which to send a lunch reminder (null = no reminder).</param>
+    /// <param name="targetWorkHours">The target work hours per day (null = no target).</param>
     public User(
         Guid id,
         DateTimeOffset createdAt,
@@ -103,7 +111,8 @@ public sealed class User : CreatedEntity
         decimal? maxWorkHours = null,
         decimal? maxCommuteHours = null,
         decimal? maxLunchHours = null,
-        int? lunchReminderHour = null)
+        int? lunchReminderHour = null,
+        decimal? targetWorkHours = null)
         : base(id, createdAt)
     {
         TelegramUserId = telegramUserId;
@@ -115,6 +124,7 @@ public sealed class User : CreatedEntity
         MaxCommuteHours = maxCommuteHours;
         MaxLunchHours = maxLunchHours;
         LunchReminderHour = lunchReminderHour;
+        TargetWorkHours = targetWorkHours;
     }
 
     /// <summary>
@@ -176,5 +186,18 @@ public sealed class User : CreatedEntity
             throw new ArgumentException("Hour must be between 0 and 23.", nameof(hour));
 
         LunchReminderHour = hour;
+    }
+
+    /// <summary>
+    /// Updates the target work hours per day setting.
+    /// </summary>
+    /// <param name="hours">The target work hours per day (null = disable target).</param>
+    /// <exception cref="ArgumentException">Thrown when hours is negative or zero.</exception>
+    public void UpdateTargetWorkHours(decimal? hours)
+    {
+        if (hours.HasValue && hours.Value <= 0)
+            throw new ArgumentException("Target work hours must be positive.", nameof(hours));
+
+        TargetWorkHours = hours;
     }
 }

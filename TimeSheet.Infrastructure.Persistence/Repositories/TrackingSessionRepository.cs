@@ -84,4 +84,30 @@ public class TrackingSessionRepository(AppDbContext dbContext)
             .ThenBy(s => s.StartedAt)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<decimal> GetTotalWorkHoursForDayAsync(long userId, DateTime date, CancellationToken cancellationToken = default)
+    {
+        var startOfDay = date.Date;
+        var endOfDay = startOfDay.AddDays(1);
+        var now = DateTime.UtcNow;
+
+        var workSessions = await DbSet
+            .Where(s => s.UserId == userId
+                     && s.State == TrackingState.Working
+                     && s.StartedAt >= startOfDay
+                     && s.StartedAt < endOfDay)
+            .ToListAsync(cancellationToken);
+
+        decimal totalHours = 0;
+
+        foreach (var session in workSessions)
+        {
+            var endTime = session.EndedAt ?? now;
+            var duration = endTime - session.StartedAt;
+            totalHours += (decimal)duration.TotalHours;
+        }
+
+        return totalHours;
+    }
 }
