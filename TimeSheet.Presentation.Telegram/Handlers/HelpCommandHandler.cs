@@ -44,6 +44,14 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         *Settings:*
         `/settings` — View and change your settings (timezone, etc.)
 
+        *Reports & Analytics:*
+        `/dailystats` — View average daily statistics (last 7, 30, 90 days)
+        `/commutepatterns` — Analyze commute patterns by day of week
+        `/report [period]` — View aggregated statistics
+          • `/report week` — Current week totals
+          • `/report month` — Current month totals
+          • `/report year` — Current year totals
+
         *Admin Commands:*
         `/generate` — Generate a new registration mnemonic (admin-only)
 
