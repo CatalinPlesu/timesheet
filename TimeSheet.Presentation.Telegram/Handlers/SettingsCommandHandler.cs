@@ -63,12 +63,18 @@ public class SettingsCommandHandler(
             ? $"{user.TargetWorkHours.Value:F1} hours"
             : "Not set";
 
+        // Format forgot-shutdown threshold for display
+        var forgotShutdownDisplay = user.ForgotShutdownThresholdPercent.HasValue
+            ? $"{user.ForgotShutdownThresholdPercent.Value}%"
+            : "Not set";
+
         var settingsText = $"""
             ⚙️ *Settings*
 
             *Timezone:* {offsetDisplay}
             *Lunch Reminder:* {lunchReminderDisplay}
             *Target Work Hours:* {targetWorkHoursDisplay}
+            *Forgot-Shutdown Alert:* {forgotShutdownDisplay}
 
             To change your timezone, use:
             `/settings utc [±hours]`
@@ -93,6 +99,14 @@ public class SettingsCommandHandler(
             • `/settings target 8` — Notify when 8 hours worked
             • `/settings target 7.5` — Notify when 7.5 hours worked
             • `/settings target off` — Disable notification
+
+            To configure forgot-shutdown alert:
+            `/settings forgot [percent]` or `/settings forgot off`
+
+            Examples:
+            • `/settings forgot 150` — Alert at 150% of average
+            • `/settings forgot 200` — Alert at 200% of average
+            • `/settings forgot off` — Disable alert
             """;
 
         await botClient.SendMessage(
@@ -377,5 +391,101 @@ public class SettingsCommandHandler(
             "User {UserId} updated target work hours to {Hours}",
             userId.Value,
             targetHours?.ToString("F1") ?? "disabled");
+    }
+
+    /// <summary>
+    /// Handles forgot-shutdown threshold configuration from /settings forgot command.
+    /// </summary>
+    public async Task HandleSettingsForgotAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        string[] commandParts,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null)
+        {
+            logger.LogWarning("Received /settings forgot without user ID");
+            return;
+        }
+
+        // Parse forgot-shutdown threshold from command
+        // Expected format: /settings forgot 150, /settings forgot 200, /settings forgot off
+        if (commandParts.Length < 3)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Usage: `/settings forgot [percent]` or `/settings forgot off`\nExample: `/settings forgot 150`",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        using var scope = serviceScopeFactory.CreateScope();
+        var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
+
+        int? thresholdPercent = null;
+        var percentString = commandParts[2];
+
+        // Check if user wants to disable the alert
+        if (percentString.Equals("off", StringComparison.OrdinalIgnoreCase))
+        {
+            thresholdPercent = null;
+        }
+        else
+        {
+            // Parse the percent value
+            if (!int.TryParse(percentString, out var percent))
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Invalid percentage. Please provide a number greater than 100, or 'off' to disable.\nExample: `/settings forgot 150`",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Validate range: must be > 100
+            if (percent <= 100)
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Threshold percentage must be greater than 100.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            thresholdPercent = percent;
+        }
+
+        // Update the user's forgot-shutdown threshold
+        var updatedUser = await userSettingsService.UpdateForgotShutdownThresholdAsync(
+            userId.Value,
+            thresholdPercent,
+            cancellationToken);
+
+        if (updatedUser == null)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Failed to update settings. Please try again.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Format response
+        var responseText = thresholdPercent.HasValue
+            ? $"✅ Forgot-shutdown alert set to {thresholdPercent.Value}% of average session duration"
+            : "✅ Forgot-shutdown alert disabled";
+
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: responseText,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} updated forgot-shutdown threshold to {Threshold}%",
+            userId.Value,
+            thresholdPercent?.ToString() ?? "disabled");
     }
 }

@@ -18,6 +18,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegistrationService, RegistrationService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IAutoShutdownService, AutoShutdownService>();
+        services.AddScoped<IForgotShutdownService, ForgotShutdownService>();
         services.AddSingleton<IMnemonicService, MnemonicService>();
 
         // Parsers

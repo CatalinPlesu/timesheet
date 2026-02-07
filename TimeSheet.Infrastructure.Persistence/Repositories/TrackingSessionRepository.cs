@@ -110,4 +110,25 @@ public class TrackingSessionRepository(AppDbContext dbContext)
 
         return totalHours;
     }
+
+    /// <inheritdoc/>
+    public async Task<decimal?> GetAverageDurationAsync(long userId, TrackingState state, CancellationToken cancellationToken = default)
+    {
+        var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
+
+        var completedSessions = await DbSet
+            .Where(s => s.UserId == userId
+                     && s.State == state
+                     && s.EndedAt != null
+                     && s.StartedAt >= thirtyDaysAgo)
+            .ToListAsync(cancellationToken);
+
+        if (completedSessions.Count == 0)
+        {
+            return null;
+        }
+
+        var totalDuration = completedSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalHours);
+        return (decimal)(totalDuration / completedSessions.Count);
+    }
 }

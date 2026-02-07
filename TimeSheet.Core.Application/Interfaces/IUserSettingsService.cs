@@ -65,4 +65,16 @@ public interface IUserSettingsService
         long telegramUserId,
         decimal? hours,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the forgot-shutdown threshold percentage for a user.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="thresholdPercent">The threshold percentage (e.g., 150 for 150% of average). Null = disable detection.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user, or null if the user was not found.</returns>
+    Task<User?> UpdateForgotShutdownThresholdAsync(
+        long telegramUserId,
+        int? thresholdPercent,
+        CancellationToken cancellationToken = default);
 }

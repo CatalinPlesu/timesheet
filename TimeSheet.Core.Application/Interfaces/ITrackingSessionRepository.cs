@@ -70,4 +70,14 @@ public interface ITrackingSessionRepository : IRepository<TrackingSession>
     /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>The total work hours as a decimal (includes fractional hours).</returns>
     Task<decimal> GetTotalWorkHoursForDayAsync(long userId, DateTime date, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculates the average duration in hours for completed sessions of a specific state for a user.
+    /// Only considers completed sessions from the last 30 days.
+    /// </summary>
+    /// <param name="userId">The Telegram user ID.</param>
+    /// <param name="state">The tracking state to calculate average for.</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>The average duration in hours, or null if no completed sessions exist.</returns>
+    Task<decimal?> GetAverageDurationAsync(long userId, TrackingState state, CancellationToken cancellationToken = default);
 }

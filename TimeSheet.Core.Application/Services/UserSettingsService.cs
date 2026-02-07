@@ -105,4 +105,22 @@ public sealed class UserSettingsService(
 
         return user;
     }
+
+    /// <inheritdoc/>
+    public async Task<User?> UpdateForgotShutdownThresholdAsync(
+        long telegramUserId,
+        int? thresholdPercent,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
+        if (user == null)
+        {
+            return null;
+        }
+
+        user.UpdateForgotShutdownThreshold(thresholdPercent);
+        await unitOfWork.CompleteAsync(cancellationToken);
+
+        return user;
+    }
 }

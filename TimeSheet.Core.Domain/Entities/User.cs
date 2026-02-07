@@ -67,6 +67,14 @@ public sealed class User : CreatedEntity
     public decimal? TargetWorkHours { get; private set; }
 
     /// <summary>
+    /// Gets the threshold percentage for forgot-to-shutdown detection.
+    /// When a session exceeds average duration by this percentage, a reminder is sent.
+    /// Null means no forgot-shutdown detection is configured.
+    /// Default is 150 (150% of average).
+    /// </summary>
+    public int? ForgotShutdownThresholdPercent { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="User"/> class.
     /// Used when creating a new user during registration.
     /// </summary>
@@ -100,6 +108,7 @@ public sealed class User : CreatedEntity
     /// <param name="maxLunchHours">The maximum allowed hours for a lunch session (null = no limit).</param>
     /// <param name="lunchReminderHour">The hour (0-23) at which to send a lunch reminder (null = no reminder).</param>
     /// <param name="targetWorkHours">The target work hours per day (null = no target).</param>
+    /// <param name="forgotShutdownThresholdPercent">The threshold percentage for forgot-shutdown detection (null = no detection).</param>
     public User(
         Guid id,
         DateTimeOffset createdAt,
@@ -112,7 +121,8 @@ public sealed class User : CreatedEntity
         decimal? maxCommuteHours = null,
         decimal? maxLunchHours = null,
         int? lunchReminderHour = null,
-        decimal? targetWorkHours = null)
+        decimal? targetWorkHours = null,
+        int? forgotShutdownThresholdPercent = null)
         : base(id, createdAt)
     {
         TelegramUserId = telegramUserId;
@@ -125,6 +135,7 @@ public sealed class User : CreatedEntity
         MaxLunchHours = maxLunchHours;
         LunchReminderHour = lunchReminderHour;
         TargetWorkHours = targetWorkHours;
+        ForgotShutdownThresholdPercent = forgotShutdownThresholdPercent;
     }
 
     /// <summary>
@@ -199,5 +210,18 @@ public sealed class User : CreatedEntity
             throw new ArgumentException("Target work hours must be positive.", nameof(hours));
 
         TargetWorkHours = hours;
+    }
+
+    /// <summary>
+    /// Updates the forgot-shutdown threshold percentage setting.
+    /// </summary>
+    /// <param name="thresholdPercent">The threshold percentage (e.g., 150 for 150% of average). Null = disable detection.</param>
+    /// <exception cref="ArgumentException">Thrown when thresholdPercent is less than or equal to 100.</exception>
+    public void UpdateForgotShutdownThreshold(int? thresholdPercent)
+    {
+        if (thresholdPercent.HasValue && thresholdPercent.Value <= 100)
+            throw new ArgumentException("Threshold percentage must be greater than 100.", nameof(thresholdPercent));
+
+        ForgotShutdownThresholdPercent = thresholdPercent;
     }
 }

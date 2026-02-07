@@ -144,6 +144,10 @@ public class UpdateHandler(
             {
                 await settingsCommandHandler.HandleSettingsTargetAsync(botClient, message, parts, cancellationToken);
             }
+            else if (parts.Length >= 2 && parts[1].Equals("forgot", StringComparison.OrdinalIgnoreCase))
+            {
+                await settingsCommandHandler.HandleSettingsForgotAsync(botClient, message, parts, cancellationToken);
+            }
             else
             {
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);

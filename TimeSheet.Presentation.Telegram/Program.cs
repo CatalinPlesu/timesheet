@@ -32,6 +32,7 @@ try
     builder.Services.AddHostedService<AutoShutdownWorker>();
     builder.Services.AddHostedService<LunchReminderWorker>();
     builder.Services.AddHostedService<WorkHoursAlertWorker>();
+    builder.Services.AddHostedService<ForgotShutdownWorker>();
 
     var host = builder.Build();
     host.Run();

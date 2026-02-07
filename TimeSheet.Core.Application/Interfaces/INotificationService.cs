@@ -26,4 +26,20 @@ public interface INotificationService
         decimal targetHours,
         decimal actualHours,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification when a session has been running unusually long.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="state">The tracking state that's been running long.</param>
+    /// <param name="currentDuration">The current duration in hours.</param>
+    /// <param name="averageDuration">The average duration in hours.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task SendForgotShutdownReminderAsync(
+        long telegramUserId,
+        TimeSheet.Core.Domain.Enums.TrackingState state,
+        decimal currentDuration,
+        decimal averageDuration,
+        CancellationToken cancellationToken = default);
 }
