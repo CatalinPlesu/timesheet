@@ -251,7 +251,8 @@ public class DeleteCommandHandler(
 
         await botClient.AnswerCallbackQuery(
             callbackQueryId: callbackQuery.Id,
-            text: "Cancelled",
+            text: "❌ Deletion cancelled",
+            showAlert: false, // Small popup
             cancellationToken: cancellationToken);
 
         logger.LogInformation(
@@ -316,7 +317,8 @@ public class DeleteCommandHandler(
 
         await botClient.AnswerCallbackQuery(
             callbackQueryId: callbackQuery.Id,
-            text: "Deleted",
+            text: "✓ Entry deleted successfully",
+            showAlert: false, // Small popup
             cancellationToken: cancellationToken);
 
         logger.LogInformation(

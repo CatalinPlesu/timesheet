@@ -284,14 +284,15 @@ public class EditCommandHandler(
                     cancellationToken: cancellationToken);
             }
 
-            // Answer the callback query with feedback
+            // Answer the callback query with visual feedback
             var feedbackText = adjustmentMinutes > 0
-                ? $"Added {adjustmentMinutes}m"
-                : $"Removed {Math.Abs(adjustmentMinutes)}m";
+                ? $"⏰ Adjusted by +{adjustmentMinutes} minutes"
+                : $"⏰ Adjusted by {adjustmentMinutes} minutes";
 
             await botClient.AnswerCallbackQuery(
                 callbackQueryId: callbackQuery.Id,
                 text: feedbackText,
+                showAlert: false, // Small popup instead of full alert
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
