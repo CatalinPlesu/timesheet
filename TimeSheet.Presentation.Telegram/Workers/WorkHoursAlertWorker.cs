@@ -1,0 +1,152 @@
+using System.Collections.Concurrent;
+using TimeSheet.Core.Application.Interfaces;
+
+namespace TimeSheet.Presentation.Telegram.Workers;
+
+/// <summary>
+/// Background worker that periodically checks if users have reached their target work hours.
+/// Checks every 15 minutes and sends notifications to users who:
+/// - Have configured a target work hours setting
+/// - Have reached or exceeded their target hours for today
+/// - Haven't been notified yet today
+/// </summary>
+public sealed class WorkHoursAlertWorker(
+    IServiceScopeFactory serviceScopeFactory,
+    ILogger<WorkHoursAlertWorker> logger) : BackgroundService
+{
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
+    private readonly ConcurrentDictionary<long, DateOnly> _alertsSentToday = new();
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        logger.LogInformation("Work hours alert worker started. Check interval: {Interval} minutes", CheckInterval.TotalMinutes);
+
+        // Wait a bit before starting the first check to allow the bot to fully initialize
+        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await CheckAndSendWorkHoursAlertsAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error checking for work hours alerts");
+            }
+
+            // Wait for the next check interval
+            await Task.Delay(CheckInterval, stoppingToken);
+        }
+    }
+
+    /// <summary>
+    /// Checks all users and sends work hours complete alerts to those who have reached their target.
+    /// </summary>
+    private async Task CheckAndSendWorkHoursAlertsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = serviceScopeFactory.CreateScope();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+
+        // Get all users with target work hours configured
+        var allUsers = await userRepository.GetAllAsync(cancellationToken);
+        var usersWithTarget = allUsers.Where(u => u.TargetWorkHours.HasValue).ToList();
+
+        if (usersWithTarget.Count == 0)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        var alertsCount = 0;
+
+        // Clean up old alert records (from previous days)
+        CleanupOldAlertRecords(today);
+
+        foreach (var user in usersWithTarget)
+        {
+            try
+            {
+                // Check if we've already alerted this user today
+                if (_alertsSentToday.TryGetValue(user.TelegramUserId, out var lastAlertDate) &&
+                    lastAlertDate == today)
+                {
+                    continue; // Already alerted today
+                }
+
+                // Calculate user's local date
+                var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
+                var userLocalDate = DateOnly.FromDateTime(userLocalTime);
+
+                // Calculate the start of the user's day in UTC
+                var userDayStartUtc = userLocalDate.ToDateTime(TimeOnly.MinValue).AddMinutes(-user.UtcOffsetMinutes);
+
+                // Get total work hours for the user's current day
+                var totalWorkHours = await trackingSessionRepository.GetTotalWorkHoursForDayAsync(
+                    user.TelegramUserId,
+                    userDayStartUtc,
+                    cancellationToken);
+
+                // Check if user has reached their target
+                if (totalWorkHours >= user.TargetWorkHours!.Value)
+                {
+                    // Send the alert
+                    await notificationService.SendWorkHoursCompleteAsync(
+                        user.TelegramUserId,
+                        user.TargetWorkHours.Value,
+                        totalWorkHours,
+                        cancellationToken);
+
+                    // Mark as alerted today
+                    _alertsSentToday[user.TelegramUserId] = today;
+                    alertsCount++;
+
+                    logger.LogInformation(
+                        "Sent work hours complete alert to user {UserId} (target: {Target}h, actual: {Actual}h)",
+                        user.TelegramUserId,
+                        user.TargetWorkHours.Value,
+                        totalWorkHours);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error processing work hours alert for user {UserId}", user.TelegramUserId);
+            }
+        }
+
+        if (alertsCount > 0)
+        {
+            logger.LogInformation("Sent {Count} work hours complete alert(s)", alertsCount);
+        }
+    }
+
+    /// <summary>
+    /// Removes alert records from previous days to prevent memory growth.
+    /// </summary>
+    private void CleanupOldAlertRecords(DateOnly today)
+    {
+        var usersToRemove = _alertsSentToday
+            .Where(kvp => kvp.Value < today)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var userId in usersToRemove)
+        {
+            _alertsSentToday.TryRemove(userId, out _);
+        }
+
+        if (usersToRemove.Count > 0)
+        {
+            logger.LogDebug("Cleaned up {Count} old alert records", usersToRemove.Count);
+        }
+    }
+
+    public override Task StopAsync(CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Work hours alert worker is stopping...");
+        return base.StopAsync(cancellationToken);
+    }
+}
