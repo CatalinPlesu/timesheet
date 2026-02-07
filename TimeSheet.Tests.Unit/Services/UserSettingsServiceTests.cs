@@ -121,4 +121,78 @@ public class UserSettingsServiceTests
         Assert.Null(result);
         _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateLunchReminderHourAsync_WithValidHour_ShouldUpdateLunchReminderHour()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateLunchReminderHourAsync(123456789, 12);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(12, result.LunchReminderHour);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLunchReminderHourAsync_WithNull_ShouldDisableReminder()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateLunchReminderHour(12);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateLunchReminderHourAsync(123456789, null);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(result.LunchReminderHour);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(12)]
+    [InlineData(23)]
+    public async Task UpdateLunchReminderHourAsync_WithValidHours_ShouldUpdateSuccessfully(int hour)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateLunchReminderHourAsync(123456789, hour);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(hour, result.LunchReminderHour);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLunchReminderHourAsync_WithNonExistentUser_ShouldReturnNull()
+    {
+        // Arrange
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _service.UpdateLunchReminderHourAsync(123456789, 12);
+
+        // Assert
+        Assert.Null(result);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

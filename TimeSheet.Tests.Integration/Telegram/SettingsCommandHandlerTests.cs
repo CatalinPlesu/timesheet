@@ -192,4 +192,157 @@ public class SettingsCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Assert - should be ignored (no response)
         AssertNoResponse(responses);
     }
+
+    [Fact]
+    public async Task HandleSettings_WithLunchReminderNotSet_ShowsNotSet()
+    {
+        // Arrange
+        const long userId = 20013;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Lunch Reminder:", responses[0].Text);
+        Assert.Contains("Not set", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsLunch_ValidHour_UpdatesSuccessfully()
+    {
+        // Arrange
+        const long userId = 20014;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings lunch 12", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Lunch reminder set to 12:00", responses[0].Text);
+
+        // Verify the update persisted
+        Fixture.MockBotClient.ClearResponses();
+        var verifyResponses = await SendTextAsync("/settings", userId: userId);
+        Assert.Contains("12:00", verifyResponses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsLunch_DisableReminder_UpdatesSuccessfully()
+    {
+        // Arrange
+        const long userId = 20015;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // First set a reminder
+        await SendTextAsync("/settings lunch 12", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - disable the reminder
+        var responses = await SendTextAsync("/settings lunch off", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Lunch reminder disabled", responses[0].Text);
+
+        // Verify the update persisted
+        Fixture.MockBotClient.ClearResponses();
+        var verifyResponses = await SendTextAsync("/settings", userId: userId);
+        Assert.Contains("Not set", verifyResponses[0].Text);
+    }
+
+    [Theory]
+    [InlineData(0, "00:00")]
+    [InlineData(12, "12:00")]
+    [InlineData(23, "23:00")]
+    public async Task HandleSettingsLunch_ValidHours_UpdatesSuccessfully(int hour, string expected)
+    {
+        // Arrange
+        var userId = 20016 + hour; // Unique user ID for each test case
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync($"/settings lunch {hour}", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains($"Lunch reminder set to {expected}", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsLunch_InvalidHour_ShowsError()
+    {
+        // Arrange
+        const long userId = 20040;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings lunch abc", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Invalid hour", responses[0].Text);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(24)]
+    [InlineData(25)]
+    public async Task HandleSettingsLunch_OutOfRange_ShowsError(int hour)
+    {
+        // Arrange
+        var userId = 20041 + hour; // Unique user ID for each test case
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync($"/settings lunch {hour}", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("between 0 and 23", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsLunch_MissingHour_ShowsUsage()
+    {
+        // Arrange
+        const long userId = 20050;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings lunch", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Usage", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsLunch_CaseInsensitiveOff_DisablesReminder()
+    {
+        // Arrange
+        const long userId = 20051;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // First set a reminder
+        await SendTextAsync("/settings lunch 12", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - disable with uppercase
+        var responses = await SendTextAsync("/settings lunch OFF", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Lunch reminder disabled", responses[0].Text);
+    }
 }
