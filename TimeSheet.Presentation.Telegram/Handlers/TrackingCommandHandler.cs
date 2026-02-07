@@ -249,7 +249,7 @@ public class TrackingCommandHandler(
         {
             // When commute starts, suggest either stopping at destination or starting work
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Commuting } =>
-                "💡 Press /commute to stop when you reach your destination, or /work to start working",
+                "Press /commute to stop when you reach your destination, or /work to start working",
 
             // When work starts, suggest lunch or stopping work
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Working } started =>
@@ -257,19 +257,19 @@ public class TrackingCommandHandler(
 
             // When lunch starts, suggest returning to work
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Lunch } =>
-                "💡 Press /work when you're ready to continue working",
+                "Press /work when you're ready to continue working",
 
             // When commute ends, suggest starting work
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Commuting } =>
-                "💡 Press /work to start tracking your work time",
+                "Press /work to start tracking your work time",
 
             // When work ends, suggest commute home
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Working } =>
-                "💡 Press /commute if you're heading home",
+                "Press /commute if you're heading home",
 
             // When lunch ends, suggest work (though this shouldn't happen with toggle logic)
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Lunch } =>
-                "💡 Press /work to continue your work session",
+                "Press /work to continue your work session",
 
             _ => string.Empty
         };
@@ -287,10 +287,10 @@ public class TrackingCommandHandler(
         // If it's around lunchtime (11:00-14:00), suggest lunch
         if (hour >= 11 && hour < 14)
         {
-            return "💡 Press /lunch when you take your break, or /work to stop working";
+            return "Press /lunch when you take your break, or /work to stop working";
         }
 
         // Otherwise, suggest general options
-        return "💡 Press /lunch for your break, /work to stop, or /commute when heading home";
+        return "Press /lunch for your break, /work to stop, or /commute when heading home";
     }
 }

@@ -177,7 +177,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Started tracking commuting", responses[0].Text);
-        Assert.Contains("💡 Press /commute to stop when you reach your destination, or /work to start working", responses[0].Text);
+        Assert.Contains("Press /commute to stop when you reach your destination, or /work to start working", responses[0].Text);
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         Assert.Single(responses);
         Assert.Contains("Started tracking working", responses[0].Text);
         // Should include a suggestion about lunch, work stop, or commute
-        Assert.Contains("💡", responses[0].Text);
+        Assert.Contains("Press", responses[0].Text);
         Assert.Contains("/lunch", responses[0].Text);
     }
 
@@ -211,7 +211,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Started tracking on lunch break", responses[0].Text);
-        Assert.Contains("💡 Press /work when you're ready to continue working", responses[0].Text);
+        Assert.Contains("Press /work when you're ready to continue working", responses[0].Text);
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Stopped commuting", responses[0].Text);
-        Assert.Contains("💡 Press /work to start tracking your work time", responses[0].Text);
+        Assert.Contains("Press /work to start tracking your work time", responses[0].Text);
     }
 
     [Fact]
@@ -247,7 +247,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Stopped work session", responses[0].Text);
-        Assert.Contains("💡 Press /commute if you're heading home", responses[0].Text);
+        Assert.Contains("Press /commute if you're heading home", responses[0].Text);
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         Assert.Contains("Stopped commuting", responses[0].Text);
         Assert.Contains("started tracking working", responses[0].Text);
         // Should include work-related suggestions
-        Assert.Contains("💡", responses[0].Text);
+        Assert.Contains("Press", responses[0].Text);
         Assert.Contains("/lunch", responses[0].Text);
     }
 }
