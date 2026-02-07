@@ -28,7 +28,7 @@ public sealed class User : CreatedEntity
     /// Used for displaying times in the user's local timezone.
     /// Example: +60 for UTC+1, -300 for UTC-5.
     /// </summary>
-    public int UtcOffsetMinutes { get; init; }
+    public int UtcOffsetMinutes { get; private set; }
 
     /// <summary>
     /// Gets the UTC timestamp when this user registered.
@@ -79,5 +79,14 @@ public sealed class User : CreatedEntity
         IsAdmin = isAdmin;
         UtcOffsetMinutes = utcOffsetMinutes;
         RegisteredAt = registeredAt;
+    }
+
+    /// <summary>
+    /// Updates the user's UTC offset.
+    /// </summary>
+    /// <param name="utcOffsetMinutes">The new UTC offset in minutes.</param>
+    public void UpdateUtcOffset(int utcOffsetMinutes)
+    {
+        UtcOffsetMinutes = utcOffsetMinutes;
     }
 }

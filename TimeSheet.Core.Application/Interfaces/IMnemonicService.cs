@@ -25,4 +25,18 @@ public interface IMnemonicService
     /// <param name="mnemonicString">The space-separated mnemonic string to validate.</param>
     /// <returns>True if the mnemonic was found and consumed, false otherwise.</returns>
     bool ValidateAndConsumeMnemonic(string mnemonicString);
+
+    /// <summary>
+    /// Validates that a mnemonic exists in the pending list without consuming it.
+    /// </summary>
+    /// <param name="mnemonicString">The space-separated mnemonic string to validate.</param>
+    /// <returns>True if the mnemonic is found in the pending list, false otherwise.</returns>
+    bool ValidateMnemonic(string mnemonicString);
+
+    /// <summary>
+    /// Consumes (removes) a mnemonic from the pending list.
+    /// </summary>
+    /// <param name="mnemonicString">The space-separated mnemonic string to consume.</param>
+    /// <returns>True if the mnemonic was found and removed, false otherwise.</returns>
+    bool ConsumeMnemonic(string mnemonicString);
 }

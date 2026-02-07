@@ -16,6 +16,7 @@ public static class ServiceCollectionExtensions
         // Application services
         services.AddScoped<ITimeTrackingService, TimeTrackingService>();
         services.AddScoped<IRegistrationService, RegistrationService>();
+        services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddSingleton<IMnemonicService, MnemonicService>();
 
         // Parsers

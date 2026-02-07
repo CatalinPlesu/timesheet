@@ -3,6 +3,7 @@ using Telegram.Bot;
 using TimeSheet.Core.Application.Options;
 using TimeSheet.Presentation.Telegram.Handlers;
 using TimeSheet.Presentation.Telegram.Options;
+using TimeSheet.Presentation.Telegram.Services;
 
 namespace TimeSheet.Presentation.Telegram.Extensions;
 
@@ -13,8 +14,14 @@ public static class ServiceCollectionExtensions
         services.AddOptions();
         services.AddTelegramBot();
         services.AddHandlers();
+        services.AddPresentationInfrastructure();
 
         return services;
+    }
+
+    private static void AddPresentationInfrastructure(this IServiceCollection services)
+    {
+        services.AddSingleton<RegistrationSessionStore>();
     }
 
     private static void AddOptions(this IServiceCollection services)
@@ -42,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DeleteCommandHandler>();
         services.AddSingleton<GenerateCommandHandler>();
         services.AddSingleton<ListCommandHandler>();
+        services.AddSingleton<SettingsCommandHandler>();
     }
 
     private static IServiceCollection AddValidatedConfiguration<T>(this IServiceCollection services)

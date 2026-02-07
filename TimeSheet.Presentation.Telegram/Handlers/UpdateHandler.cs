@@ -2,6 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Presentation.Telegram.Services;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
@@ -15,7 +16,9 @@ public class UpdateHandler(
     EditCommandHandler editCommandHandler,
     DeleteCommandHandler deleteCommandHandler,
     GenerateCommandHandler generateCommandHandler,
-    ListCommandHandler listCommandHandler)
+    ListCommandHandler listCommandHandler,
+    SettingsCommandHandler settingsCommandHandler,
+    RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -72,6 +75,13 @@ public class UpdateHandler(
             return;
         }
 
+        // Check if user has a pending registration (awaiting UTC offset input)
+        if (userId.HasValue && registrationSessionStore.HasPendingRegistration(userId.Value))
+        {
+            await registrationCommandHandler.HandleUtcOffsetInputAsync(botClient, message, cancellationToken);
+            return;
+        }
+
         // All other commands require authentication
         if (userId == null || !await IsUserRegisteredAsync(userId.Value, cancellationToken))
         {
@@ -117,6 +127,19 @@ public class UpdateHandler(
         else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase))
         {
             await listCommandHandler.HandleListAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/settings", StringComparison.OrdinalIgnoreCase))
+        {
+            // Parse the command to see if it's a settings update
+            var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2 && parts[1].Equals("utc", StringComparison.OrdinalIgnoreCase))
+            {
+                await settingsCommandHandler.HandleSettingsUtcAsync(botClient, message, parts, cancellationToken);
+            }
+            else
+            {
+                await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);
+            }
         }
         else
         {

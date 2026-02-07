@@ -81,4 +81,82 @@ public sealed class MnemonicService : IMnemonicService
 
         return found;
     }
+
+    /// <inheritdoc/>
+    public bool ValidateMnemonic(string mnemonicString)
+    {
+        if (string.IsNullOrWhiteSpace(mnemonicString))
+        {
+            return false;
+        }
+
+        // Normalize the mnemonic string
+        RegistrationMnemonic parsedMnemonic;
+        try
+        {
+            parsedMnemonic = RegistrationMnemonic.Parse(mnemonicString);
+        }
+        catch (ArgumentException)
+        {
+            // Invalid mnemonic format
+            return false;
+        }
+
+        var normalizedMnemonic = parsedMnemonic.ToString();
+
+        // Check if the mnemonic exists in the pending list
+        return _pendingMnemonics.Contains(normalizedMnemonic);
+    }
+
+    /// <inheritdoc/>
+    public bool ConsumeMnemonic(string mnemonicString)
+    {
+        if (string.IsNullOrWhiteSpace(mnemonicString))
+        {
+            return false;
+        }
+
+        // Normalize the mnemonic string
+        RegistrationMnemonic parsedMnemonic;
+        try
+        {
+            parsedMnemonic = RegistrationMnemonic.Parse(mnemonicString);
+        }
+        catch (ArgumentException)
+        {
+            // Invalid mnemonic format
+            return false;
+        }
+
+        var normalizedMnemonic = parsedMnemonic.ToString();
+
+        // Try to find and remove the mnemonic
+        var found = false;
+        List<string> tempList = [];
+
+        foreach (var pending in _pendingMnemonics)
+        {
+            if (!found && pending == normalizedMnemonic)
+            {
+                found = true;
+                // Skip this one (consume it)
+            }
+            else
+            {
+                tempList.Add(pending);
+            }
+        }
+
+        if (found)
+        {
+            // Rebuild the concurrent bag without the consumed mnemonic
+            _pendingMnemonics.Clear();
+            foreach (var item in tempList)
+            {
+                _pendingMnemonics.Add(item);
+            }
+        }
+
+        return found;
+    }
 }

@@ -41,6 +41,9 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         `/edit` — Edit most recent entry (or `/edit N` for N entries back)
         `/delete` — Delete most recent entry (or `/delete N` for N entries back)
 
+        *Settings:*
+        `/settings` — View and change your settings (timezone, etc.)
+
         *Admin Commands:*
         `/generate` — Generate a new registration mnemonic (admin-only)
 
