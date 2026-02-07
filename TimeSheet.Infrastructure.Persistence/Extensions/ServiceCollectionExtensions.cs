@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
 
         // Register specialized repositories
         services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
