@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.SharedKernel;
 
 namespace TimeSheet.Infrastructure.Persistence;
@@ -9,6 +10,10 @@ namespace TimeSheet.Infrastructure.Persistence;
 /// </summary>
 public sealed class AppDbContext : DbContext
 {
+    /// <summary>
+    /// Gets or sets the DbSet for TimeEntry entities.
+    /// </summary>
+    public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
     /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
@@ -40,8 +45,8 @@ public sealed class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Future: Apply entity configurations from assemblies
-        // modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        // Apply entity configurations from assemblies
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 
     /// <summary>
