@@ -11,7 +11,8 @@ public class UpdateHandler(
     TrackingCommandHandler trackingCommandHandler,
     RegistrationCommandHandler registrationCommandHandler,
     AboutCommandHandler aboutCommandHandler,
-    HelpCommandHandler helpCommandHandler)
+    HelpCommandHandler helpCommandHandler,
+    EditCommandHandler editCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -23,6 +24,7 @@ public class UpdateHandler(
         var handler = update.Type switch
         {
             UpdateType.Message => HandleMessageAsync(botClient, update.Message!, cancellationToken),
+            UpdateType.CallbackQuery => HandleCallbackQueryAsync(botClient, update.CallbackQuery!, cancellationToken),
             _ => HandleUnknownUpdateAsync(update)
         };
 
@@ -97,9 +99,52 @@ public class UpdateHandler(
         {
             await trackingCommandHandler.HandleLunchAsync(botClient, message, cancellationToken);
         }
+        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase))
+        {
+            await editCommandHandler.HandleEditAsync(botClient, message, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
+        }
+    }
+
+    private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+    {
+        var userId = callbackQuery.From.Id;
+
+        logger.LogInformation(
+            "Received callback query from {UserId}: {Data}",
+            userId,
+            callbackQuery.Data);
+
+        // Check if user is registered
+        if (!await IsUserRegisteredAsync(userId, cancellationToken))
+        {
+            logger.LogWarning(
+                "Ignoring callback query from non-registered user {UserId}",
+                userId);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                text: "You need to register first",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Route callback queries to appropriate handlers
+        var data = callbackQuery.Data ?? string.Empty;
+
+        if (data.StartsWith("edit:", StringComparison.OrdinalIgnoreCase))
+        {
+            await editCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
+        else
+        {
+            logger.LogDebug("Unrecognized callback query data: {Data}", data);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                cancellationToken: cancellationToken);
         }
     }
 
