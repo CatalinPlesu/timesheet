@@ -14,6 +14,12 @@ public sealed class AppDbContext : DbContext
     /// Gets or sets the DbSet for TimeEntry entities.
     /// </summary>
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
+
+    /// <summary>
+    /// Gets or sets the DbSet for TrackingSession entities.
+    /// </summary>
+    public DbSet<TrackingSession> TrackingSessions => Set<TrackingSession>();
+
     /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
