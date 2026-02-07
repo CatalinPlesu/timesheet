@@ -15,8 +15,6 @@ public class TrackingCommandHandler(
     IServiceScopeFactory serviceScopeFactory,
     ICommandParameterParser parameterParser)
 {
-    // Default UTC offset until user settings are implemented in Epic 5
-    private const int DefaultUtcOffsetMinutes = 0;
 
     /// <summary>
     /// Handles the /commute command.
@@ -90,9 +88,22 @@ public class TrackingCommandHandler(
             // Create a scope to resolve scoped services (ITimeTrackingService uses DbContext)
             using var scope = serviceScopeFactory.CreateScope();
             var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+            var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
 
-            // Parse the timestamp from command parameters
-            var timestamp = parameterParser.ParseTimestamp(messageText, DefaultUtcOffsetMinutes);
+            // Get the user's UTC offset from settings
+            var user = await userSettingsService.GetUserAsync(userId.Value, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found in database", userId.Value);
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "User not found. Please register first.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Parse the timestamp from command parameters using the user's UTC offset
+            var timestamp = parameterParser.ParseTimestamp(messageText, user.UtcOffsetMinutes);
 
             // Execute the state transition
             var result = await timeTrackingService.StartStateAsync(
