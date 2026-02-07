@@ -261,4 +261,107 @@ public class UserTests
         // Assert
         Assert.Equal(12, user.LunchReminderHour);
     }
+
+    [Fact]
+    public void UpdateTargetWorkHours_WithValidValue_ShouldUpdateTargetWorkHours()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateTargetWorkHours(8.0m);
+
+        // Assert
+        Assert.Equal(8.0m, user.TargetWorkHours);
+    }
+
+    [Fact]
+    public void UpdateTargetWorkHours_WithNull_ShouldDisableTarget()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateTargetWorkHours(8.0m);
+
+        // Act
+        user.UpdateTargetWorkHours(null);
+
+        // Assert
+        Assert.Null(user.TargetWorkHours);
+    }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(7.5)]
+    [InlineData(8.0)]
+    [InlineData(10.5)]
+    public void UpdateTargetWorkHours_WithValidHours_ShouldUpdateSuccessfully(decimal hours)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateTargetWorkHours(hours);
+
+        // Assert
+        Assert.Equal(hours, user.TargetWorkHours);
+    }
+
+    [Fact]
+    public void UpdateTargetWorkHours_WithZero_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() => user.UpdateTargetWorkHours(0m));
+        Assert.Contains("positive", exception.Message);
+    }
+
+    [Fact]
+    public void UpdateTargetWorkHours_WithNegative_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() => user.UpdateTargetWorkHours(-1m));
+        Assert.Contains("positive", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_ShouldInitializeWithNoTargetWorkHours()
+    {
+        // Act
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Assert
+        Assert.Null(user.TargetWorkHours);
+    }
+
+    [Fact]
+    public void RehydrationConstructor_ShouldPreserveTargetWorkHours()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var createdAt = DateTimeOffset.UtcNow.AddDays(-1);
+        var registeredAt = DateTimeOffset.UtcNow.AddDays(-1);
+
+        // Act
+        var user = new User(
+            id,
+            createdAt,
+            123456789,
+            "testuser",
+            isAdmin: true,
+            utcOffsetMinutes: 0,
+            registeredAt,
+            maxWorkHours: 8.5m,
+            maxCommuteHours: 2.0m,
+            maxLunchHours: 1.5m,
+            lunchReminderHour: 12,
+            targetWorkHours: 8.0m);
+
+        // Assert
+        Assert.Equal(8.0m, user.TargetWorkHours);
+    }
 }

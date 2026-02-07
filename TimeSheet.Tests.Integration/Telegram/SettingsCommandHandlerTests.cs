@@ -345,4 +345,178 @@ public class SettingsCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         Assert.Equal(ResponseType.Message, responses[0].Type);
         Assert.Contains("Lunch reminder disabled", responses[0].Text);
     }
+
+    [Fact]
+    public async Task HandleSettings_WithTargetWorkHoursNotSet_ShowsNotSet()
+    {
+        // Arrange
+        const long userId = 20052;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Target Work Hours:", responses[0].Text);
+        Assert.Contains("Not set", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_ValidHours_UpdatesSuccessfully()
+    {
+        // Arrange
+        const long userId = 20053;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings target 8", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Target work hours set to 8.0 hours per day", responses[0].Text);
+
+        // Verify the update persisted
+        Fixture.MockBotClient.ClearResponses();
+        var verifyResponses = await SendTextAsync("/settings", userId: userId);
+        Assert.Contains("8.0 hours", verifyResponses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_DecimalHours_UpdatesSuccessfully()
+    {
+        // Arrange
+        const long userId = 20054;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings target 7.5", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Target work hours set to 7.5 hours per day", responses[0].Text);
+
+        // Verify the update persisted
+        Fixture.MockBotClient.ClearResponses();
+        var verifyResponses = await SendTextAsync("/settings", userId: userId);
+        Assert.Contains("7.5 hours", verifyResponses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_DisableTarget_UpdatesSuccessfully()
+    {
+        // Arrange
+        const long userId = 20055;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // First set a target
+        await SendTextAsync("/settings target 8", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - disable the target
+        var responses = await SendTextAsync("/settings target off", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Target work hours notification disabled", responses[0].Text);
+
+        // Verify the update persisted
+        Fixture.MockBotClient.ClearResponses();
+        var verifyResponses = await SendTextAsync("/settings", userId: userId);
+        Assert.Contains("Not set", verifyResponses[0].Text);
+    }
+
+    [Theory]
+    [InlineData("1", "1.0")]
+    [InlineData("8", "8.0")]
+    [InlineData("10.5", "10.5")]
+    public async Task HandleSettingsTarget_ValidValues_UpdatesSuccessfully(string input, string expected)
+    {
+        // Arrange
+        var userId = 20056 + input.GetHashCode() % 100; // Unique user ID for each test case
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync($"/settings target {input}", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains($"Target work hours set to {expected} hours per day", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_InvalidHours_ShowsError()
+    {
+        // Arrange
+        const long userId = 20060;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings target abc", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Invalid hours", responses[0].Text);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("-5")]
+    public async Task HandleSettingsTarget_ZeroOrNegative_ShowsError(string hours)
+    {
+        // Arrange
+        var userId = 20061 + hours.GetHashCode() % 100; // Unique user ID for each test case
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync($"/settings target {hours}", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("must be a positive number", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_MissingHours_ShowsUsage()
+    {
+        // Arrange
+        const long userId = 20070;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // Act
+        var responses = await SendTextAsync("/settings target", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Usage", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HandleSettingsTarget_CaseInsensitiveOff_DisablesTarget()
+    {
+        // Arrange
+        const long userId = 20071;
+        await RegisterTestUserAsync(telegramUserId: userId, utcOffsetMinutes: 0);
+
+        // First set a target
+        await SendTextAsync("/settings target 8", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - disable with uppercase
+        var responses = await SendTextAsync("/settings target OFF", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Target work hours notification disabled", responses[0].Text);
+    }
 }

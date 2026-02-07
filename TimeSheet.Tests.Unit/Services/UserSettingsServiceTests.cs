@@ -195,4 +195,79 @@ public class UserSettingsServiceTests
         Assert.Null(result);
         _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task UpdateTargetWorkHoursAsync_WithValidHours_ShouldUpdateTargetWorkHours()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateTargetWorkHoursAsync(123456789, 8.0m);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(8.0m, result.TargetWorkHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateTargetWorkHoursAsync_WithNull_ShouldDisableTarget()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateTargetWorkHours(8.0m);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateTargetWorkHoursAsync(123456789, null);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(result.TargetWorkHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(7.5)]
+    [InlineData(8.0)]
+    [InlineData(10.5)]
+    public async Task UpdateTargetWorkHoursAsync_WithValidValues_ShouldUpdateSuccessfully(decimal hours)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateTargetWorkHoursAsync(123456789, hours);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(hours, result.TargetWorkHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateTargetWorkHoursAsync_WithNonExistentUser_ShouldReturnNull()
+    {
+        // Arrange
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _service.UpdateTargetWorkHoursAsync(123456789, 8.0m);
+
+        // Assert
+        Assert.Null(result);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
 }
