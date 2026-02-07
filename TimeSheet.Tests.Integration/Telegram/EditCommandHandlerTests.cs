@@ -53,9 +53,9 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
     }
 
     [Fact]
-    public async Task EditCommand_WithIndex1_EditsSecondLastEntry()
+    public async Task EditCommand_WithId1_EditsFirstEntry()
     {
-        // Arrange - create multiple tracking sessions
+        // Arrange - create multiple tracking sessions today
         const long userId = 20002;
         await RegisterTestUserAsync(telegramUserId: userId);
 
@@ -71,14 +71,14 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         Fixture.MockBotClient.ClearResponses();
 
-        // Act - edit entry 1 (second most recent)
+        // Act - edit entry 1 (first entry from today's list)
         var responses = await SendTextAsync("/edit 1", userId: userId);
 
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("Entry 1 back:", responses[0].Text);
-        Assert.Contains("Work session", responses[0].Text); // Should be the work session
+        Assert.Contains("Entry #1:", responses[0].Text);
+        Assert.Contains("Work session", responses[0].Text); // Should be the work session (first chronologically)
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
     }
 
     [Fact]
-    public async Task EditCommand_IndexOutOfRange_ShowsErrorMessage()
+    public async Task EditCommand_IdOutOfRange_ShowsErrorMessage()
     {
         // Arrange - create only one entry
         const long userId = 20004;
@@ -113,8 +113,9 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("don't have 6 tracking entries", responses[0].Text);
-        Assert.Contains("You only have 1", responses[0].Text);
+        Assert.Contains("Entry ID 5 not found", responses[0].Text);
+        Assert.Contains("You have 1 entries today", responses[0].Text);
+        Assert.Contains("Use /list to see all entries", responses[0].Text);
     }
 
     [Fact]
@@ -153,7 +154,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         // First response: updated message
         Assert.Equal(ResponseType.EditedMessage, responses[0].Type);
-        Assert.Contains("Most recent entry:", responses[0].Text);
+        Assert.Contains("Editing entry:", responses[0].Text);
 
         // Second response: callback answer with feedback
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
@@ -371,5 +372,113 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         // Assert
         Assert.Single(responses);
         Assert.Contains("Type: Commute", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task EditCommand_WithId2_EditsSecondEntry()
+    {
+        // Arrange - create three tracking sessions today
+        const long userId = 20015;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Create three sessions
+        await SendTextAsync("/commute", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/commute", userId: userId);
+
+        await SendTextAsync("/work", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/work", userId: userId);
+
+        await SendTextAsync("/lunch", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/lunch", userId: userId);
+
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - edit entry 2 (second entry from today's list)
+        var responses = await SendTextAsync("/edit 2", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Entry #2:", responses[0].Text);
+        Assert.Contains("Work session", responses[0].Text); // Should be the work session (second chronologically)
+    }
+
+    [Fact]
+    public async Task EditCommand_WithIdZero_ShowsError()
+    {
+        // Arrange
+        const long userId = 20016;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/work", userId: userId);
+        await SendTextAsync("/work", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - try to edit entry 0 (invalid)
+        var responses = await SendTextAsync("/edit 0", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Invalid entry ID", responses[0].Text);
+        Assert.Contains("positive number", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task EditCommand_WithNegativeId_ShowsError()
+    {
+        // Arrange
+        const long userId = 20017;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/work", userId: userId);
+        await SendTextAsync("/work", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - try to edit entry -1 (invalid)
+        var responses = await SendTextAsync("/edit -1", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Invalid entry ID", responses[0].Text);
+        Assert.Contains("positive number", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task EditCommand_WithInvalidText_ShowsError()
+    {
+        // Arrange
+        const long userId = 20018;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/work", userId: userId);
+        await SendTextAsync("/work", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - try to edit with invalid text
+        var responses = await SendTextAsync("/edit abc", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Invalid entry ID", responses[0].Text);
+        Assert.Contains("positive number", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task EditCommand_WithIdNoEntriesToday_ShowsError()
+    {
+        // Arrange - registered but no entries
+        const long userId = 20019;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Act - try to edit entry 1 when there are no entries today
+        var responses = await SendTextAsync("/edit 1", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("don't have any tracking entries for today", responses[0].Text);
     }
 }

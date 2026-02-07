@@ -11,7 +11,7 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 
 /// <summary>
 /// Handles the /edit command for editing tracking session timestamps.
-/// Supports editing the most recent entry or selecting N entries back.
+/// Supports editing the most recent entry or selecting by entry ID from /list.
 /// </summary>
 public class EditCommandHandler(
     ILogger<EditCommandHandler> logger,
@@ -41,41 +41,88 @@ public class EditCommandHandler(
         var messageText = message.Text ?? string.Empty;
         var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        // Parse the entry index (default to 0 for most recent)
-        var entryIndex = 0;
-        if (parts.Length > 1 && int.TryParse(parts[1], out var index))
+        // Parse the entry ID parameter (optional)
+        int? entryId = null;
+        if (parts.Length > 1)
         {
-            entryIndex = index;
+            if (int.TryParse(parts[1], out var id) && id > 0)
+            {
+                entryId = id;
+            }
+            else
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Invalid entry ID. Please provide a positive number from the /list command.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
         }
 
         try
         {
             using var scope = serviceScopeFactory.CreateScope();
             var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+            var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
 
-            // Get recent sessions (we need entryIndex + 1 to access the Nth entry)
-            var recentSessions = await trackingSessionRepository.GetRecentSessionsAsync(
-                userId.Value,
-                entryIndex + 1,
-                cancellationToken);
+            TrackingSession sessionToEdit;
+            string displayLabel;
 
-            if (recentSessions.Count <= entryIndex)
+            if (entryId.HasValue)
             {
-                var errorMessage = entryIndex == 0
-                    ? "You don't have any tracking entries to edit."
-                    : $"You don't have {entryIndex + 1} tracking entries. You only have {recentSessions.Count}.";
+                // Get today's sessions for ID-based lookup
+                var today = DateTime.UtcNow.Date;
+                var todaysSessions = await timeTrackingService.GetTodaysSessionsAsync(
+                    userId.Value,
+                    today,
+                    cancellationToken);
 
-                await botClient.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: errorMessage,
-                    cancellationToken: cancellationToken);
-                return;
+                if (todaysSessions.Count == 0)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: "You don't have any tracking entries for today.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                // Check if entry ID is valid (1-based index)
+                var entryIndex = entryId.Value - 1;
+                if (entryIndex < 0 || entryIndex >= todaysSessions.Count)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: $"Entry ID {entryId.Value} not found. You have {todaysSessions.Count} entries today. Use /list to see all entries.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                sessionToEdit = todaysSessions[entryIndex];
+                displayLabel = $"Entry #{entryId.Value}";
+            }
+            else
+            {
+                // No ID provided - edit most recent entry
+                var recentSessions = await trackingSessionRepository.GetRecentSessionsAsync(
+                    userId.Value,
+                    1,
+                    cancellationToken);
+
+                if (recentSessions.Count == 0)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: "You don't have any tracking entries to edit.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                sessionToEdit = recentSessions[0];
+                displayLabel = "Most recent entry";
             }
 
-            var sessionToEdit = recentSessions[entryIndex];
-
             // Format the session details
-            var sessionDetails = FormatSessionDetails(sessionToEdit, entryIndex);
+            var sessionDetails = FormatSessionDetails(sessionToEdit, displayLabel);
 
             // Create inline keyboard with adjustment buttons
             var keyboard = CreateAdjustmentKeyboard(sessionToEdit.Id);
@@ -87,10 +134,10 @@ public class EditCommandHandler(
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
-                "User {UserId} opened edit interface for session {SessionId} (index {Index})",
+                "User {UserId} opened edit interface for session {SessionId} ({Label})",
                 userId.Value,
                 sessionToEdit.Id,
-                entryIndex);
+                displayLabel);
         }
         catch (Exception ex)
         {
@@ -224,7 +271,7 @@ public class EditCommandHandler(
             await unitOfWork.CompleteAsync(cancellationToken);
 
             // Update the message with new details
-            var updatedDetails = FormatSessionDetails(adjustedSession, 0); // Index not important here
+            var updatedDetails = FormatSessionDetails(adjustedSession, "Editing entry");
             var keyboard = CreateAdjustmentKeyboard(sessionId);
 
             if (callbackQuery.Message != null)
@@ -267,7 +314,7 @@ public class EditCommandHandler(
     /// <summary>
     /// Formats the session details for display.
     /// </summary>
-    private static string FormatSessionDetails(TrackingSession session, int index)
+    private static string FormatSessionDetails(TrackingSession session, string displayLabel)
     {
         var stateDisplay = session.State switch
         {
@@ -279,8 +326,6 @@ public class EditCommandHandler(
             _ => session.State.ToString()
         };
 
-        var entryLabel = index == 0 ? "Most recent entry" : $"Entry {index} back";
-
         var startTime = session.StartedAt.ToString("yyyy-MM-dd HH:mm");
         var endTime = session.EndedAt?.ToString("HH:mm") ?? "ongoing";
 
@@ -288,7 +333,7 @@ public class EditCommandHandler(
             ? FormatDuration(session.StartedAt, session.EndedAt.Value)
             : "ongoing";
 
-        return $"{entryLabel}:\n" +
+        return $"{displayLabel}:\n" +
                $"Type: {stateDisplay}\n" +
                $"Started: {startTime}\n" +
                $"Ended: {endTime}\n" +
