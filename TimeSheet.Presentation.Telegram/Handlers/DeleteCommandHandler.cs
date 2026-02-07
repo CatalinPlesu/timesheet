@@ -11,7 +11,8 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 
 /// <summary>
 /// Handles the /delete command for deleting tracking session entries.
-/// Supports deleting the most recent entry or selecting N entries back.
+/// Supports deleting the most recent entry (/delete) or a specific entry by ID (/delete [id]).
+/// Entry IDs come from /list command output (1, 2, 3, ...).
 /// Requires confirmation before deletion for safety.
 /// </summary>
 public class DeleteCommandHandler(
@@ -44,41 +45,87 @@ public class DeleteCommandHandler(
         var messageText = message.Text ?? string.Empty;
         var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        // Parse the entry index (default to 0 for most recent)
-        var entryIndex = 0;
-        if (parts.Length > 1 && int.TryParse(parts[1], out var index))
+        // Parse the entry ID (default to null for most recent)
+        int? entryId = null;
+        if (parts.Length > 1 && int.TryParse(parts[1], out var id))
         {
-            entryIndex = index;
+            entryId = id;
         }
 
         try
         {
             using var scope = serviceScopeFactory.CreateScope();
-            var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+            var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
 
-            // Get recent sessions (we need entryIndex + 1 to access the Nth entry)
-            var recentSessions = await trackingSessionRepository.GetRecentSessionsAsync(
-                userId.Value,
-                entryIndex + 1,
-                cancellationToken);
+            List<TrackingSession> sessions;
+            TrackingSession sessionToDelete;
 
-            if (recentSessions.Count <= entryIndex)
+            if (entryId.HasValue)
             {
-                var errorMessage = entryIndex == 0
-                    ? "You don't have any tracking entries to delete."
-                    : $"You don't have {entryIndex + 1} tracking entries. You only have {recentSessions.Count}.";
+                // ID-based deletion: get today's sessions and select by ID
+                if (entryId.Value < 1)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: "Entry ID must be a positive number (1, 2, 3, ...).",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
 
-                await botClient.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: errorMessage,
-                    cancellationToken: cancellationToken);
-                return;
+                var today = DateTime.UtcNow.Date;
+                sessions = await timeTrackingService.GetTodaysSessionsAsync(
+                    userId.Value,
+                    today,
+                    cancellationToken);
+
+                if (sessions.Count == 0)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: "You don't have any tracking entries for today.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                if (entryId.Value > sessions.Count)
+                {
+                    var errorMessage = sessions.Count == 1
+                        ? "You only have 1 entry today. Use /delete 1 to delete it."
+                        : $"You only have {sessions.Count} entries today. Entry ID must be between 1 and {sessions.Count}.";
+
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: errorMessage,
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                // Convert 1-based ID to 0-based index
+                sessionToDelete = sessions[entryId.Value - 1];
+            }
+            else
+            {
+                // No ID provided: delete most recent entry
+                var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+                sessions = await trackingSessionRepository.GetRecentSessionsAsync(
+                    userId.Value,
+                    1,
+                    cancellationToken);
+
+                if (sessions.Count == 0)
+                {
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: "You don't have any tracking entries to delete.",
+                        cancellationToken: cancellationToken);
+                    return;
+                }
+
+                sessionToDelete = sessions[0];
             }
 
-            var sessionToDelete = recentSessions[entryIndex];
-
             // Format the session details
-            var sessionDetails = FormatSessionDetails(sessionToDelete, entryIndex);
+            var sessionDetails = FormatSessionDetails(sessionToDelete, entryId);
 
             // Create inline keyboard with confirmation buttons
             var keyboard = CreateConfirmationKeyboard(sessionToDelete.Id);
@@ -90,10 +137,10 @@ public class DeleteCommandHandler(
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
-                "User {UserId} requested deletion confirmation for session {SessionId} (index {Index})",
+                "User {UserId} requested deletion confirmation for session {SessionId} (entry ID: {EntryId})",
                 userId.Value,
                 sessionToDelete.Id,
-                entryIndex);
+                entryId?.ToString() ?? "most recent");
         }
         catch (Exception ex)
         {
@@ -281,7 +328,7 @@ public class DeleteCommandHandler(
     /// <summary>
     /// Formats the session details for the confirmation prompt.
     /// </summary>
-    private static string FormatSessionDetails(TrackingSession session, int index)
+    private static string FormatSessionDetails(TrackingSession session, int? entryId)
     {
         var stateDisplay = session.State switch
         {
@@ -293,7 +340,7 @@ public class DeleteCommandHandler(
             _ => session.State.ToString()
         };
 
-        var entryLabel = index == 0 ? "Most recent entry" : $"Entry {index} back";
+        var entryLabel = entryId.HasValue ? $"Entry #{entryId.Value}" : "Most recent entry";
 
         var startTime = session.StartedAt.ToString("yyyy-MM-dd HH:mm");
         var endTime = session.EndedAt?.ToString("HH:mm") ?? "ongoing";

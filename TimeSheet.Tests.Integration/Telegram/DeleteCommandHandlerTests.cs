@@ -46,7 +46,7 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
     }
 
     [Fact]
-    public async Task DeleteCommand_WithIndex1_ShowsConfirmationForSecondLastEntry()
+    public async Task DeleteCommand_WithId1_ShowsConfirmationForFirstEntry()
     {
         // Arrange - create multiple tracking sessions
         const long userId = 30002;
@@ -64,13 +64,13 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
 
         Fixture.MockBotClient.ClearResponses();
 
-        // Act - delete entry 1 (second most recent)
+        // Act - delete entry ID 1 (first entry from /list)
         var responses = await SendTextAsync("/delete 1", userId: userId);
 
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("Entry 1 back:", responses[0].Text);
+        Assert.Contains("Entry #1:", responses[0].Text);
         Assert.Contains("Work session", responses[0].Text); // Should be the work session
         Assert.Contains("Are you sure you want to delete this entry?", responses[0].Text);
     }
@@ -92,7 +92,7 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
     }
 
     [Fact]
-    public async Task DeleteCommand_IndexOutOfRange_ShowsErrorMessage()
+    public async Task DeleteCommand_IdOutOfRange_ShowsErrorMessage()
     {
         // Arrange - create only one entry
         const long userId = 30004;
@@ -101,14 +101,65 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
         await SendTextAsync("/work", userId: userId);
         Fixture.MockBotClient.ClearResponses();
 
-        // Act - try to delete entry 5 when only 1 exists
+        // Act - try to delete entry ID 5 when only 1 exists
         var responses = await SendTextAsync("/delete 5", userId: userId);
 
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("don't have 6 tracking entries", responses[0].Text);
-        Assert.Contains("You only have 1", responses[0].Text);
+        Assert.Contains("only have 1 entry today", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task DeleteCommand_InvalidId_ShowsErrorMessage()
+    {
+        // Arrange - create an entry
+        const long userId = 30015;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/work", userId: userId);
+        await SendTextAsync("/work", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - try to delete entry ID 0 (invalid)
+        var responses = await SendTextAsync("/delete 0", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Entry ID must be a positive number", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task DeleteCommand_WithId2_ShowsConfirmationForSecondEntry()
+    {
+        // Arrange - create multiple tracking sessions
+        const long userId = 30016;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Create three sessions
+        await SendTextAsync("/work", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/work", userId: userId);
+
+        await SendTextAsync("/lunch", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/lunch", userId: userId);
+
+        await SendTextAsync("/commute", userId: userId);
+        await Task.Delay(10);
+        await SendTextAsync("/commute", userId: userId);
+
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - delete entry ID 2 (second entry from /list)
+        var responses = await SendTextAsync("/delete 2", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Entry #2:", responses[0].Text);
+        Assert.Contains("Lunch break", responses[0].Text); // Should be the lunch session
+        Assert.Contains("Are you sure you want to delete this entry?", responses[0].Text);
     }
 
     [Fact]
