@@ -136,6 +136,10 @@ public class UpdateHandler(
             {
                 await settingsCommandHandler.HandleSettingsUtcAsync(botClient, message, parts, cancellationToken);
             }
+            else if (parts.Length >= 2 && parts[1].Equals("lunch", StringComparison.OrdinalIgnoreCase))
+            {
+                await settingsCommandHandler.HandleSettingsLunchAsync(botClient, message, parts, cancellationToken);
+            }
             else
             {
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);

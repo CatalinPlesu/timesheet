@@ -53,10 +53,16 @@ public class SettingsCommandHandler(
             ? $"UTC{offsetSign}{Math.Abs(offsetHours)}:{offsetMinutes:D2}"
             : $"UTC{offsetSign}{Math.Abs(offsetHours)}";
 
+        // Format lunch reminder for display
+        var lunchReminderDisplay = user.LunchReminderHour.HasValue
+            ? $"{user.LunchReminderHour.Value:D2}:00"
+            : "Not set";
+
         var settingsText = $"""
             ⚙️ *Settings*
 
             *Timezone:* {offsetDisplay}
+            *Lunch Reminder:* {lunchReminderDisplay}
 
             To change your timezone, use:
             `/settings utc [±hours]`
@@ -65,6 +71,14 @@ public class SettingsCommandHandler(
             • `/settings utc +2` — Set to UTC+2
             • `/settings utc -5` — Set to UTC-5
             • `/settings utc 0` — Set to UTC+0
+
+            To configure lunch reminder:
+            `/settings lunch [hour]` or `/settings lunch off`
+
+            Examples:
+            • `/settings lunch 12` — Remind at 12:00
+            • `/settings lunch 13` — Remind at 13:00
+            • `/settings lunch off` — Disable reminder
             """;
 
         await botClient.SendMessage(
@@ -157,5 +171,101 @@ public class SettingsCommandHandler(
             "User {UserId} updated UTC offset to {OffsetMinutes} minutes",
             userId.Value,
             offsetMinutes);
+    }
+
+    /// <summary>
+    /// Handles lunch reminder configuration from /settings lunch command.
+    /// </summary>
+    public async Task HandleSettingsLunchAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        string[] commandParts,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null)
+        {
+            logger.LogWarning("Received /settings lunch without user ID");
+            return;
+        }
+
+        // Parse lunch reminder hour from command
+        // Expected format: /settings lunch 12, /settings lunch off
+        if (commandParts.Length < 3)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Usage: `/settings lunch [hour]` or `/settings lunch off`\nExample: `/settings lunch 12`",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        using var scope = serviceScopeFactory.CreateScope();
+        var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
+
+        int? reminderHour = null;
+        var hourString = commandParts[2];
+
+        // Check if user wants to disable the reminder
+        if (hourString.Equals("off", StringComparison.OrdinalIgnoreCase))
+        {
+            reminderHour = null;
+        }
+        else
+        {
+            // Parse the hour value
+            if (!int.TryParse(hourString, out var hour))
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Invalid hour. Please provide a number between 0 and 23, or 'off' to disable.\nExample: `/settings lunch 12`",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Validate range: 0 to 23
+            if (hour < 0 || hour > 23)
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Hour must be between 0 and 23.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            reminderHour = hour;
+        }
+
+        // Update the user's lunch reminder hour
+        var updatedUser = await userSettingsService.UpdateLunchReminderHourAsync(
+            userId.Value,
+            reminderHour,
+            cancellationToken);
+
+        if (updatedUser == null)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Failed to update settings. Please try again.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Format response
+        var responseText = reminderHour.HasValue
+            ? $"✅ Lunch reminder set to {reminderHour.Value:D2}:00"
+            : "✅ Lunch reminder disabled";
+
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: responseText,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} updated lunch reminder hour to {Hour}",
+            userId.Value,
+            reminderHour?.ToString() ?? "disabled");
     }
 }

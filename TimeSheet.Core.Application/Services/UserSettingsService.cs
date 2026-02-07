@@ -69,4 +69,22 @@ public sealed class UserSettingsService(
     {
         return await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<User?> UpdateLunchReminderHourAsync(
+        long telegramUserId,
+        int? hour,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
+        if (user == null)
+        {
+            return null;
+        }
+
+        user.UpdateLunchReminderHour(hour);
+        await unitOfWork.CompleteAsync(cancellationToken);
+
+        return user;
+    }
 }
