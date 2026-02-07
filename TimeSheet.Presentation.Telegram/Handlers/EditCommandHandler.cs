@@ -1,9 +1,11 @@
+using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
+using TimeSheet.Infrastructure.Persistence;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
@@ -161,6 +163,7 @@ public class EditCommandHandler(
             using var scope = serviceScopeFactory.CreateScope();
             var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
             // Get the session
             var session = await trackingSessionRepository.GetByIdAsync(sessionId, cancellationToken);
@@ -203,6 +206,9 @@ public class EditCommandHandler(
                     cancellationToken: cancellationToken);
                 return;
             }
+
+            // Detach the current entity to avoid tracking conflicts
+            dbContext.Entry(session).State = EntityState.Detached;
 
             // Create a new session with adjusted timestamps
             var adjustedSession = new TrackingSession(

@@ -93,6 +93,11 @@ public class TelegramBotTestFixture : IDisposable
     public MockTelegramBotClient MockBotClient => _mockBotClient;
 
     /// <summary>
+    /// Gets the service provider for accessing services directly.
+    /// </summary>
+    public IServiceProvider ServiceProvider => _serviceProvider;
+
+    /// <summary>
     /// Creates a new service scope for a test.
     /// Use this to get scoped services like UpdateHandler, DbContext, etc.
     /// </summary>
