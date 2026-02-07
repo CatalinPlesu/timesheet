@@ -1,13 +1,16 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TimeSheet.Core.Application.Interfaces;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
 public class UpdateHandler(
     ILogger<UpdateHandler> logger,
+    IServiceScopeFactory serviceScopeFactory,
     TrackingCommandHandler trackingCommandHandler,
-    RegistrationCommandHandler registrationCommandHandler)
+    RegistrationCommandHandler registrationCommandHandler,
+    AboutCommandHandler aboutCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -34,20 +37,44 @@ public class UpdateHandler(
             return;
         }
 
+        var userId = message.From?.Id;
+        var username = message.From?.Username;
+
         logger.LogInformation(
             "Received message from {Username} ({UserId}): {MessageText}",
-            message.From?.Username ?? "Unknown",
-            message.From?.Id ?? 0,
+            username ?? "Unknown",
+            userId ?? 0,
             messageText);
 
-        // Route commands
+        // /about is available to everyone (registered or not)
+        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase))
+        {
+            await aboutCommandHandler.HandleAboutAsync(botClient, message, cancellationToken);
+            return;
+        }
+
+        // /register is available to everyone (but requires valid mnemonic)
         if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase))
         {
             await registrationCommandHandler.HandleRegisterAsync(botClient, message, cancellationToken);
+            return;
         }
-        else if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/c")
+
+        // All other commands require authentication
+        if (userId == null || !await IsUserRegisteredAsync(userId.Value, cancellationToken))
+        {
+            logger.LogWarning(
+                "Ignoring command from non-registered user {UserId} ({Username}): {MessageText}",
+                userId ?? 0,
+                username ?? "Unknown",
+                messageText);
+            return; // Silently ignore
+        }
+
+        // Route commands for registered users
+        if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
+            messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
+            messageText == "/c")
         {
             await trackingCommandHandler.HandleCommuteAsync(botClient, message, cancellationToken);
         }
@@ -67,6 +94,17 @@ public class UpdateHandler(
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
         }
+    }
+
+    /// <summary>
+    /// Checks if a user is registered in the system.
+    /// </summary>
+    private async Task<bool> IsUserRegisteredAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        using var scope = serviceScopeFactory.CreateScope();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var user = await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
+        return user != null;
     }
 
     private Task HandleUnknownUpdateAsync(Update update)
