@@ -56,9 +56,11 @@ public class TelegramBotTestFixture : IDisposable
         });
 
         // Add DbContext with InMemory provider (not SQLite)
+        // Use a fixed database name so all scopes share the same in-memory database
+        var databaseName = $"TestDb_{Guid.NewGuid()}";
         services.AddDbContext<AppDbContext>(options =>
         {
-            options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
+            options.UseInMemoryDatabase(databaseName);
             options.EnableSensitiveDataLogging();
             options.EnableDetailedErrors();
         });
@@ -66,6 +68,7 @@ public class TelegramBotTestFixture : IDisposable
         // Manually register repositories and Unit of Work (without AddPersistenceServices to avoid SQLite)
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Add application layer services (domain services, app services, parsers)
@@ -88,6 +91,11 @@ public class TelegramBotTestFixture : IDisposable
     /// Gets the mock Telegram bot client to inspect captured responses.
     /// </summary>
     public MockTelegramBotClient MockBotClient => _mockBotClient;
+
+    /// <summary>
+    /// Gets the service provider for accessing services directly.
+    /// </summary>
+    public IServiceProvider ServiceProvider => _serviceProvider;
 
     /// <summary>
     /// Creates a new service scope for a test.

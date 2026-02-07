@@ -118,6 +118,47 @@ public class MockTelegramBotClient
 
                 return true;
             });
+
+        // Capture EditMessageText calls (returns Message or bool depending on request type)
+        _mock.Setup(x => x.SendRequest<Message>(
+                It.Is<IRequest<Message>>(r => r is EditMessageTextRequest),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IRequest<Message> req, CancellationToken ct) =>
+            {
+                if (req is EditMessageTextRequest editReq)
+                {
+                    _responses.Add(new CapturedResponse
+                    {
+                        Type = ResponseType.EditedMessage,
+                        ChatId = editReq.ChatId?.Identifier ?? 0,
+                        Text = editReq.Text,
+                        ReplyMarkup = editReq.ReplyMarkup
+                    });
+
+                    var result = new Message
+                    {
+                        Date = DateTime.UtcNow,
+                        Chat = new Chat { Id = editReq.ChatId?.Identifier ?? 0, Type = Telegram.Bot.Types.Enums.ChatType.Private }
+                    };
+
+                    try
+                    {
+                        typeof(Message).GetProperty(nameof(Message.MessageId))?.SetValue(result, editReq.MessageId);
+                    }
+                    catch
+                    {
+                        // Ignore
+                    }
+
+                    return result;
+                }
+
+                return new Message
+                {
+                    Date = DateTime.UtcNow,
+                    Chat = new Chat { Id = 0, Type = Telegram.Bot.Types.Enums.ChatType.Private }
+                };
+            });
     }
 }
 
@@ -140,5 +181,6 @@ public class CapturedResponse
 public enum ResponseType
 {
     Message,
-    CallbackAnswer
+    CallbackAnswer,
+    EditedMessage
 }

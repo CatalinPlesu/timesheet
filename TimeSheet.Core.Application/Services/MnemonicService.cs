@@ -54,7 +54,7 @@ public sealed class MnemonicService : IMnemonicService
         // Since ConcurrentBag doesn't support atomic "find and remove",
         // we need to rebuild the collection
         var found = false;
-        var tempList = new List<string>();
+        List<string> tempList = [];
 
         foreach (var pending in _pendingMnemonics)
         {

@@ -3,19 +3,14 @@ namespace TimeSheet.Core.Domain.ValueObjects;
 /// <summary>
 /// Represents a BIP39 mnemonic phrase used for user registration.
 /// </summary>
-public sealed class RegistrationMnemonic
+public sealed record RegistrationMnemonic
 {
     private const int RequiredWordCount = 24;
 
     /// <summary>
     /// Gets the 24 words comprising the mnemonic.
     /// </summary>
-    public string[] Words { get; }
-
-    private RegistrationMnemonic(string[] words)
-    {
-        Words = words;
-    }
+    public required string[] Words { get; init; }
 
     /// <summary>
     /// Creates a new RegistrationMnemonic from an array of words.
@@ -36,7 +31,7 @@ public sealed class RegistrationMnemonic
             throw new ArgumentException("Mnemonic cannot contain empty words.", nameof(words));
         }
 
-        return new RegistrationMnemonic(words);
+        return new RegistrationMnemonic { Words = words };
     }
 
     /// <summary>
@@ -62,21 +57,5 @@ public sealed class RegistrationMnemonic
     public override string ToString()
     {
         return string.Join(' ', Words);
-    }
-
-    /// <summary>
-    /// Determines whether the specified object is equal to the current object.
-    /// </summary>
-    public override bool Equals(object? obj)
-    {
-        return obj is RegistrationMnemonic other && ToString() == other.ToString();
-    }
-
-    /// <summary>
-    /// Serves as the default hash function.
-    /// </summary>
-    public override int GetHashCode()
-    {
-        return ToString().GetHashCode();
     }
 }

@@ -50,4 +50,14 @@ public class TrackingSessionRepository(AppDbContext dbContext)
                         && s.StartedAt < endOfDay,
                 cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<List<TrackingSession>> GetRecentSessionsAsync(long userId, int count, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(s => s.UserId == userId)
+            .OrderByDescending(s => s.StartedAt)
+            .Take(count)
+            .ToListAsync(cancellationToken);
+    }
 }

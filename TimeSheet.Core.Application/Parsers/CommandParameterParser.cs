@@ -34,7 +34,7 @@ public partial class CommandParameterParser : ICommandParameterParser
             return now;
         }
 
-        var parameter = string.Join(' ', parts.Skip(1));
+        var parameter = string.Join(' ', parts[1..]);
 
         // Try minute offset first (-15, +30, -m 15, +m 30)
         var minuteOffsetMatch = MinuteOffsetRegex().Match(parameter);

@@ -10,48 +10,31 @@ public abstract class StateTransitionResult
     /// <summary>
     /// Result indicating that the current active session should be ended (toggle behavior).
     /// </summary>
-    public sealed class EndSession : StateTransitionResult
+    /// <param name="SessionToEnd">The session that should be ended.</param>
+    public sealed class EndSession(TrackingSession SessionToEnd) : StateTransitionResult
     {
         /// <summary>
         /// Gets the session that should be ended.
         /// </summary>
-        public TrackingSession SessionToEnd { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="EndSession"/> class.
-        /// </summary>
-        /// <param name="sessionToEnd">The session to end.</param>
-        public EndSession(TrackingSession sessionToEnd)
-        {
-            SessionToEnd = sessionToEnd;
-        }
+        public TrackingSession SessionToEnd { get; } = SessionToEnd;
     }
 
     /// <summary>
     /// Result indicating that a new session should be started, optionally ending the current one.
     /// </summary>
-    public sealed class StartNewSession : StateTransitionResult
+    /// <param name="NewSession">The new session to start.</param>
+    /// <param name="SessionToEnd">The current session to end (null if no active session).</param>
+    public sealed class StartNewSession(TrackingSession NewSession, TrackingSession? SessionToEnd = null) : StateTransitionResult
     {
         /// <summary>
         /// Gets the new session to start.
         /// </summary>
-        public TrackingSession NewSession { get; }
+        public TrackingSession NewSession { get; } = NewSession;
 
         /// <summary>
         /// Gets the current session to end (null if no active session).
         /// </summary>
-        public TrackingSession? SessionToEnd { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="StartNewSession"/> class.
-        /// </summary>
-        /// <param name="newSession">The new session to start.</param>
-        /// <param name="sessionToEnd">The current session to end (null if none).</param>
-        public StartNewSession(TrackingSession newSession, TrackingSession? sessionToEnd = null)
-        {
-            NewSession = newSession;
-            SessionToEnd = sessionToEnd;
-        }
+        public TrackingSession? SessionToEnd { get; } = SessionToEnd;
     }
 
     /// <summary>

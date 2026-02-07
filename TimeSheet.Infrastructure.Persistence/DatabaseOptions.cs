@@ -20,17 +20,17 @@ public sealed class DatabaseOptions : IOptionsWithSectionName
     /// Example: "Data Source=timesheet.db"
     /// For in-memory testing: "Data Source=:memory:"
     /// </remarks>
-    public string ConnectionString { get; set; } = string.Empty;
+    public required string ConnectionString { get; set; }
 
     /// <summary>
     /// Gets or sets whether to enable sensitive data logging for EF Core.
     /// Should only be enabled in development environments.
     /// </summary>
-    public bool EnableSensitiveDataLogging { get; set; } = false;
+    public bool EnableSensitiveDataLogging { get; set; }
 
     /// <summary>
     /// Gets or sets whether to enable detailed error messages for EF Core.
     /// Should only be enabled in development environments.
     /// </summary>
-    public bool EnableDetailedErrors { get; set; } = false;
+    public bool EnableDetailedErrors { get; set; }
 }

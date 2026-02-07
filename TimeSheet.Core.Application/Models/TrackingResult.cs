@@ -12,49 +12,32 @@ public abstract class TrackingResult
     /// Result indicating that a new tracking session was started.
     /// May include information about a previous session that was ended.
     /// </summary>
-    public sealed class SessionStarted : TrackingResult
+    /// <param name="StartedSession">The newly started tracking session.</param>
+    /// <param name="EndedSession">The session that was ended when starting the new one (null if none).</param>
+    public sealed class SessionStarted(TrackingSession StartedSession, TrackingSession? EndedSession = null) : TrackingResult
     {
         /// <summary>
         /// Gets the newly started tracking session.
         /// </summary>
-        public TrackingSession StartedSession { get; }
+        public TrackingSession StartedSession { get; } = StartedSession;
 
         /// <summary>
         /// Gets the session that was ended when starting the new one (exclusive state behavior).
         /// Null if no session was active.
         /// </summary>
-        public TrackingSession? EndedSession { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SessionStarted"/> class.
-        /// </summary>
-        /// <param name="startedSession">The newly started session.</param>
-        /// <param name="endedSession">The session that was ended (null if none).</param>
-        public SessionStarted(TrackingSession startedSession, TrackingSession? endedSession = null)
-        {
-            StartedSession = startedSession;
-            EndedSession = endedSession;
-        }
+        public TrackingSession? EndedSession { get; } = EndedSession;
     }
 
     /// <summary>
     /// Result indicating that an active session was ended (toggle behavior).
     /// </summary>
-    public sealed class SessionEnded : TrackingResult
+    /// <param name="EndedSession">The session that was ended.</param>
+    public sealed class SessionEnded(TrackingSession EndedSession) : TrackingResult
     {
         /// <summary>
         /// Gets the session that was ended.
         /// </summary>
-        public TrackingSession EndedSession { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="SessionEnded"/> class.
-        /// </summary>
-        /// <param name="endedSession">The session that was ended.</param>
-        public SessionEnded(TrackingSession endedSession)
-        {
-            EndedSession = endedSession;
-        }
+        public TrackingSession EndedSession { get; } = EndedSession;
     }
 
     /// <summary>

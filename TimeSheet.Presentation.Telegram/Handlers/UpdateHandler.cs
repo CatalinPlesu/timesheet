@@ -1,12 +1,20 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TimeSheet.Core.Application.Interfaces;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
 public class UpdateHandler(
     ILogger<UpdateHandler> logger,
-    TrackingCommandHandler trackingCommandHandler)
+    IServiceScopeFactory serviceScopeFactory,
+    TrackingCommandHandler trackingCommandHandler,
+    RegistrationCommandHandler registrationCommandHandler,
+    AboutCommandHandler aboutCommandHandler,
+    HelpCommandHandler helpCommandHandler,
+    EditCommandHandler editCommandHandler,
+    DeleteCommandHandler deleteCommandHandler,
+    GenerateCommandHandler generateCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -18,6 +26,7 @@ public class UpdateHandler(
         var handler = update.Type switch
         {
             UpdateType.Message => HandleMessageAsync(botClient, update.Message!, cancellationToken),
+            UpdateType.CallbackQuery => HandleCallbackQueryAsync(botClient, update.CallbackQuery!, cancellationToken),
             _ => HandleUnknownUpdateAsync(update)
         };
 
@@ -33,13 +42,47 @@ public class UpdateHandler(
             return;
         }
 
+        var userId = message.From?.Id;
+        var username = message.From?.Username;
+
         logger.LogInformation(
             "Received message from {Username} ({UserId}): {MessageText}",
-            message.From?.Username ?? "Unknown",
-            message.From?.Id ?? 0,
+            username ?? "Unknown",
+            userId ?? 0,
             messageText);
 
-        // Route commands
+        // /about and /help are available to everyone (registered or not)
+        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase))
+        {
+            await aboutCommandHandler.HandleAboutAsync(botClient, message, cancellationToken);
+            return;
+        }
+
+        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase))
+        {
+            await helpCommandHandler.HandleHelpAsync(botClient, message, cancellationToken);
+            return;
+        }
+
+        // /register is available to everyone (but requires valid mnemonic)
+        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase))
+        {
+            await registrationCommandHandler.HandleRegisterAsync(botClient, message, cancellationToken);
+            return;
+        }
+
+        // All other commands require authentication
+        if (userId == null || !await IsUserRegisteredAsync(userId.Value, cancellationToken))
+        {
+            logger.LogWarning(
+                "Ignoring command from non-registered user {UserId} ({Username}): {MessageText}",
+                userId ?? 0,
+                username ?? "Unknown",
+                messageText);
+            return; // Silently ignore
+        }
+
+        // Route commands for registered users
         if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
             messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
             messageText == "/c")
@@ -58,10 +101,76 @@ public class UpdateHandler(
         {
             await trackingCommandHandler.HandleLunchAsync(botClient, message, cancellationToken);
         }
+        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase))
+        {
+            await editCommandHandler.HandleEditAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase))
+        {
+            await deleteCommandHandler.HandleDeleteAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
+        {
+            await generateCommandHandler.HandleGenerateAsync(botClient, message, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
         }
+    }
+
+    private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery, CancellationToken cancellationToken)
+    {
+        var userId = callbackQuery.From.Id;
+
+        logger.LogInformation(
+            "Received callback query from {UserId}: {Data}",
+            userId,
+            callbackQuery.Data);
+
+        // Check if user is registered
+        if (!await IsUserRegisteredAsync(userId, cancellationToken))
+        {
+            logger.LogWarning(
+                "Ignoring callback query from non-registered user {UserId}",
+                userId);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                text: "You need to register first",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Route callback queries to appropriate handlers
+        var data = callbackQuery.Data ?? string.Empty;
+
+        if (data.StartsWith("edit:", StringComparison.OrdinalIgnoreCase))
+        {
+            await editCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
+        else if (data.StartsWith("delete:", StringComparison.OrdinalIgnoreCase))
+        {
+            await deleteCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
+        else
+        {
+            logger.LogDebug("Unrecognized callback query data: {Data}", data);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Checks if a user is registered in the system.
+    /// </summary>
+    private async Task<bool> IsUserRegisteredAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        using var scope = serviceScopeFactory.CreateScope();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var user = await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
+        return user != null;
     }
 
     private Task HandleUnknownUpdateAsync(Update update)
