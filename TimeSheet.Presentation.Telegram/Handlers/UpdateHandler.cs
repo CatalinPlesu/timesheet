@@ -6,7 +6,8 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 
 public class UpdateHandler(
     ILogger<UpdateHandler> logger,
-    TrackingCommandHandler trackingCommandHandler)
+    TrackingCommandHandler trackingCommandHandler,
+    RegistrationCommandHandler registrationCommandHandler)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
@@ -40,9 +41,13 @@ public class UpdateHandler(
             messageText);
 
         // Route commands
-        if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
-            messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
-            messageText == "/c")
+        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase))
+        {
+            await registrationCommandHandler.HandleRegisterAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/c")
         {
             await trackingCommandHandler.HandleCommuteAsync(botClient, message, cancellationToken);
         }

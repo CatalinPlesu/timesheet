@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<UpdateHandler>();
         services.AddSingleton<TrackingCommandHandler>();
+        services.AddSingleton<RegistrationCommandHandler>();
     }
 
     private static IServiceCollection AddValidatedConfiguration<T>(this IServiceCollection services)
