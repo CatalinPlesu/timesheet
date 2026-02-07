@@ -4,6 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Application.Services;
+using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
@@ -35,24 +36,34 @@ public class ReportCommandHandler(
             var messageText = message.Text ?? string.Empty;
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            // Default to weekly if no argument provided
-            var period = parts.Length > 1 ? parts[1].ToLowerInvariant() : "week";
+            // Default to day if no argument provided
+            var period = parts.Length > 1 ? parts[1].ToLowerInvariant() : "day";
 
             using var scope = serviceScopeFactory.CreateScope();
             var reportingService = scope.ServiceProvider.GetRequiredService<ReportingService>();
 
-            // Calculate date range based on period
-            var (startDate, endDate, periodLabel) = GetDateRange(period);
+            string responseText;
 
-            // Generate the report
-            var aggregate = await reportingService.GetPeriodAggregateAsync(
-                userId.Value,
-                startDate,
-                endDate,
-                cancellationToken);
+            // Handle commute report separately
+            if (period == "commute")
+            {
+                responseText = await GenerateCommuteReportAsync(reportingService, userId.Value, cancellationToken);
+            }
+            else
+            {
+                // Calculate date range based on period
+                var (startDate, endDate, periodLabel) = GetDateRange(period);
 
-            // Format the response
-            var responseText = FormatPeriodReport(aggregate, periodLabel);
+                // Generate the report
+                var aggregate = await reportingService.GetPeriodAggregateAsync(
+                    userId.Value,
+                    startDate,
+                    endDate,
+                    cancellationToken);
+
+                // Format the response
+                responseText = FormatPeriodReport(aggregate, periodLabel);
+            }
 
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
@@ -66,7 +77,13 @@ public class ReportCommandHandler(
             logger.LogWarning(ex, "Invalid period argument for /report command from user {UserId}", userId.Value);
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid period. Use: /report [week|month|year]\nExample: /report week",
+                text: "Invalid period. Use: /report [day|week|month|year|commute]\n\n" +
+                      "Examples:\n" +
+                      "  /report day - Today's summary\n" +
+                      "  /report week - This week\n" +
+                      "  /report month - This month\n" +
+                      "  /report year - This year\n" +
+                      "  /report commute - Commute patterns",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -80,6 +97,29 @@ public class ReportCommandHandler(
     }
 
     /// <summary>
+    /// Generates a commute pattern report.
+    /// </summary>
+    private static async Task<string> GenerateCommuteReportAsync(
+        ReportingService reportingService,
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        // Generate patterns for both directions
+        var toWorkPatterns = await reportingService.GetCommutePatternsAsync(
+            userId,
+            CommuteDirection.ToWork,
+            cancellationToken);
+
+        var toHomePatterns = await reportingService.GetCommutePatternsAsync(
+            userId,
+            CommuteDirection.ToHome,
+            cancellationToken);
+
+        // Format the response
+        return FormatCommutePatternsReport(toWorkPatterns, toHomePatterns);
+    }
+
+    /// <summary>
     /// Calculates the date range for the specified period.
     /// </summary>
     private static (DateTime startDate, DateTime endDate, string periodLabel) GetDateRange(string period)
@@ -89,10 +129,11 @@ public class ReportCommandHandler(
 
         return period switch
         {
+            "day" or "daily" or "today" => (today, today.AddDays(1), "Today"),
             "week" or "weekly" => GetWeekRange(today),
             "month" or "monthly" => GetMonthRange(today),
             "year" or "yearly" => GetYearRange(today),
-            _ => throw new ArgumentException($"Invalid period: {period}. Use week, month, or year.")
+            _ => throw new ArgumentException($"Invalid period: {period}. Use day, week, month, year, or commute.")
         };
     }
 
@@ -167,6 +208,85 @@ public class ReportCommandHandler(
         }
 
         return builder.ToString();
+    }
+
+    /// <summary>
+    /// Formats the commute patterns report for display.
+    /// </summary>
+    private static string FormatCommutePatternsReport(
+        List<CommutePattern> toWorkPatterns,
+        List<CommutePattern> toHomePatterns)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("🚗 Commute Pattern Analysis");
+        builder.AppendLine("(Based on last 90 days)");
+        builder.AppendLine();
+
+        // To Work patterns
+        builder.AppendLine("📍 Commute to Work:");
+        if (toWorkPatterns.Count > 0)
+        {
+            foreach (var pattern in toWorkPatterns)
+            {
+                builder.AppendLine($"\n{GetDayName(pattern.DayOfWeek)}:");
+                builder.AppendLine($"  Sessions: {pattern.SessionCount}");
+                builder.AppendLine($"  Avg duration: {FormatHours(pattern.AverageDurationHours)}");
+
+                if (pattern.OptimalStartHour.HasValue && pattern.ShortestDurationHours.HasValue)
+                {
+                    builder.AppendLine($"  Best time to leave: {pattern.OptimalStartHour.Value:D2}:00");
+                    builder.AppendLine($"  Shortest commute: {FormatHours(pattern.ShortestDurationHours.Value)}");
+                }
+            }
+        }
+        else
+        {
+            builder.AppendLine("  No data available");
+        }
+
+        builder.AppendLine();
+
+        // To Home patterns
+        builder.AppendLine("🏠 Commute to Home:");
+        if (toHomePatterns.Count > 0)
+        {
+            foreach (var pattern in toHomePatterns)
+            {
+                builder.AppendLine($"\n{GetDayName(pattern.DayOfWeek)}:");
+                builder.AppendLine($"  Sessions: {pattern.SessionCount}");
+                builder.AppendLine($"  Avg duration: {FormatHours(pattern.AverageDurationHours)}");
+
+                if (pattern.OptimalStartHour.HasValue && pattern.ShortestDurationHours.HasValue)
+                {
+                    builder.AppendLine($"  Best time to leave: {pattern.OptimalStartHour.Value:D2}:00");
+                    builder.AppendLine($"  Shortest commute: {FormatHours(pattern.ShortestDurationHours.Value)}");
+                }
+            }
+        }
+        else
+        {
+            builder.AppendLine("  No data available");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Gets the display name for a day of the week.
+    /// </summary>
+    private static string GetDayName(DayOfWeek day)
+    {
+        return day switch
+        {
+            DayOfWeek.Monday => "Monday",
+            DayOfWeek.Tuesday => "Tuesday",
+            DayOfWeek.Wednesday => "Wednesday",
+            DayOfWeek.Thursday => "Thursday",
+            DayOfWeek.Friday => "Friday",
+            DayOfWeek.Saturday => "Saturday",
+            DayOfWeek.Sunday => "Sunday",
+            _ => day.ToString()
+        };
     }
 
     /// <summary>
