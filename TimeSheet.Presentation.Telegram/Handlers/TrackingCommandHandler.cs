@@ -12,7 +12,7 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 /// </summary>
 public class TrackingCommandHandler(
     ILogger<TrackingCommandHandler> logger,
-    ITimeTrackingService timeTrackingService,
+    IServiceScopeFactory serviceScopeFactory,
     ICommandParameterParser parameterParser)
 {
     // Default UTC offset until user settings are implemented in Epic 5
@@ -87,6 +87,10 @@ public class TrackingCommandHandler(
 
         try
         {
+            // Create a scope to resolve scoped services (ITimeTrackingService uses DbContext)
+            using var scope = serviceScopeFactory.CreateScope();
+            var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+
             // Parse the timestamp from command parameters
             var timestamp = parameterParser.ParseTimestamp(messageText, DefaultUtcOffsetMinutes);
 
