@@ -52,6 +52,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GenerateCommandHandler>();
         services.AddSingleton<ListCommandHandler>();
         services.AddSingleton<SettingsCommandHandler>();
+        services.AddSingleton<DailyStatsCommandHandler>();
+        services.AddSingleton<CommutePatternsCommandHandler>();
+        services.AddSingleton<ReportCommandHandler>();
     }
 
     private static IServiceCollection AddValidatedConfiguration<T>(this IServiceCollection services)

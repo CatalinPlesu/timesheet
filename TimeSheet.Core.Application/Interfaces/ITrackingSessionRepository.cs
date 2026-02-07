@@ -80,4 +80,14 @@ public interface ITrackingSessionRepository : IRepository<TrackingSession>
     /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>The average duration in hours, or null if no completed sessions exist.</returns>
     Task<decimal?> GetAverageDurationAsync(long userId, TrackingState state, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all completed tracking sessions for a user within a date range.
+    /// </summary>
+    /// <param name="userId">The Telegram user ID.</param>
+    /// <param name="startDate">The start date of the range (inclusive, UTC).</param>
+    /// <param name="endDate">The end date of the range (exclusive, UTC).</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of completed sessions within the date range.</returns>
+    Task<List<TrackingSession>> GetSessionsInRangeAsync(long userId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 }

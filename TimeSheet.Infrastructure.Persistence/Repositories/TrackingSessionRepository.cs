@@ -131,4 +131,16 @@ public class TrackingSessionRepository(AppDbContext dbContext)
         var totalDuration = completedSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalHours);
         return (decimal)(totalDuration / completedSessions.Count);
     }
+
+    /// <inheritdoc/>
+    public async Task<List<TrackingSession>> GetSessionsInRangeAsync(long userId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(s => s.UserId == userId
+                     && s.EndedAt != null
+                     && s.StartedAt >= startDate
+                     && s.StartedAt < endDate)
+            .OrderBy(s => s.StartedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

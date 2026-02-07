@@ -18,6 +18,9 @@ public class UpdateHandler(
     GenerateCommandHandler generateCommandHandler,
     ListCommandHandler listCommandHandler,
     SettingsCommandHandler settingsCommandHandler,
+    DailyStatsCommandHandler dailyStatsCommandHandler,
+    CommutePatternsCommandHandler commutePatternsCommandHandler,
+    ReportCommandHandler reportCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -152,6 +155,18 @@ public class UpdateHandler(
             {
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);
             }
+        }
+        else if (messageText.StartsWith("/dailystats", StringComparison.OrdinalIgnoreCase))
+        {
+            await dailyStatsCommandHandler.HandleDailyStatsAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/commutepatterns", StringComparison.OrdinalIgnoreCase))
+        {
+            await commutePatternsCommandHandler.HandleCommutePatternsAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/report", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken);
         }
         else
         {
