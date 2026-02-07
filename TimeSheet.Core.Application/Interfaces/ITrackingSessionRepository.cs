@@ -52,4 +52,12 @@ public interface ITrackingSessionRepository : IRepository<TrackingSession>
     /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
     /// <returns>A list of all sessions from the specified day.</returns>
     Task<List<TrackingSession>> GetSessionsByDateAsync(long userId, DateTime date, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets all currently active tracking sessions across all users.
+    /// Used for checking if any sessions should be auto-shutdown.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of all active tracking sessions.</returns>
+    Task<List<TrackingSession>> GetAllActiveSessionsAsync(CancellationToken cancellationToken = default);
 }

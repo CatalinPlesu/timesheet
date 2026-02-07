@@ -1,6 +1,7 @@
 namespace TimeSheet.Core.Application.Interfaces;
 
 using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Enums;
 
 /// <summary>
 /// Service for managing user settings.
@@ -17,6 +18,20 @@ public interface IUserSettingsService
     Task<User?> UpdateUtcOffsetAsync(
         long telegramUserId,
         int utcOffsetMinutes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the auto-shutdown limit for a specific tracking state.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="state">The tracking state to configure.</param>
+    /// <param name="maxHours">The maximum allowed hours (null = no limit).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated user, or null if the user was not found.</returns>
+    Task<User?> UpdateAutoShutdownLimitAsync(
+        long telegramUserId,
+        TrackingState state,
+        decimal? maxHours,
         CancellationToken cancellationToken = default);
 
     /// <summary>

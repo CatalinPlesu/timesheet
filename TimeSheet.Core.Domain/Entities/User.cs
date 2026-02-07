@@ -36,6 +36,24 @@ public sealed class User : CreatedEntity
     public DateTimeOffset RegisteredAt { get; init; }
 
     /// <summary>
+    /// Gets the maximum allowed hours for a work session before auto-shutdown.
+    /// Null means no limit.
+    /// </summary>
+    public decimal? MaxWorkHours { get; private set; }
+
+    /// <summary>
+    /// Gets the maximum allowed hours for a commute session before auto-shutdown.
+    /// Null means no limit.
+    /// </summary>
+    public decimal? MaxCommuteHours { get; private set; }
+
+    /// <summary>
+    /// Gets the maximum allowed hours for a lunch session before auto-shutdown.
+    /// Null means no limit.
+    /// </summary>
+    public decimal? MaxLunchHours { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="User"/> class.
     /// Used when creating a new user during registration.
     /// </summary>
@@ -64,6 +82,9 @@ public sealed class User : CreatedEntity
     /// <param name="isAdmin">Whether this user is an administrator.</param>
     /// <param name="utcOffsetMinutes">The user's UTC offset in minutes.</param>
     /// <param name="registeredAt">The UTC timestamp when this user registered.</param>
+    /// <param name="maxWorkHours">The maximum allowed hours for a work session (null = no limit).</param>
+    /// <param name="maxCommuteHours">The maximum allowed hours for a commute session (null = no limit).</param>
+    /// <param name="maxLunchHours">The maximum allowed hours for a lunch session (null = no limit).</param>
     public User(
         Guid id,
         DateTimeOffset createdAt,
@@ -71,7 +92,10 @@ public sealed class User : CreatedEntity
         string? telegramUsername,
         bool isAdmin,
         int utcOffsetMinutes,
-        DateTimeOffset registeredAt)
+        DateTimeOffset registeredAt,
+        decimal? maxWorkHours = null,
+        decimal? maxCommuteHours = null,
+        decimal? maxLunchHours = null)
         : base(id, createdAt)
     {
         TelegramUserId = telegramUserId;
@@ -79,6 +103,9 @@ public sealed class User : CreatedEntity
         IsAdmin = isAdmin;
         UtcOffsetMinutes = utcOffsetMinutes;
         RegisteredAt = registeredAt;
+        MaxWorkHours = maxWorkHours;
+        MaxCommuteHours = maxCommuteHours;
+        MaxLunchHours = maxLunchHours;
     }
 
     /// <summary>
@@ -88,5 +115,44 @@ public sealed class User : CreatedEntity
     public void UpdateUtcOffset(int utcOffsetMinutes)
     {
         UtcOffsetMinutes = utcOffsetMinutes;
+    }
+
+    /// <summary>
+    /// Updates the auto-shutdown limit for work sessions.
+    /// </summary>
+    /// <param name="maxHours">The maximum allowed hours (null = no limit).</param>
+    /// <exception cref="ArgumentException">Thrown when maxHours is negative or zero.</exception>
+    public void UpdateWorkLimit(decimal? maxHours)
+    {
+        if (maxHours.HasValue && maxHours.Value <= 0)
+            throw new ArgumentException("Maximum hours must be positive.", nameof(maxHours));
+
+        MaxWorkHours = maxHours;
+    }
+
+    /// <summary>
+    /// Updates the auto-shutdown limit for commute sessions.
+    /// </summary>
+    /// <param name="maxHours">The maximum allowed hours (null = no limit).</param>
+    /// <exception cref="ArgumentException">Thrown when maxHours is negative or zero.</exception>
+    public void UpdateCommuteLimit(decimal? maxHours)
+    {
+        if (maxHours.HasValue && maxHours.Value <= 0)
+            throw new ArgumentException("Maximum hours must be positive.", nameof(maxHours));
+
+        MaxCommuteHours = maxHours;
+    }
+
+    /// <summary>
+    /// Updates the auto-shutdown limit for lunch sessions.
+    /// </summary>
+    /// <param name="maxHours">The maximum allowed hours (null = no limit).</param>
+    /// <exception cref="ArgumentException">Thrown when maxHours is negative or zero.</exception>
+    public void UpdateLunchLimit(decimal? maxHours)
+    {
+        if (maxHours.HasValue && maxHours.Value <= 0)
+            throw new ArgumentException("Maximum hours must be positive.", nameof(maxHours));
+
+        MaxLunchHours = maxHours;
     }
 }

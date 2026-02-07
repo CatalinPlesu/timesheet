@@ -74,4 +74,14 @@ public class TrackingSessionRepository(AppDbContext dbContext)
             .OrderBy(s => s.StartedAt)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc/>
+    public async Task<List<TrackingSession>> GetAllActiveSessionsAsync(CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Where(s => s.EndedAt == null)
+            .OrderBy(s => s.UserId)
+            .ThenBy(s => s.StartedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

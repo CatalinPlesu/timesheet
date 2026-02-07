@@ -42,6 +42,18 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(e => e.RegisteredAt)
             .IsRequired();
 
+        builder.Property(e => e.MaxWorkHours)
+            .IsRequired(false) // Nullable
+            .HasPrecision(5, 2); // Allow up to 999.99 hours
+
+        builder.Property(e => e.MaxCommuteHours)
+            .IsRequired(false) // Nullable
+            .HasPrecision(5, 2);
+
+        builder.Property(e => e.MaxLunchHours)
+            .IsRequired(false) // Nullable
+            .HasPrecision(5, 2);
+
         // Unique index on TelegramUserId
         builder.HasIndex(e => e.TelegramUserId)
             .IsUnique()
