@@ -60,6 +60,12 @@ public sealed class User : CreatedEntity
     public int? LunchReminderHour { get; private set; }
 
     /// <summary>
+    /// Gets the minute (0-59) at which to send a lunch reminder.
+    /// Defaults to 0 if not specified.
+    /// </summary>
+    public int LunchReminderMinute { get; private set; }
+
+    /// <summary>
     /// Gets the target work hours per day.
     /// When reached, the user will be notified once.
     /// Null means no target is configured.
@@ -107,6 +113,7 @@ public sealed class User : CreatedEntity
     /// <param name="maxCommuteHours">The maximum allowed hours for a commute session (null = no limit).</param>
     /// <param name="maxLunchHours">The maximum allowed hours for a lunch session (null = no limit).</param>
     /// <param name="lunchReminderHour">The hour (0-23) at which to send a lunch reminder (null = no reminder).</param>
+    /// <param name="lunchReminderMinute">The minute (0-59) at which to send a lunch reminder.</param>
     /// <param name="targetWorkHours">The target work hours per day (null = no target).</param>
     /// <param name="forgotShutdownThresholdPercent">The threshold percentage for forgot-shutdown detection (null = no detection).</param>
     public User(
@@ -121,6 +128,7 @@ public sealed class User : CreatedEntity
         decimal? maxCommuteHours = null,
         decimal? maxLunchHours = null,
         int? lunchReminderHour = null,
+        int lunchReminderMinute = 0,
         decimal? targetWorkHours = null,
         int? forgotShutdownThresholdPercent = null)
         : base(id, createdAt)
@@ -134,6 +142,7 @@ public sealed class User : CreatedEntity
         MaxCommuteHours = maxCommuteHours;
         MaxLunchHours = maxLunchHours;
         LunchReminderHour = lunchReminderHour;
+        LunchReminderMinute = lunchReminderMinute;
         TargetWorkHours = targetWorkHours;
         ForgotShutdownThresholdPercent = forgotShutdownThresholdPercent;
     }
@@ -187,16 +196,31 @@ public sealed class User : CreatedEntity
     }
 
     /// <summary>
-    /// Updates the lunch reminder hour setting.
+    /// Updates the lunch reminder time setting.
+    /// </summary>
+    /// <param name="hour">The hour (0-23) at which to send a lunch reminder (null = disable reminder).</param>
+    /// <param name="minute">The minute (0-59) at which to send a lunch reminder. Defaults to 0.</param>
+    /// <exception cref="ArgumentException">Thrown when hour or minute is outside the valid range.</exception>
+    public void UpdateLunchReminderTime(int? hour, int minute = 0)
+    {
+        if (hour.HasValue && (hour.Value < 0 || hour.Value > 23))
+            throw new ArgumentException("Hour must be between 0 and 23.", nameof(hour));
+
+        if (minute < 0 || minute > 59)
+            throw new ArgumentException("Minute must be between 0 and 59.", nameof(minute));
+
+        LunchReminderHour = hour;
+        LunchReminderMinute = hour.HasValue ? minute : 0;
+    }
+
+    /// <summary>
+    /// Updates the lunch reminder hour setting (legacy method for backward compatibility).
     /// </summary>
     /// <param name="hour">The hour (0-23) at which to send a lunch reminder (null = disable reminder).</param>
     /// <exception cref="ArgumentException">Thrown when hour is outside the valid range (0-23).</exception>
     public void UpdateLunchReminderHour(int? hour)
     {
-        if (hour.HasValue && (hour.Value < 0 || hour.Value > 23))
-            throw new ArgumentException("Hour must be between 0 and 23.", nameof(hour));
-
-        LunchReminderHour = hour;
+        UpdateLunchReminderTime(hour, 0);
     }
 
     /// <summary>

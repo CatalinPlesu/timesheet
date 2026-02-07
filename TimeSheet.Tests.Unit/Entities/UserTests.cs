@@ -256,10 +256,83 @@ public class UserTests
             maxWorkHours: 8.5m,
             maxCommuteHours: 2.0m,
             maxLunchHours: 1.5m,
-            lunchReminderHour: 12);
+            lunchReminderHour: 12,
+            lunchReminderMinute: 30);
 
         // Assert
         Assert.Equal(12, user.LunchReminderHour);
+        Assert.Equal(30, user.LunchReminderMinute);
+    }
+
+    [Fact]
+    public void UpdateLunchReminderTime_WithValidTime_ShouldUpdateBothHourAndMinute()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateLunchReminderTime(12, 30);
+
+        // Assert
+        Assert.Equal(12, user.LunchReminderHour);
+        Assert.Equal(30, user.LunchReminderMinute);
+    }
+
+    [Fact]
+    public void UpdateLunchReminderTime_WithNull_ShouldDisableReminder()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateLunchReminderTime(12, 30);
+
+        // Act
+        user.UpdateLunchReminderTime(null, 0);
+
+        // Assert
+        Assert.Null(user.LunchReminderHour);
+        Assert.Equal(0, user.LunchReminderMinute);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(12, 30)]
+    [InlineData(23, 59)]
+    public void UpdateLunchReminderTime_WithValidTimes_ShouldUpdateSuccessfully(int hour, int minute)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateLunchReminderTime(hour, minute);
+
+        // Assert
+        Assert.Equal(hour, user.LunchReminderHour);
+        Assert.Equal(minute, user.LunchReminderMinute);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(60)]
+    [InlineData(100)]
+    public void UpdateLunchReminderTime_WithInvalidMinute_ShouldThrowArgumentException(int minute)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() => user.UpdateLunchReminderTime(12, minute));
+        Assert.Contains("between 0 and 59", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_ShouldInitializeWithZeroLunchReminderMinute()
+    {
+        // Act
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Assert
+        Assert.Null(user.LunchReminderHour);
+        Assert.Equal(0, user.LunchReminderMinute);
     }
 
     [Fact]

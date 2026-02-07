@@ -82,10 +82,18 @@ public sealed class LunchReminderWorker(
                 // Calculate user's current local time
                 var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
                 var userLocalHour = userLocalTime.Hour;
+                var userLocalMinute = userLocalTime.Minute;
                 var userLocalDate = DateOnly.FromDateTime(userLocalTime);
 
-                // Check if it's past the reminder hour
-                if (userLocalHour < user.LunchReminderHour!.Value)
+                // Check if it's past the reminder time (hour and minute)
+                var reminderHour = user.LunchReminderHour!.Value;
+                var reminderMinute = user.LunchReminderMinute;
+
+                // Convert both to total minutes for easier comparison
+                var currentMinutes = userLocalHour * 60 + userLocalMinute;
+                var reminderMinutes = reminderHour * 60 + reminderMinute;
+
+                if (currentMinutes < reminderMinutes)
                 {
                     continue; // Not yet time to remind
                 }
