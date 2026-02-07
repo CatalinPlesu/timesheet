@@ -21,9 +21,10 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         var responses = await SendTextAsync(testMessage);
 
         // Assert
-        // Currently UpdateHandler only logs messages (no responses sent)
-        // This will change in Epic 2 when command processing is implemented
-        AssertNoResponse(responses);
+        // Command processing is now implemented - verify response is sent
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Started working", responses[0].Text);
     }
 
     [Fact]

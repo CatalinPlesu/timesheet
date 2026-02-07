@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
+using TimeSheet.Core.Application.Extensions;
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Domain.Interfaces;
 using TimeSheet.Infrastructure.Persistence;
@@ -64,7 +65,11 @@ public class TelegramBotTestFixture : IDisposable
 
         // Manually register repositories and Unit of Work (without AddPersistenceServices to avoid SQLite)
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Add application layer services (domain services, app services, parsers)
+        services.AddApplicationServices();
 
         // Add presentation layer services but override ITelegramBotClient with our mock
         services.AddPresentationServices();
