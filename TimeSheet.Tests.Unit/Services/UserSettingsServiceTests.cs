@@ -1,0 +1,124 @@
+namespace TimeSheet.Tests.Unit.Services;
+
+using Moq;
+using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Services;
+using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Enums;
+
+public class UserSettingsServiceTests
+{
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly UserSettingsService _service;
+
+    public UserSettingsServiceTests()
+    {
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _service = new UserSettingsService(_mockUserRepository.Object, _mockUnitOfWork.Object);
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_ForWorkState_ShouldUpdateWorkLimit()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Working, 8.5m);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(8.5m, result.MaxWorkHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_ForCommuteState_ShouldUpdateCommuteLimit()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Commuting, 2.0m);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2.0m, result.MaxCommuteHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_ForLunchState_ShouldUpdateLunchLimit()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Lunch, 1.5m);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(1.5m, result.MaxLunchHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_ForIdleState_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Idle, 1.0m));
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_WithNullLimit_ShouldRemoveLimit()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateWorkLimit(8.0m);
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        var result = await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Working, null);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Null(result.MaxWorkHours);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAutoShutdownLimitAsync_WithNonExistentUser_ShouldReturnNull()
+    {
+        // Arrange
+        _mockUserRepository
+            .Setup(r => r.GetByTelegramUserIdAsync(123456789, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        // Act
+        var result = await _service.UpdateAutoShutdownLimitAsync(123456789, TrackingState.Working, 8.5m);
+
+        // Assert
+        Assert.Null(result);
+        _mockUnitOfWork.Verify(u => u.CompleteAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+}
