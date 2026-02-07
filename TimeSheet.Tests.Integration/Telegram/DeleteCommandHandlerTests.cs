@@ -198,7 +198,7 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
 
         // Second response: callback answer with feedback
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("Deleted", responses[1].Text);
+        Assert.Equal("✓ Entry deleted successfully", responses[1].Text);
 
         // Verify the session was actually deleted from the database
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())
@@ -243,7 +243,7 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
 
         // Second response: callback answer
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("Cancelled", responses[1].Text);
+        Assert.Equal("❌ Deletion cancelled", responses[1].Text);
 
         // Verify the session still exists in the database
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())

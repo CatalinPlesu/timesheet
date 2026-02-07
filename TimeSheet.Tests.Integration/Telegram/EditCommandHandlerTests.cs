@@ -158,7 +158,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         // Second response: callback answer with feedback
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("Added 5m", responses[1].Text);
+        Assert.Equal("⏰ Adjusted by +5 minutes", responses[1].Text);
 
         // Verify the session was updated in the database - use fresh scope
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())
@@ -203,7 +203,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Equal(2, responses.Count);
         Assert.Equal(ResponseType.EditedMessage, responses[0].Type);
         Assert.Equal(ResponseType.CallbackAnswer, responses[1].Type);
-        Assert.Equal("Removed 30m", responses[1].Text);
+        Assert.Equal("⏰ Adjusted by -30 minutes", responses[1].Text);
 
         // Verify the session was updated - use fresh scope
         using (var verifyScope = Fixture.ServiceProvider.CreateScope())

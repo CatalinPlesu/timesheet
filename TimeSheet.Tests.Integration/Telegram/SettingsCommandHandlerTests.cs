@@ -288,7 +288,7 @@ public class SettingsCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("Invalid hour", responses[0].Text);
+        Assert.Contains("Invalid time", responses[0].Text);
     }
 
     [Theory]
