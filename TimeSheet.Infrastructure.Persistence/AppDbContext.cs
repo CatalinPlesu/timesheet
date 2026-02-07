@@ -21,6 +21,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<TrackingSession> TrackingSessions => Set<TrackingSession>();
 
     /// <summary>
+    /// Gets or sets the DbSet for User entities.
+    /// </summary>
+    public DbSet<User> Users => Set<User>();
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
     /// <param name="dbContextOptions">The DbContext options configured with SQLite provider.</param>
