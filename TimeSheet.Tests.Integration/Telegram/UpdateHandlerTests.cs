@@ -51,17 +51,20 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
     }
 
     [Fact]
-    public async Task HandleCallbackQuery_ProcessesCorrectly()
+    public async Task HandleCallbackQuery_NonRegisteredUser_RejectsWithAlert()
     {
         // Arrange
-        const string callbackData = "edit_-5m";
+        const string callbackData = "edit:some-session-id:+5";
 
         // Act
         var responses = await SendCallbackQueryAsync(callbackData);
 
         // Assert
-        // No responses expected yet (callback handling will be in Epic 4)
-        AssertNoResponse(responses);
+        // Should get a callback answer telling them to register
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.CallbackAnswer, responses[0].Type);
+        Assert.Contains("need to register", responses[0].Text);
+        Assert.True(responses[0].ShowAlert);
     }
 
     [Fact]
@@ -70,7 +73,9 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // This test demonstrates the response capture mechanism
         // It will be useful once UpdateHandler actually sends responses
 
-        // Arrange - manually send a response through the mock client using extension method
+        // Arrange - clear any previous responses and manually send a response
+        Fixture.MockBotClient.ClearResponses();
+
         var request = new SendMessageRequest
         {
             ChatId = 12345,
