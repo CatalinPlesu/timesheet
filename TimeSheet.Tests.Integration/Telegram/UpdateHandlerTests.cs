@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Requests;
 using TimeSheet.Tests.Integration.Base;
 using TimeSheet.Tests.Integration.Fixtures;
@@ -16,6 +17,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
     {
         // Arrange
         const string testMessage = "/work";
+        await RegisterTestUserAsync(); // Register test user to pass auth middleware
 
         // Act
         var responses = await SendTextAsync(testMessage);

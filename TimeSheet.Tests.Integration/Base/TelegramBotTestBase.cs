@@ -1,8 +1,11 @@
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Types;
+using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Presentation.Telegram.Handlers;
 using TimeSheet.Tests.Integration.Builders;
 using TimeSheet.Tests.Integration.Fixtures;
 using TimeSheet.Tests.Integration.Mocks;
+using DomainUser = TimeSheet.Core.Domain.Entities.User;
 
 namespace TimeSheet.Tests.Integration.Base;
 
@@ -113,5 +116,32 @@ public abstract class TelegramBotTestBase(TelegramBotTestFixture fixture) : ICla
     protected void AssertNoResponse(IReadOnlyList<CapturedResponse> responses)
     {
         Assert.Empty(responses);
+    }
+
+    /// <summary>
+    /// Registers a test user directly in the database (bypassing the registration flow).
+    /// Use this to set up authenticated test scenarios.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID (default: 67890, matches SendTextAsync default).</param>
+    /// <param name="telegramUsername">The Telegram username (default: "testuser").</param>
+    /// <param name="isAdmin">Whether the user should be an admin (default: false).</param>
+    /// <param name="utcOffsetMinutes">The user's UTC offset in minutes (default: 0).</param>
+    protected async Task RegisterTestUserAsync(
+        long telegramUserId = 67890,
+        string telegramUsername = "testuser",
+        bool isAdmin = false,
+        int utcOffsetMinutes = 0)
+    {
+        using var scope = Fixture.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<TimeSheet.Infrastructure.Persistence.AppDbContext>();
+
+        var user = new DomainUser(
+            telegramUserId: telegramUserId,
+            telegramUsername: telegramUsername,
+            isAdmin: isAdmin,
+            utcOffsetMinutes: utcOffsetMinutes);
+
+        dbContext.Set<DomainUser>().Add(user);
+        await dbContext.SaveChangesAsync();
     }
 }
