@@ -364,4 +364,100 @@ public class UserTests
         // Assert
         Assert.Equal(8.0m, user.TargetWorkHours);
     }
+
+    [Fact]
+    public void UpdateForgotShutdownThreshold_WithValidValue_ShouldUpdateThreshold()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateForgotShutdownThreshold(150);
+
+        // Assert
+        Assert.Equal(150, user.ForgotShutdownThresholdPercent);
+    }
+
+    [Fact]
+    public void UpdateForgotShutdownThreshold_WithNull_ShouldDisableDetection()
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+        user.UpdateForgotShutdownThreshold(150);
+
+        // Act
+        user.UpdateForgotShutdownThreshold(null);
+
+        // Assert
+        Assert.Null(user.ForgotShutdownThresholdPercent);
+    }
+
+    [Theory]
+    [InlineData(101)]
+    [InlineData(150)]
+    [InlineData(200)]
+    [InlineData(300)]
+    public void UpdateForgotShutdownThreshold_WithValidPercent_ShouldUpdateSuccessfully(int percent)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act
+        user.UpdateForgotShutdownThreshold(percent);
+
+        // Assert
+        Assert.Equal(percent, user.ForgotShutdownThresholdPercent);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(50)]
+    [InlineData(100)]
+    public void UpdateForgotShutdownThreshold_WithInvalidPercent_ShouldThrowArgumentException(int percent)
+    {
+        // Arrange
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() => user.UpdateForgotShutdownThreshold(percent));
+        Assert.Contains("greater than 100", exception.Message);
+    }
+
+    [Fact]
+    public void Constructor_ShouldInitializeWithNoForgotShutdownThreshold()
+    {
+        // Act
+        var user = new User(123456789, "testuser", isAdmin: true, utcOffsetMinutes: 0);
+
+        // Assert
+        Assert.Null(user.ForgotShutdownThresholdPercent);
+    }
+
+    [Fact]
+    public void RehydrationConstructor_ShouldPreserveForgotShutdownThreshold()
+    {
+        // Arrange
+        var id = Guid.NewGuid();
+        var createdAt = DateTimeOffset.UtcNow.AddDays(-1);
+        var registeredAt = DateTimeOffset.UtcNow.AddDays(-1);
+
+        // Act
+        var user = new User(
+            id,
+            createdAt,
+            123456789,
+            "testuser",
+            isAdmin: true,
+            utcOffsetMinutes: 0,
+            registeredAt,
+            maxWorkHours: 8.5m,
+            maxCommuteHours: 2.0m,
+            maxLunchHours: 1.5m,
+            lunchReminderHour: 12,
+            targetWorkHours: 8.0m,
+            forgotShutdownThresholdPercent: 150);
+
+        // Assert
+        Assert.Equal(150, user.ForgotShutdownThresholdPercent);
+    }
 }
