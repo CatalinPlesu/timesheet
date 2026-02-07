@@ -54,6 +54,12 @@ public sealed class User : CreatedEntity
     public decimal? MaxLunchHours { get; private set; }
 
     /// <summary>
+    /// Gets the hour (0-23) at which to send a lunch reminder.
+    /// Null means no lunch reminder is configured.
+    /// </summary>
+    public int? LunchReminderHour { get; private set; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="User"/> class.
     /// Used when creating a new user during registration.
     /// </summary>
@@ -85,6 +91,7 @@ public sealed class User : CreatedEntity
     /// <param name="maxWorkHours">The maximum allowed hours for a work session (null = no limit).</param>
     /// <param name="maxCommuteHours">The maximum allowed hours for a commute session (null = no limit).</param>
     /// <param name="maxLunchHours">The maximum allowed hours for a lunch session (null = no limit).</param>
+    /// <param name="lunchReminderHour">The hour (0-23) at which to send a lunch reminder (null = no reminder).</param>
     public User(
         Guid id,
         DateTimeOffset createdAt,
@@ -95,7 +102,8 @@ public sealed class User : CreatedEntity
         DateTimeOffset registeredAt,
         decimal? maxWorkHours = null,
         decimal? maxCommuteHours = null,
-        decimal? maxLunchHours = null)
+        decimal? maxLunchHours = null,
+        int? lunchReminderHour = null)
         : base(id, createdAt)
     {
         TelegramUserId = telegramUserId;
@@ -106,6 +114,7 @@ public sealed class User : CreatedEntity
         MaxWorkHours = maxWorkHours;
         MaxCommuteHours = maxCommuteHours;
         MaxLunchHours = maxLunchHours;
+        LunchReminderHour = lunchReminderHour;
     }
 
     /// <summary>
@@ -154,5 +163,18 @@ public sealed class User : CreatedEntity
             throw new ArgumentException("Maximum hours must be positive.", nameof(maxHours));
 
         MaxLunchHours = maxHours;
+    }
+
+    /// <summary>
+    /// Updates the lunch reminder hour setting.
+    /// </summary>
+    /// <param name="hour">The hour (0-23) at which to send a lunch reminder (null = disable reminder).</param>
+    /// <exception cref="ArgumentException">Thrown when hour is outside the valid range (0-23).</exception>
+    public void UpdateLunchReminderHour(int? hour)
+    {
+        if (hour.HasValue && (hour.Value < 0 || hour.Value > 23))
+            throw new ArgumentException("Hour must be between 0 and 23.", nameof(hour));
+
+        LunchReminderHour = hour;
     }
 }
