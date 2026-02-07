@@ -52,6 +52,9 @@ public static class ServiceCollectionExtensions
         // Register generic repository
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 
+        // Register specialized repositories
+        services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
+
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
     }
