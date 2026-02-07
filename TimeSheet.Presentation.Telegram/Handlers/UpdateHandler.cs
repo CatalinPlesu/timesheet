@@ -21,6 +21,7 @@ public class UpdateHandler(
     DailyStatsCommandHandler dailyStatsCommandHandler,
     CommutePatternsCommandHandler commutePatternsCommandHandler,
     ReportCommandHandler reportCommandHandler,
+    StatusCommandHandler statusCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -168,6 +169,12 @@ public class UpdateHandler(
         {
             await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken);
         }
+        else if (messageText.StartsWith("/status", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/s ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/s")
+        {
+            await statusCommandHandler.HandleStatusAsync(botClient, message, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
@@ -207,6 +214,10 @@ public class UpdateHandler(
         else if (data.StartsWith("delete:", StringComparison.OrdinalIgnoreCase))
         {
             await deleteCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
+        else if (data.StartsWith("status:", StringComparison.OrdinalIgnoreCase))
+        {
+            await statusCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
         }
         else
         {

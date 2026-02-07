@@ -35,6 +35,7 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         • Valid sequences: `/commute` → `/work` → `/lunch` → `/work` → `/commute`
 
         *Viewing Entries:*
+        `/status` (or `/s`) — Show current tracking status
         `/list` — Show today's time entries
 
         *Editing & Corrections:*
