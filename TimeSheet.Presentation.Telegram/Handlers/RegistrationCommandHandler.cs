@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Presentation.Telegram.Services;
 
@@ -119,7 +120,7 @@ public class RegistrationCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: promptMessage,
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
@@ -161,7 +162,7 @@ public class RegistrationCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: "Invalid offset. Please provide a number between -12 and +14.\nExample: `+2` or `-5`",
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
             return;
         }
@@ -217,7 +218,7 @@ public class RegistrationCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: welcomeMessage,
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
@@ -233,7 +234,7 @@ public class RegistrationCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: "An error occurred during registration. Please try again with `/register`.",
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
         }
     }

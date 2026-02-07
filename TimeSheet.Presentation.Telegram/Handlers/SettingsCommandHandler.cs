@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TimeSheet.Core.Application.Interfaces;
 
@@ -69,7 +70,7 @@ public class SettingsCommandHandler(
         await botClient.SendMessage(
             chatId: message.Chat.Id,
             text: settingsText,
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+            parseMode: ParseMode.Markdown,
             cancellationToken: cancellationToken);
     }
 
@@ -96,7 +97,7 @@ public class SettingsCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: "Usage: `/settings utc [±hours]`\nExample: `/settings utc +2`",
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
             return;
         }
@@ -107,7 +108,7 @@ public class SettingsCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: "Invalid offset. Please provide a number between -12 and +14.\nExample: `/settings utc +2`",
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+                parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
             return;
         }
