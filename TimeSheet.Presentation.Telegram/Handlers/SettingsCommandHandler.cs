@@ -58,11 +58,17 @@ public class SettingsCommandHandler(
             ? $"{user.LunchReminderHour.Value:D2}:00"
             : "Not set";
 
+        // Format target work hours for display
+        var targetWorkHoursDisplay = user.TargetWorkHours.HasValue
+            ? $"{user.TargetWorkHours.Value:F1} hours"
+            : "Not set";
+
         var settingsText = $"""
             ⚙️ *Settings*
 
             *Timezone:* {offsetDisplay}
             *Lunch Reminder:* {lunchReminderDisplay}
+            *Target Work Hours:* {targetWorkHoursDisplay}
 
             To change your timezone, use:
             `/settings utc [±hours]`
@@ -79,6 +85,14 @@ public class SettingsCommandHandler(
             • `/settings lunch 12` — Remind at 12:00
             • `/settings lunch 13` — Remind at 13:00
             • `/settings lunch off` — Disable reminder
+
+            To configure target work hours:
+            `/settings target [hours]` or `/settings target off`
+
+            Examples:
+            • `/settings target 8` — Notify when 8 hours worked
+            • `/settings target 7.5` — Notify when 7.5 hours worked
+            • `/settings target off` — Disable notification
             """;
 
         await botClient.SendMessage(
@@ -267,5 +281,101 @@ public class SettingsCommandHandler(
             "User {UserId} updated lunch reminder hour to {Hour}",
             userId.Value,
             reminderHour?.ToString() ?? "disabled");
+    }
+
+    /// <summary>
+    /// Handles target work hours configuration from /settings target command.
+    /// </summary>
+    public async Task HandleSettingsTargetAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        string[] commandParts,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null)
+        {
+            logger.LogWarning("Received /settings target without user ID");
+            return;
+        }
+
+        // Parse target work hours from command
+        // Expected format: /settings target 8, /settings target 7.5, /settings target off
+        if (commandParts.Length < 3)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Usage: `/settings target [hours]` or `/settings target off`\nExample: `/settings target 8`",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        using var scope = serviceScopeFactory.CreateScope();
+        var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
+
+        decimal? targetHours = null;
+        var hoursString = commandParts[2];
+
+        // Check if user wants to disable the target
+        if (hoursString.Equals("off", StringComparison.OrdinalIgnoreCase))
+        {
+            targetHours = null;
+        }
+        else
+        {
+            // Parse the hours value
+            if (!decimal.TryParse(hoursString, out var hours))
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Invalid hours. Please provide a positive number, or 'off' to disable.\nExample: `/settings target 8`",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Validate range: must be positive
+            if (hours <= 0)
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Target work hours must be a positive number.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            targetHours = hours;
+        }
+
+        // Update the user's target work hours
+        var updatedUser = await userSettingsService.UpdateTargetWorkHoursAsync(
+            userId.Value,
+            targetHours,
+            cancellationToken);
+
+        if (updatedUser == null)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Failed to update settings. Please try again.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Format response
+        var responseText = targetHours.HasValue
+            ? $"✅ Target work hours set to {targetHours.Value:F1} hours per day"
+            : "✅ Target work hours notification disabled";
+
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: responseText,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} updated target work hours to {Hours}",
+            userId.Value,
+            targetHours?.ToString("F1") ?? "disabled");
     }
 }

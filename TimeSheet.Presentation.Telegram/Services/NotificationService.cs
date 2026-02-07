@@ -37,4 +37,45 @@ public sealed class NotificationService(
             logger.LogError(ex, "Failed to send lunch reminder to user {UserId}", telegramUserId);
         }
     }
+
+    /// <inheritdoc/>
+    public async Task SendWorkHoursCompleteAsync(
+        long telegramUserId,
+        decimal targetHours,
+        decimal actualHours,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var message = $"""
+                ✅ *Work Hours Complete*
+
+                You've reached your target work hours for today!
+
+                *Target:* {targetHours:F1} hours
+                *Worked:* {actualHours:F1} hours
+
+                Great job! 🎉
+                """;
+
+            await botClient.SendMessage(
+                chatId: telegramUserId,
+                text: message,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+
+            logger.LogInformation(
+                "Sent work hours complete notification to user {UserId} (target: {Target}h, actual: {Actual}h)",
+                telegramUserId,
+                targetHours,
+                actualHours);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to send work hours complete notification to user {UserId}",
+                telegramUserId);
+        }
+    }
 }
