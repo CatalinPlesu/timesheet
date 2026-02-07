@@ -27,7 +27,7 @@ public class Worker(
         // Configure receiver options
         var receiverOptions = new ReceiverOptions
         {
-            AllowedUpdates = [UpdateType.Message], // Only receive message updates for now
+            AllowedUpdates = [UpdateType.Message, UpdateType.CallbackQuery],
             DropPendingUpdates = true // Discard pending updates on startup
         };
 
