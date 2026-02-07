@@ -100,7 +100,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Equal("Started tracking commuting", responses[0].Text);
+        Assert.Contains("Started tracking commuting", responses[0].Text);
     }
 
     [Fact]
@@ -162,5 +162,112 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         var lunchResponses = await SendTextAsync("/lunch", userId: userId);
         Assert.Contains("Stopped work session", lunchResponses[0].Text);
         Assert.Contains("started tracking on lunch break", lunchResponses[0].Text);
+    }
+
+    [Fact]
+    public async Task CommuteCommand_Started_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10005;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Act
+        var responses = await SendTextAsync("/commute", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Started tracking commuting", responses[0].Text);
+        Assert.Contains("💡 Press /commute to stop when you reach your destination, or /work to start working", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task WorkCommand_Started_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10006;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Act
+        var responses = await SendTextAsync("/work", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Started tracking working", responses[0].Text);
+        // Should include a suggestion about lunch, work stop, or commute
+        Assert.Contains("💡", responses[0].Text);
+        Assert.Contains("/lunch", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task LunchCommand_Started_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10007;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Act
+        var responses = await SendTextAsync("/lunch", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Started tracking on lunch break", responses[0].Text);
+        Assert.Contains("💡 Press /work when you're ready to continue working", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task CommuteCommand_Ended_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10008;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/commute", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - toggle to stop commuting
+        var responses = await SendTextAsync("/commute", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Stopped commuting", responses[0].Text);
+        Assert.Contains("💡 Press /work to start tracking your work time", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task WorkCommand_Ended_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10009;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/work", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - toggle to stop working
+        var responses = await SendTextAsync("/work", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Stopped work session", responses[0].Text);
+        Assert.Contains("💡 Press /commute if you're heading home", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task SwitchingStates_IncludesSuggestion()
+    {
+        // Arrange - use unique user ID to avoid state pollution from other tests
+        const long userId = 10010;
+        await RegisterTestUserAsync(telegramUserId: userId);
+        await SendTextAsync("/commute", userId: userId);
+        Fixture.MockBotClient.ClearResponses();
+
+        // Act - switch to work
+        var responses = await SendTextAsync("/work", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Contains("Stopped commuting", responses[0].Text);
+        Assert.Contains("started tracking working", responses[0].Text);
+        // Should include work-related suggestions
+        Assert.Contains("💡", responses[0].Text);
+        Assert.Contains("/lunch", responses[0].Text);
     }
 }
