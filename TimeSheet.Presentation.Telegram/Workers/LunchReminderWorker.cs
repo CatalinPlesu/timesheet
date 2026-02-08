@@ -1,11 +1,13 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Presentation.Telegram.Options;
 
 namespace TimeSheet.Presentation.Telegram.Workers;
 
 /// <summary>
 /// Background worker that periodically checks if users need to be reminded to take lunch.
-/// Checks every 15 minutes and sends reminders to users who:
+/// Checks periodically and sends reminders to users who:
 /// - Have configured a lunch reminder hour
 /// - Are currently in "working" state
 /// - Haven't taken lunch yet today
@@ -14,9 +16,10 @@ namespace TimeSheet.Presentation.Telegram.Workers;
 /// </summary>
 public sealed class LunchReminderWorker(
     IServiceScopeFactory serviceScopeFactory,
-    ILogger<LunchReminderWorker> logger) : BackgroundService
+    ILogger<LunchReminderWorker> logger,
+    IOptions<WorkerOptions> options) : BackgroundService
 {
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
+    private TimeSpan CheckInterval => options.Value.LunchReminderCheckInterval;
     private readonly ConcurrentDictionary<long, DateOnly> _remindersSentToday = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

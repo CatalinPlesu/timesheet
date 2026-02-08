@@ -1,20 +1,23 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Options;
 using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Presentation.Telegram.Options;
 
 namespace TimeSheet.Presentation.Telegram.Workers;
 
 /// <summary>
 /// Background worker that periodically checks if users have reached their target work hours.
-/// Checks every 15 minutes and sends notifications to users who:
+/// Checks periodically and sends notifications to users who:
 /// - Have configured a target work hours setting
 /// - Have reached or exceeded their target hours for today
 /// - Haven't been notified yet today
 /// </summary>
 public sealed class WorkHoursAlertWorker(
     IServiceScopeFactory serviceScopeFactory,
-    ILogger<WorkHoursAlertWorker> logger) : BackgroundService
+    ILogger<WorkHoursAlertWorker> logger,
+    IOptions<WorkerOptions> options) : BackgroundService
 {
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
+    private TimeSpan CheckInterval => options.Value.WorkHoursAlertCheckInterval;
     private readonly ConcurrentDictionary<long, DateOnly> _alertsSentToday = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

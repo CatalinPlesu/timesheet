@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Options;
 using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Presentation.Telegram.Options;
 
 namespace TimeSheet.Presentation.Telegram.Workers;
 
@@ -8,9 +10,10 @@ namespace TimeSheet.Presentation.Telegram.Workers;
 /// </summary>
 public sealed class ForgotShutdownWorker(
     IServiceScopeFactory serviceScopeFactory,
-    ILogger<ForgotShutdownWorker> logger) : BackgroundService
+    ILogger<ForgotShutdownWorker> logger,
+    IOptions<WorkerOptions> options) : BackgroundService
 {
-    private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
+    private TimeSpan CheckInterval => options.Value.ForgotShutdownCheckInterval;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

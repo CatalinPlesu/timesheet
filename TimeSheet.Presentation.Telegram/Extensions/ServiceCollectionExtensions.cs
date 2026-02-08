@@ -29,6 +29,7 @@ public static class ServiceCollectionExtensions
     private static void AddOptions(this IServiceCollection services)
     {
         services.AddValidatedConfiguration<BotOptions>();
+        services.AddValidatedConfiguration<WorkerOptions>();
     }
 
     private static void AddTelegramBot(this IServiceCollection services)
