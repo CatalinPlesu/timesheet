@@ -162,7 +162,7 @@ public class StatusCommandHandler(
 
             var result = await timeTrackingService.StartStateAsync(
                 userId,
-                TrackingState.Idle,
+                state,
                 DateTime.UtcNow,
                 cancellationToken);
 
