@@ -45,6 +45,7 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         `/report year` — This year
         `/report commute` — Commute patterns
         `/report daily` — Daily averages (7/30/90 days)
+        `/report all` — All reports as separate messages
 
         ━━━━━━━━━━━━━━━━━━━━━━━━━━
         *⚙️  SETTINGS*

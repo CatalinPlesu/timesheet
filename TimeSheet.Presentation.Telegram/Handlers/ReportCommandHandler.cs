@@ -42,6 +42,14 @@ public class ReportCommandHandler(
             using var scope = serviceScopeFactory.CreateScope();
             var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
 
+            // Handle "all" subcommand: send every report as a separate message
+            if (period == "all")
+            {
+                await SendAllReportsAsync(botClient, message, reportingService, userId.Value, cancellationToken);
+                logger.LogInformation("User {UserId} viewed all reports", userId.Value);
+                return;
+            }
+
             string responseText;
 
             // Handle commute report separately
@@ -81,14 +89,15 @@ public class ReportCommandHandler(
             logger.LogWarning(ex, "Invalid period argument for /report command from user {UserId}", userId.Value);
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid period. Use: /report [day|week|month|year|commute|daily]\n\n" +
+                text: "Invalid period. Use: /report [day|week|month|year|commute|daily|all]\n\n" +
                       "Examples:\n" +
                       "  /report day - Today's summary\n" +
                       "  /report week - This week\n" +
                       "  /report month - This month\n" +
                       "  /report year - This year\n" +
                       "  /report commute - Commute patterns\n" +
-                      "  /report daily - Daily averages (7/30/90 days)",
+                      "  /report daily - Daily averages (7/30/90 days)\n" +
+                      "  /report all - All reports as separate messages",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -99,6 +108,63 @@ public class ReportCommandHandler(
                 text: "An error occurred while generating your report. Please try again.",
                 cancellationToken: cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Sends all report types as individual Telegram messages.
+    /// </summary>
+    private async Task SendAllReportsAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        IReportingService reportingService,
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        // Day
+        var (dayStart, dayEnd, dayLabel) = GetDateRange("day");
+        var dayAggregate = await reportingService.GetPeriodAggregateAsync(userId, dayStart, dayEnd, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: FormatPeriodReport(dayAggregate, dayLabel),
+            cancellationToken: cancellationToken);
+
+        // Week
+        var (weekStart, weekEnd, weekLabel) = GetDateRange("week");
+        var weekAggregate = await reportingService.GetPeriodAggregateAsync(userId, weekStart, weekEnd, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: FormatPeriodReport(weekAggregate, weekLabel),
+            cancellationToken: cancellationToken);
+
+        // Month
+        var (monthStart, monthEnd, monthLabel) = GetDateRange("month");
+        var monthAggregate = await reportingService.GetPeriodAggregateAsync(userId, monthStart, monthEnd, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: FormatPeriodReport(monthAggregate, monthLabel),
+            cancellationToken: cancellationToken);
+
+        // Year
+        var (yearStart, yearEnd, yearLabel) = GetDateRange("year");
+        var yearAggregate = await reportingService.GetPeriodAggregateAsync(userId, yearStart, yearEnd, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: FormatPeriodReport(yearAggregate, yearLabel),
+            cancellationToken: cancellationToken);
+
+        // Commute
+        var commuteText = await GenerateCommuteReportAsync(reportingService, userId, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: commuteText,
+            cancellationToken: cancellationToken);
+
+        // Daily averages
+        var dailyText = await GenerateDailyAveragesReportAsync(reportingService, userId, cancellationToken);
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: dailyText,
+            cancellationToken: cancellationToken);
     }
 
     /// <summary>
