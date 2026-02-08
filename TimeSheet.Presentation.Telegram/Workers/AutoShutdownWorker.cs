@@ -42,6 +42,7 @@ public sealed class AutoShutdownWorker(
     {
         using var scope = serviceScopeFactory.CreateScope();
         var autoShutdownService = scope.ServiceProvider.GetRequiredService<IAutoShutdownService>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
         var shutdownSessions = await autoShutdownService.CheckAndShutdownLongRunningSessionsAsync(cancellationToken);
 
@@ -53,11 +54,19 @@ public sealed class AutoShutdownWorker(
 
             foreach (var session in shutdownSessions)
             {
+                var duration = session.EndedAt!.Value - session.StartedAt;
+
                 logger.LogInformation(
                     "Auto-shutdown: User {UserId}, State {State}, Duration {Duration:F2} hours",
                     session.UserId,
                     session.State,
-                    (session.EndedAt!.Value - session.StartedAt).TotalHours);
+                    duration.TotalHours);
+
+                await notificationService.SendAutoShutdownNotificationAsync(
+                    session.UserId,
+                    session.State,
+                    duration,
+                    cancellationToken);
             }
         }
     }

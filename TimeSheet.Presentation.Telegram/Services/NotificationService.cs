@@ -81,6 +81,56 @@ public sealed class NotificationService(
     }
 
     /// <inheritdoc/>
+    public async Task SendAutoShutdownNotificationAsync(
+        long telegramUserId,
+        TrackingState state,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var stateName = state switch
+            {
+                TrackingState.Working => "work session",
+                TrackingState.Commuting => "commute",
+                TrackingState.Lunch => "lunch break",
+                _ => "session"
+            };
+
+            var durationText = duration.TotalHours >= 1
+                ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
+                : $"{duration.Minutes}m";
+
+            var message = $"""
+                ⚠️ *Auto-Shutdown*
+
+                Your {stateName} was automatically ended after {durationText}.
+
+                Use /status to see your current state.
+                """;
+
+            await botClient.SendMessage(
+                chatId: telegramUserId,
+                text: message,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+
+            logger.LogInformation(
+                "Sent auto-shutdown notification to user {UserId} (state: {State}, duration: {Duration})",
+                telegramUserId,
+                state,
+                duration);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Failed to send auto-shutdown notification to user {UserId}",
+                telegramUserId);
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task SendForgotShutdownReminderAsync(
         long telegramUserId,
         TrackingState state,

@@ -42,4 +42,18 @@ public interface INotificationService
         decimal currentDuration,
         decimal averageDuration,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a notification when a session has been automatically shut down.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="state">The tracking state that was auto-shutdown.</param>
+    /// <param name="duration">The duration of the session that was ended.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task SendAutoShutdownNotificationAsync(
+        long telegramUserId,
+        TimeSheet.Core.Domain.Enums.TrackingState state,
+        TimeSpan duration,
+        CancellationToken cancellationToken = default);
 }
