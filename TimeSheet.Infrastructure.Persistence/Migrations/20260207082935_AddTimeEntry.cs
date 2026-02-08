@@ -11,37 +11,21 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "TimeEntries",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    UserId = table.Column<long>(type: "INTEGER", nullable: false),
-                    State = table.Column<string>(type: "TEXT", nullable: false),
-                    StartedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    EndedAt = table.Column<DateTime>(type: "TEXT", nullable: true),
-                    CommuteDirection = table.Column<string>(type: "TEXT", nullable: true),
-                    CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TimeEntries", x => x.Id);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TimeEntries_StartedAt",
-                table: "TimeEntries",
-                column: "StartedAt");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TimeEntries_UserId",
-                table: "TimeEntries",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TimeEntries_UserId_StartedAt",
-                table: "TimeEntries",
-                columns: new[] { "UserId", "StartedAt" });
+            // Use IF NOT EXISTS to handle databases where the table was created outside migrations
+            migrationBuilder.Sql("""
+                CREATE TABLE IF NOT EXISTS "TimeEntries" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_TimeEntries" PRIMARY KEY,
+                    "UserId" INTEGER NOT NULL,
+                    "State" TEXT NOT NULL,
+                    "StartedAt" TEXT NOT NULL,
+                    "EndedAt" TEXT NULL,
+                    "CommuteDirection" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL
+                );
+                """);
+            migrationBuilder.Sql("""CREATE INDEX IF NOT EXISTS "IX_TimeEntries_StartedAt" ON "TimeEntries" ("StartedAt");""");
+            migrationBuilder.Sql("""CREATE INDEX IF NOT EXISTS "IX_TimeEntries_UserId" ON "TimeEntries" ("UserId");""");
+            migrationBuilder.Sql("""CREATE INDEX IF NOT EXISTS "IX_TimeEntries_UserId_StartedAt" ON "TimeEntries" ("UserId", "StartedAt");""");
         }
 
         /// <inheritdoc />
