@@ -178,6 +178,10 @@ public class UpdateHandler(
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Unknown command. Try /help for available commands.",
+                cancellationToken: cancellationToken);
         }
     }
 
