@@ -329,6 +329,16 @@ lint *args:
     SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
     if [ -n "$SLN" ]; then dotnet format "$SLN" --verify-no-changes {{args}}; else echo "✗ No solution file found."; exit 1; fi
 
+# Build and push container image to ghcr.io
+publish-container:
+    dotnet publish TimeSheet.Presentation.Telegram \
+      -c Release \
+      --os linux --arch x64 \
+      /t:PublishContainer \
+      /p:ContainerRepository=catalinplesu/timesheet \
+      /p:ContainerImageTag=latest \
+      /p:ContainerRegistry=ghcr.io
+
 # Restore NuGet packages
 restore:
     @ROOT=$(skate get "{{_key-root}}@{{_db}}" 2>/dev/null); \

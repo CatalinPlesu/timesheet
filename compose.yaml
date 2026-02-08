@@ -1,0 +1,10 @@
+services:
+  timesheet:
+    image: ghcr.io/catalinplesu/timesheet:latest
+    container_name: timesheet
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - Database__ConnectionString=Data Source=/app/data/timesheet.db
+      - Bot__Token=${BOT_TOKEN}
