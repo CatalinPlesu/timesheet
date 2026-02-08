@@ -53,8 +53,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<GenerateCommandHandler>();
         services.AddSingleton<ListCommandHandler>();
         services.AddSingleton<SettingsCommandHandler>();
-        services.AddSingleton<DailyStatsCommandHandler>();
-        services.AddSingleton<CommutePatternsCommandHandler>();
         services.AddSingleton<ReportCommandHandler>();
         services.AddSingleton<StatusCommandHandler>();
     }

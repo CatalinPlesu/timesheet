@@ -49,6 +49,10 @@ public class ReportCommandHandler(
             {
                 responseText = await GenerateCommuteReportAsync(reportingService, userId.Value, cancellationToken);
             }
+            else if (period == "daily")
+            {
+                responseText = await GenerateDailyAveragesReportAsync(reportingService, userId.Value, cancellationToken);
+            }
             else
             {
                 // Calculate date range based on period
@@ -77,13 +81,14 @@ public class ReportCommandHandler(
             logger.LogWarning(ex, "Invalid period argument for /report command from user {UserId}", userId.Value);
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid period. Use: /report [day|week|month|year|commute]\n\n" +
+                text: "Invalid period. Use: /report [day|week|month|year|commute|daily]\n\n" +
                       "Examples:\n" +
                       "  /report day - Today's summary\n" +
                       "  /report week - This week\n" +
                       "  /report month - This month\n" +
                       "  /report year - This year\n" +
-                      "  /report commute - Commute patterns",
+                      "  /report commute - Commute patterns\n" +
+                      "  /report daily - Daily averages (7/30/90 days)",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -94,6 +99,21 @@ public class ReportCommandHandler(
                 text: "An error occurred while generating your report. Please try again.",
                 cancellationToken: cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Generates a daily averages report (7, 30, 90 days).
+    /// </summary>
+    private static async Task<string> GenerateDailyAveragesReportAsync(
+        IReportingService reportingService,
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        var report7Days = await reportingService.GetDailyAveragesAsync(userId, 7, cancellationToken);
+        var report30Days = await reportingService.GetDailyAveragesAsync(userId, 30, cancellationToken);
+        var report90Days = await reportingService.GetDailyAveragesAsync(userId, 90, cancellationToken);
+
+        return FormatDailyAveragesReport(report7Days, report30Days, report90Days);
     }
 
     /// <summary>
@@ -205,6 +225,68 @@ public class ReportCommandHandler(
             builder.AppendLine($"  Work: {FormatHours(avgWorkPerDay)}");
             builder.AppendLine($"  Commute: {FormatHours(avgCommutePerDay)}");
             builder.AppendLine($"  Lunch: {FormatHours(avgLunchPerDay)}");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Formats the daily averages report for display.
+    /// </summary>
+    private static string FormatDailyAveragesReport(
+        DailyAveragesReport report7Days,
+        DailyAveragesReport report30Days,
+        DailyAveragesReport report90Days)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("📊 Daily Averages Report");
+        builder.AppendLine();
+
+        // 7 days
+        builder.AppendLine("Last 7 days:");
+        if (report7Days.TotalWorkDays > 0)
+        {
+            builder.AppendLine($"  Work days: {report7Days.TotalWorkDays}");
+            builder.AppendLine($"  Avg work: {FormatHours(report7Days.AverageWorkHours)}");
+            builder.AppendLine($"  Avg commute to work: {FormatHours(report7Days.AverageCommuteToWorkHours)}");
+            builder.AppendLine($"  Avg commute to home: {FormatHours(report7Days.AverageCommuteToHomeHours)}");
+            builder.AppendLine($"  Avg lunch: {FormatHours(report7Days.AverageLunchHours)}");
+        }
+        else
+        {
+            builder.AppendLine("  No data available");
+        }
+        builder.AppendLine();
+
+        // 30 days
+        builder.AppendLine("Last 30 days:");
+        if (report30Days.TotalWorkDays > 0)
+        {
+            builder.AppendLine($"  Work days: {report30Days.TotalWorkDays}");
+            builder.AppendLine($"  Avg work: {FormatHours(report30Days.AverageWorkHours)}");
+            builder.AppendLine($"  Avg commute to work: {FormatHours(report30Days.AverageCommuteToWorkHours)}");
+            builder.AppendLine($"  Avg commute to home: {FormatHours(report30Days.AverageCommuteToHomeHours)}");
+            builder.AppendLine($"  Avg lunch: {FormatHours(report30Days.AverageLunchHours)}");
+        }
+        else
+        {
+            builder.AppendLine("  No data available");
+        }
+        builder.AppendLine();
+
+        // 90 days
+        builder.AppendLine("Last 90 days:");
+        if (report90Days.TotalWorkDays > 0)
+        {
+            builder.AppendLine($"  Work days: {report90Days.TotalWorkDays}");
+            builder.AppendLine($"  Avg work: {FormatHours(report90Days.AverageWorkHours)}");
+            builder.AppendLine($"  Avg commute to work: {FormatHours(report90Days.AverageCommuteToWorkHours)}");
+            builder.AppendLine($"  Avg commute to home: {FormatHours(report90Days.AverageCommuteToHomeHours)}");
+            builder.AppendLine($"  Avg lunch: {FormatHours(report90Days.AverageLunchHours)}");
+        }
+        else
+        {
+            builder.AppendLine("  No data available");
         }
 
         return builder.ToString();
