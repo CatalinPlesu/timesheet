@@ -42,6 +42,10 @@ public sealed class ForgotShutdownWorker(
     /// </summary>
     private async Task CheckAndNotifySessionsAsync(CancellationToken cancellationToken)
     {
+        // Skip weekend notifications (using UTC day of week as acceptable approximation)
+        if (DateTime.UtcNow.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            return;
+
         using var scope = serviceScopeFactory.CreateScope();
         var forgotShutdownService = scope.ServiceProvider.GetRequiredService<IForgotShutdownService>();
 

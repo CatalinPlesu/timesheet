@@ -72,6 +72,13 @@ public sealed class LunchReminderWorker(
         {
             try
             {
+                // Calculate user's current local time
+                var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
+
+                // Skip weekend notifications
+                if (userLocalTime.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                    continue;
+
                 // Check if we've already reminded this user today
                 if (_remindersSentToday.TryGetValue(user.TelegramUserId, out var lastReminderDate) &&
                     lastReminderDate == today)
@@ -79,8 +86,6 @@ public sealed class LunchReminderWorker(
                     continue; // Already reminded today
                 }
 
-                // Calculate user's current local time
-                var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
                 var userLocalHour = userLocalTime.Hour;
                 var userLocalMinute = userLocalTime.Minute;
                 var userLocalDate = DateOnly.FromDateTime(userLocalTime);
