@@ -58,20 +58,26 @@ public class UpdateHandler(
             messageText);
 
         // /about and /help are available to everyone (registered or not)
-        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase))
+        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase) ||
+            messageText.StartsWith("/a ", StringComparison.OrdinalIgnoreCase) ||
+            messageText == "/a")
         {
             await aboutCommandHandler.HandleAboutAsync(botClient, message, cancellationToken);
             return;
         }
 
-        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase))
+        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase) ||
+            messageText.StartsWith("/h ", StringComparison.OrdinalIgnoreCase) ||
+            messageText == "/h")
         {
             await helpCommandHandler.HandleHelpAsync(botClient, message, cancellationToken);
             return;
         }
 
         // /register is available to everyone (but requires valid mnemonic)
-        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase))
+        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase) ||
+            messageText.StartsWith("/re ", StringComparison.OrdinalIgnoreCase) ||
+            messageText == "/re")
         {
             await registrationCommandHandler.HandleRegisterAsync(botClient, message, cancellationToken);
             return;
@@ -114,23 +120,33 @@ public class UpdateHandler(
         {
             await trackingCommandHandler.HandleLunchAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/e ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/e")
         {
             await editCommandHandler.HandleEditAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/d ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/d")
         {
             await deleteCommandHandler.HandleDeleteAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/g ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/g")
         {
             await generateCommandHandler.HandleGenerateAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/li ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/li")
         {
             await listCommandHandler.HandleListAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/settings", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/settings", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/se ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/se")
         {
             // Parse the command to see if it's a settings update
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -155,7 +171,9 @@ public class UpdateHandler(
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);
             }
         }
-        else if (messageText.StartsWith("/report", StringComparison.OrdinalIgnoreCase))
+        else if (messageText.StartsWith("/report", StringComparison.OrdinalIgnoreCase) ||
+                 messageText.StartsWith("/r ", StringComparison.OrdinalIgnoreCase) ||
+                 messageText == "/r")
         {
             await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken);
         }
