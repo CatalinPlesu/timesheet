@@ -64,6 +64,15 @@ public class EditCommandHandler(
             using var scope = serviceScopeFactory.CreateScope();
             var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            // Get user for timezone offset
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId.Value);
+                return;
+            }
 
             TrackingSession sessionToEdit;
             string displayLabel;
@@ -122,7 +131,7 @@ public class EditCommandHandler(
             }
 
             // Format the session details
-            var sessionDetails = FormatSessionDetails(sessionToEdit, displayLabel);
+            var sessionDetails = FormatSessionDetails(sessionToEdit, displayLabel, user.UtcOffsetMinutes);
 
             // Create inline keyboard with adjustment buttons
             var keyboard = CreateAdjustmentKeyboard(sessionToEdit.Id, sessionToEdit.EndedAt.HasValue);
@@ -232,6 +241,19 @@ public class EditCommandHandler(
             var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            // Get user for timezone offset
+            var user = await userRepository.GetByTelegramUserIdAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId);
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    text: "User not found",
+                    cancellationToken: cancellationToken);
+                return;
+            }
 
             // Get the session
             var session = await trackingSessionRepository.GetByIdAsync(sessionId, cancellationToken);
@@ -295,7 +317,7 @@ public class EditCommandHandler(
             await unitOfWork.CompleteAsync(cancellationToken);
 
             // Update the message with new details
-            var updatedDetails = FormatSessionDetails(adjustedSession, "Editing entry");
+            var updatedDetails = FormatSessionDetails(adjustedSession, "Editing entry", user.UtcOffsetMinutes);
             var keyboard = CreateAdjustmentKeyboard(sessionId, adjustedSession.EndedAt.HasValue);
 
             if (callbackQuery.Message != null)
@@ -339,9 +361,9 @@ public class EditCommandHandler(
     }
 
     /// <summary>
-    /// Formats the session details for display.
+    /// Formats the session details for display, converting timestamps to user's local timezone.
     /// </summary>
-    private static string FormatSessionDetails(TrackingSession session, string displayLabel)
+    private static string FormatSessionDetails(TrackingSession session, string displayLabel, int utcOffsetMinutes)
     {
         var stateDisplay = session.State switch
         {
@@ -353,8 +375,11 @@ public class EditCommandHandler(
             _ => session.State.ToString()
         };
 
-        var startTime = session.StartedAt.ToString("yyyy-MM-dd HH:mm");
-        var endTime = session.EndedAt?.ToString("HH:mm") ?? "ongoing";
+        var localStartedAt = session.StartedAt.AddMinutes(utcOffsetMinutes);
+        var startTime = localStartedAt.ToString("yyyy-MM-dd HH:mm");
+        var endTime = session.EndedAt.HasValue
+            ? session.EndedAt.Value.AddMinutes(utcOffsetMinutes).ToString("HH:mm")
+            : "ongoing";
 
         var duration = session.EndedAt.HasValue
             ? FormatDuration(session.StartedAt, session.EndedAt.Value)

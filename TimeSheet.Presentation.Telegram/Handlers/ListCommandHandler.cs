@@ -14,9 +14,6 @@ public class ListCommandHandler(
     ILogger<ListCommandHandler> logger,
     IServiceScopeFactory serviceScopeFactory)
 {
-    // Default UTC offset until user settings are implemented in Epic 5
-    private const int DefaultUtcOffsetMinutes = 0;
-
     /// <summary>
     /// Handles the /list command.
     /// </summary>
@@ -36,6 +33,15 @@ public class ListCommandHandler(
         {
             using var scope = serviceScopeFactory.CreateScope();
             var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            // Get user for timezone offset
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId.Value);
+                return;
+            }
 
             // Get today's date in UTC
             var today = DateTime.UtcNow.Date;
@@ -47,7 +53,7 @@ public class ListCommandHandler(
                 cancellationToken);
 
             // Format the response
-            var responseText = FormatSessionsList(sessions, today);
+            var responseText = FormatSessionsList(sessions, today, user.UtcOffsetMinutes);
 
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
@@ -72,7 +78,7 @@ public class ListCommandHandler(
     /// <summary>
     /// Formats the list of sessions for display.
     /// </summary>
-    private static string FormatSessionsList(List<TrackingSession> sessions, DateTime date)
+    private static string FormatSessionsList(List<TrackingSession> sessions, DateTime date, int utcOffsetMinutes)
     {
         if (sessions.Count == 0)
         {
@@ -91,10 +97,10 @@ public class ListCommandHandler(
             // Format session type
             var typeDisplay = FormatSessionType(session);
 
-            // Format times
-            var startTime = FormatTime(session.StartedAt);
+            // Format times (converted to user's local timezone)
+            var startTime = FormatTime(session.StartedAt, utcOffsetMinutes);
             var endTime = session.EndedAt.HasValue
-                ? FormatTime(session.EndedAt.Value)
+                ? FormatTime(session.EndedAt.Value, utcOffsetMinutes)
                 : "ongoing";
 
             // Format duration
@@ -133,13 +139,12 @@ public class ListCommandHandler(
     }
 
     /// <summary>
-    /// Formats a UTC timestamp for display.
-    /// For now, just shows the time in UTC. Will use user's timezone in Epic 5.
+    /// Formats a UTC timestamp for display, converted to user's local timezone.
     /// </summary>
-    private static string FormatTime(DateTime utcTime)
+    private static string FormatTime(DateTime utcTime, int utcOffsetMinutes)
     {
-        // TODO: Apply user's UTC offset when user settings are implemented
-        return utcTime.ToString("HH:mm");
+        var localTime = utcTime.AddMinutes(utcOffsetMinutes);
+        return localTime.ToString("HH:mm");
     }
 
     /// <summary>

@@ -56,6 +56,15 @@ public class DeleteCommandHandler(
         {
             using var scope = serviceScopeFactory.CreateScope();
             var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+            // Get user for timezone offset
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found", userId.Value);
+                return;
+            }
 
             List<TrackingSession> sessions;
             TrackingSession sessionToDelete;
@@ -125,7 +134,7 @@ public class DeleteCommandHandler(
             }
 
             // Format the session details
-            var sessionDetails = FormatSessionDetails(sessionToDelete, entryId);
+            var sessionDetails = FormatSessionDetails(sessionToDelete, entryId, user.UtcOffsetMinutes);
 
             // Create inline keyboard with confirmation buttons
             var keyboard = CreateConfirmationKeyboard(sessionToDelete.Id);
@@ -273,6 +282,19 @@ public class DeleteCommandHandler(
         using var scope = serviceScopeFactory.CreateScope();
         var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+
+        // Get user for timezone offset
+        var user = await userRepository.GetByTelegramUserIdAsync(userId, cancellationToken);
+        if (user == null)
+        {
+            logger.LogWarning("User {UserId} not found", userId);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                text: "User not found",
+                cancellationToken: cancellationToken);
+            return;
+        }
 
         // Get the session
         var session = await trackingSessionRepository.GetByIdAsync(sessionId, cancellationToken);
@@ -307,7 +329,7 @@ public class DeleteCommandHandler(
         // Update the message to show successful deletion
         if (callbackQuery.Message != null)
         {
-            var deletionSummary = FormatDeletionSummary(session);
+            var deletionSummary = FormatDeletionSummary(session, user.UtcOffsetMinutes);
             await botClient.EditMessageText(
                 chatId: callbackQuery.Message.Chat.Id,
                 messageId: callbackQuery.Message.MessageId,
@@ -328,9 +350,9 @@ public class DeleteCommandHandler(
     }
 
     /// <summary>
-    /// Formats the session details for the confirmation prompt.
+    /// Formats the session details for the confirmation prompt, converting timestamps to user's local timezone.
     /// </summary>
-    private static string FormatSessionDetails(TrackingSession session, int? entryId)
+    private static string FormatSessionDetails(TrackingSession session, int? entryId, int utcOffsetMinutes)
     {
         var stateDisplay = session.State switch
         {
@@ -344,8 +366,11 @@ public class DeleteCommandHandler(
 
         var entryLabel = entryId.HasValue ? $"Entry #{entryId.Value}" : "Most recent entry";
 
-        var startTime = session.StartedAt.ToString("yyyy-MM-dd HH:mm");
-        var endTime = session.EndedAt?.ToString("HH:mm") ?? "ongoing";
+        var localStartedAt = session.StartedAt.AddMinutes(utcOffsetMinutes);
+        var startTime = localStartedAt.ToString("yyyy-MM-dd HH:mm");
+        var endTime = session.EndedAt.HasValue
+            ? session.EndedAt.Value.AddMinutes(utcOffsetMinutes).ToString("HH:mm")
+            : "ongoing";
 
         var duration = session.EndedAt.HasValue
             ? FormatDuration(session.StartedAt, session.EndedAt.Value)
@@ -360,9 +385,9 @@ public class DeleteCommandHandler(
     }
 
     /// <summary>
-    /// Formats the deletion summary message.
+    /// Formats the deletion summary message, converting timestamps to user's local timezone.
     /// </summary>
-    private static string FormatDeletionSummary(TrackingSession session)
+    private static string FormatDeletionSummary(TrackingSession session, int utcOffsetMinutes)
     {
         var stateDisplay = session.State switch
         {
@@ -374,7 +399,8 @@ public class DeleteCommandHandler(
             _ => session.State.ToString()
         };
 
-        var startTime = session.StartedAt.ToString("yyyy-MM-dd HH:mm");
+        var localStartedAt = session.StartedAt.AddMinutes(utcOffsetMinutes);
+        var startTime = localStartedAt.ToString("yyyy-MM-dd HH:mm");
 
         return $"Entry deleted:\n" +
                $"Type: {stateDisplay}\n" +
