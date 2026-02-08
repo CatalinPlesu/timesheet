@@ -10,7 +10,7 @@ namespace TimeSheet.Core.Application.Services;
 /// </summary>
 public sealed class MnemonicService : IMnemonicService
 {
-    private readonly ConcurrentBag<string> _pendingMnemonics = new();
+    private readonly ConcurrentDictionary<string, byte> _pendingMnemonics = new();
 
     /// <inheritdoc/>
     public RegistrationMnemonic GenerateMnemonic()
@@ -24,7 +24,7 @@ public sealed class MnemonicService : IMnemonicService
     public void StorePendingMnemonic(RegistrationMnemonic mnemonic)
     {
         ArgumentNullException.ThrowIfNull(mnemonic);
-        _pendingMnemonics.Add(mnemonic.ToString());
+        _pendingMnemonics.TryAdd(mnemonic.ToString(), 0);
     }
 
     /// <inheritdoc/>
@@ -50,36 +50,8 @@ public sealed class MnemonicService : IMnemonicService
 
         var normalizedMnemonic = parsedMnemonic.ToString();
 
-        // Try to find and remove the mnemonic from pending list
-        // Since ConcurrentBag doesn't support atomic "find and remove",
-        // we need to rebuild the collection
-        var found = false;
-        List<string> tempList = [];
-
-        foreach (var pending in _pendingMnemonics)
-        {
-            if (!found && pending == normalizedMnemonic)
-            {
-                found = true;
-                // Skip this one (consume it)
-            }
-            else
-            {
-                tempList.Add(pending);
-            }
-        }
-
-        if (found)
-        {
-            // Rebuild the concurrent bag without the consumed mnemonic
-            _pendingMnemonics.Clear();
-            foreach (var item in tempList)
-            {
-                _pendingMnemonics.Add(item);
-            }
-        }
-
-        return found;
+        // Atomically remove the mnemonic if it exists
+        return _pendingMnemonics.TryRemove(normalizedMnemonic, out _);
     }
 
     /// <inheritdoc/>
@@ -105,7 +77,7 @@ public sealed class MnemonicService : IMnemonicService
         var normalizedMnemonic = parsedMnemonic.ToString();
 
         // Check if the mnemonic exists in the pending list
-        return _pendingMnemonics.Contains(normalizedMnemonic);
+        return _pendingMnemonics.ContainsKey(normalizedMnemonic);
     }
 
     /// <inheritdoc/>
@@ -130,33 +102,7 @@ public sealed class MnemonicService : IMnemonicService
 
         var normalizedMnemonic = parsedMnemonic.ToString();
 
-        // Try to find and remove the mnemonic
-        var found = false;
-        List<string> tempList = [];
-
-        foreach (var pending in _pendingMnemonics)
-        {
-            if (!found && pending == normalizedMnemonic)
-            {
-                found = true;
-                // Skip this one (consume it)
-            }
-            else
-            {
-                tempList.Add(pending);
-            }
-        }
-
-        if (found)
-        {
-            // Rebuild the concurrent bag without the consumed mnemonic
-            _pendingMnemonics.Clear();
-            foreach (var item in tempList)
-            {
-                _pendingMnemonics.Add(item);
-            }
-        }
-
-        return found;
+        // Atomically remove the mnemonic if it exists
+        return _pendingMnemonics.TryRemove(normalizedMnemonic, out _);
     }
 }
