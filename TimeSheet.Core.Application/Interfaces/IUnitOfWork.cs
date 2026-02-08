@@ -17,7 +17,6 @@ public interface IUnitOfWork : IAsyncDisposable, IDisposable
     /// <returns>The number of state entries written to the database.</returns>
     /// <remarks>
     /// This method commits the current transaction. If it fails, all changes are rolled back.
-    /// Automatic timestamp updates for MutableEntity instances happen during this call.
     /// </remarks>
     Task<int> CompleteAsync(CancellationToken cancellationToken = default);
 }

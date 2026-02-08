@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using TimeSheet.Core.Domain.Entities;
-using TimeSheet.Core.Domain.SharedKernel;
 
 namespace TimeSheet.Infrastructure.Persistence;
 
@@ -10,11 +9,6 @@ namespace TimeSheet.Infrastructure.Persistence;
 /// </summary>
 public sealed class AppDbContext : DbContext
 {
-    /// <summary>
-    /// Gets or sets the DbSet for TimeEntry entities.
-    /// </summary>
-    public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();
-
     /// <summary>
     /// Gets or sets the DbSet for TrackingSession entities.
     /// </summary>
@@ -35,20 +29,6 @@ public sealed class AppDbContext : DbContext
     }
 
     /// <summary>
-    /// Saves all changes made in this context to the database.
-    /// Automatically updates UpdatedAt timestamps for modified MutableEntity instances.
-    /// </summary>
-    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
-    /// <returns>The number of state entries written to the database.</returns>
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        // Auto-update timestamps for modified MutableEntity instances
-        UpdateTimestamps();
-
-        return await base.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
     /// Configures the database schema and entity mappings.
     /// </summary>
     /// <param name="modelBuilder">The builder being used to construct the model for this context.</param>
@@ -58,21 +38,5 @@ public sealed class AppDbContext : DbContext
 
         // Apply entity configurations from assemblies
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-    }
-
-    /// <summary>
-    /// Updates UpdatedAt timestamps for all modified MutableEntity instances in the change tracker.
-    /// Calls MarkAsModified() directly on each modified entity to set the UpdatedAt timestamp.
-    /// </summary>
-    private void UpdateTimestamps()
-    {
-        var modifiedEntities = ChangeTracker
-            .Entries<MutableEntity>()
-            .Where(e => e.State == EntityState.Modified);
-
-        foreach (var entry in modifiedEntities)
-        {
-            entry.Entity.MarkAsModified();
-        }
     }
 }
