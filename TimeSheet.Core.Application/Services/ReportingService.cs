@@ -7,7 +7,7 @@ namespace TimeSheet.Core.Application.Services;
 /// <summary>
 /// Application service for generating reports and analytics.
 /// </summary>
-public class ReportingService(ITrackingSessionRepository trackingSessionRepository)
+public class ReportingService(ITrackingSessionRepository trackingSessionRepository) : IReportingService
 {
     /// <summary>
     /// Generates a daily averages report for a user over the last N days.

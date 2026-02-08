@@ -3,7 +3,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
-using TimeSheet.Core.Application.Services;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
@@ -32,7 +31,7 @@ public class DailyStatsCommandHandler(
         try
         {
             using var scope = serviceScopeFactory.CreateScope();
-            var reportingService = scope.ServiceProvider.GetRequiredService<ReportingService>();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
             var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
 
             // Get user for timezone info

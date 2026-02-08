@@ -1,8 +1,8 @@
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
-using TimeSheet.Core.Application.Services;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
@@ -32,7 +32,7 @@ public class CommutePatternsCommandHandler(
         try
         {
             using var scope = serviceScopeFactory.CreateScope();
-            var reportingService = scope.ServiceProvider.GetRequiredService<ReportingService>();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
 
             // Generate patterns for both directions
             var toWorkPatterns = await reportingService.GetCommutePatternsAsync(

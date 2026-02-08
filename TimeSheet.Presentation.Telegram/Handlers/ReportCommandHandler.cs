@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
-using TimeSheet.Core.Application.Services;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
@@ -40,7 +40,7 @@ public class ReportCommandHandler(
             var period = parts.Length > 1 ? parts[1].ToLowerInvariant() : "day";
 
             using var scope = serviceScopeFactory.CreateScope();
-            var reportingService = scope.ServiceProvider.GetRequiredService<ReportingService>();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
 
             string responseText;
 
@@ -100,7 +100,7 @@ public class ReportCommandHandler(
     /// Generates a commute pattern report.
     /// </summary>
     private static async Task<string> GenerateCommuteReportAsync(
-        ReportingService reportingService,
+        IReportingService reportingService,
         long userId,
         CancellationToken cancellationToken)
     {
