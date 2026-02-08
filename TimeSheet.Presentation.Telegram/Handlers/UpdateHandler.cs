@@ -70,7 +70,8 @@ public class UpdateHandler(
             messageText.StartsWith("/h ", StringComparison.OrdinalIgnoreCase) ||
             messageText == "/h")
         {
-            await helpCommandHandler.HandleHelpAsync(botClient, message, cancellationToken);
+            var helpParts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            await helpCommandHandler.HandleHelpAsync(botClient, message, helpParts, cancellationToken);
             return;
         }
 

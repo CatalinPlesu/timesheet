@@ -76,38 +76,7 @@ public class SettingsCommandHandler(
             *Target Work Hours:* {targetWorkHoursDisplay}
             *Forgot-Shutdown Alert:* {forgotShutdownDisplay}
 
-            To change your timezone, use:
-            `/settings utc [±hours]`
-
-            Examples:
-            • `/settings utc +2` — Set to UTC+2
-            • `/settings utc -5` — Set to UTC-5
-            • `/settings utc 0` — Set to UTC+0
-
-            To configure lunch reminder:
-            `/settings lunch [hour:minute]` or `/settings lunch off`
-
-            Examples:
-            • `/settings lunch 12` — Remind at 12:00
-            • `/settings lunch 12:30` — Remind at 12:30
-            • `/settings lunch 13:45` — Remind at 13:45
-            • `/settings lunch off` — Disable reminder
-
-            To configure target work hours:
-            `/settings target [hours]` or `/settings target off`
-
-            Examples:
-            • `/settings target 8` — Notify when 8 hours worked
-            • `/settings target 7.5` — Notify when 7.5 hours worked
-            • `/settings target off` — Disable notification
-
-            To configure forgot-shutdown alert:
-            `/settings forgot [percent]` or `/settings forgot off`
-
-            Examples:
-            • `/settings forgot 150` — Alert at 150% of average
-            • `/settings forgot 200` — Alert at 200% of average
-            • `/settings forgot off` — Disable alert
+            Use `/help settings` for usage examples.
             """;
 
         await botClient.SendMessage(
