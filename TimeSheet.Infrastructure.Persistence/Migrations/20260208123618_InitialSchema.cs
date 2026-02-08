@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddUser : Migration
+    public partial class InitialSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -37,6 +37,13 @@ namespace TimeSheet.Infrastructure.Persistence.Migrations
                     IsAdmin = table.Column<bool>(type: "INTEGER", nullable: false),
                     UtcOffsetMinutes = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0),
                     RegisteredAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),
+                    MaxWorkHours = table.Column<decimal>(type: "TEXT", precision: 5, scale: 2, nullable: true),
+                    MaxCommuteHours = table.Column<decimal>(type: "TEXT", precision: 5, scale: 2, nullable: true),
+                    MaxLunchHours = table.Column<decimal>(type: "TEXT", precision: 5, scale: 2, nullable: true),
+                    LunchReminderHour = table.Column<int>(type: "INTEGER", nullable: true),
+                    LunchReminderMinute = table.Column<int>(type: "INTEGER", nullable: false),
+                    TargetWorkHours = table.Column<decimal>(type: "TEXT", precision: 5, scale: 2, nullable: true),
+                    ForgotShutdownThresholdPercent = table.Column<int>(type: "INTEGER", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>

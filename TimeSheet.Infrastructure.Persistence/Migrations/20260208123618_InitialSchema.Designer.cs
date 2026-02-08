@@ -11,52 +11,14 @@ using TimeSheet.Infrastructure.Persistence;
 namespace TimeSheet.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260207222250_AddLunchReminderMinute")]
-    partial class AddLunchReminderMinute
+    [Migration("20260208123618_InitialSchema")]
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.2");
-
-            modelBuilder.Entity("TimeSheet.Core.Domain.Entities.TimeEntry", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CommuteDirection")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("EndedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("StartedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StartedAt")
-                        .HasDatabaseName("IX_TimeEntries_StartedAt");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("IX_TimeEntries_UserId");
-
-                    b.HasIndex("UserId", "StartedAt")
-                        .HasDatabaseName("IX_TimeEntries_UserId_StartedAt");
-
-                    b.ToTable("TimeEntries", (string)null);
-                });
 
             modelBuilder.Entity("TimeSheet.Core.Domain.Entities.TrackingSession", b =>
                 {
