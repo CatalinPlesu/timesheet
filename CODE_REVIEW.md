@@ -153,13 +153,38 @@ private static partial Regex MinuteOffsetRegex();
 
 **Note**: The original error message was misleading. The real issue was file contention during parallel builds or incomplete cleanup from previous build attempts.
 
-### 2. **Test Failure**
+### 2. **Test Failure - Inconsistent Requirements**
 
 **Failing test**: `MnemonicServiceTests.StorePendingMnemonic_SameMnemonicTwice_StoresBothInstances`
 
-**Impact**: One of 218 tests fails, suggesting potential bug in mnemonic storage logic with duplicate mnemonics.
+**Root cause**: Test expects that storing the same mnemonic twice should allow it to be consumed twice, but the implementation uses `ConcurrentDictionary<string, byte>` with `TryAdd`, which only adds unique keys.
 
-**Recommendation**: Either fix the bug or adjust test expectations if behavior is correct.
+```csharp
+// Current implementation (line 27 of MnemonicService.cs)
+_pendingMnemonics.TryAdd(mnemonic.ToString(), 0); // Won't add duplicates
+
+// Test expectation (lines 209-216 of MnemonicServiceTests.cs)
+service.StorePendingMnemonic(mnemonic);
+service.StorePendingMnemonic(mnemonic); // Expects to store twice
+Assert.True(service.ValidateAndConsumeMnemonic(mnemonic.ToString())); // ✓
+Assert.True(service.ValidateAndConsumeMnemonic(mnemonic.ToString())); // ✗ FAILS
+```
+
+**Analysis**: This is a **requirements ambiguity**, not a bug:
+- **Test assumes**: Same mnemonic can be stored multiple times (multi-use tokens)
+- **Implementation assumes**: Each mnemonic is single-use (more secure)
+
+**Security perspective**: The implementation is **more secure**. Allowing the same mnemonic to be used multiple times could enable:
+- Reuse attacks
+- Unauthorized registrations if mnemonic is intercepted
+- Confusion about registration state
+
+**Recommendation**: 
+1. **Fix the test** to match implementation (single-use mnemonics)
+2. **OR** change to `ConcurrentBag<string>` if multi-use is truly desired (unlikely)
+3. **Preferred**: Keep implementation as-is (secure), update test to expect single-use behavior
+
+**Impact**: Minor - this is edge case testing that doesn't affect normal operation.
 
 ### 3. **Large Handler Classes**
 
@@ -463,7 +488,7 @@ Initial migration is likely very large (common for first migration):
 
 ### CRITICAL (Do Now)
 1. ✅ ~~Fix build issue~~ - **RESOLVED**: Build succeeds
-2. 🔧 **Fix failing test** - Investigate and fix `MnemonicServiceTests` failure
+2. 🔧 **Fix test or requirement** - Clarify mnemonic reuse behavior (test vs implementation mismatch)
 3. 🔧 **Add database indexes** - Prevent performance issues as data grows
 
 ### HIGH (Do Soon)
