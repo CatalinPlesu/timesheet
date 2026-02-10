@@ -1,5 +1,6 @@
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
+using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Core.Application.Services;
