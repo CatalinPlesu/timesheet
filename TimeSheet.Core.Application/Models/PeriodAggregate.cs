@@ -34,4 +34,11 @@ public record PeriodAggregate
     /// Gets the number of work days in the period.
     /// </summary>
     public int WorkDaysCount { get; init; }
+
+    /// <summary>
+    /// Gets the total duration from first to last activity in hours.
+    /// This represents the full "at work" span including idle time between sessions.
+    /// Null if there are no sessions in the period.
+    /// </summary>
+    public decimal? TotalDurationHours { get; init; }
 }

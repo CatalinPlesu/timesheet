@@ -231,6 +231,18 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             }
         }
 
+        // Calculate total duration from first to last activity
+        decimal? totalDurationHours = null;
+        if (sessions.Any())
+        {
+            var firstActivityStart = sessions.Min(s => s.StartedAt);
+
+            // For last activity end time, consider active sessions (use current time if EndedAt is null)
+            var lastActivityEnd = sessions.Max(s => s.EndedAt ?? DateTime.UtcNow);
+
+            totalDurationHours = (decimal)(lastActivityEnd - firstActivityStart).TotalHours;
+        }
+
         return new PeriodAggregate
         {
             StartDate = startDate,
@@ -238,7 +250,8 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             TotalWorkHours = totalWorkHours,
             TotalCommuteHours = totalCommuteHours,
             TotalLunchHours = totalLunchHours,
-            WorkDaysCount = workDays
+            WorkDaysCount = workDays,
+            TotalDurationHours = totalDurationHours
         };
     }
 }
