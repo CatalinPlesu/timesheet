@@ -16,6 +16,8 @@ Access Seq at: **http://localhost:5341**
 
 The TimeSheet application is configured to send logs to Seq automatically when running in the Docker environment.
 
+**Note**: Seq is configured with `SEQ_FIRSTRUN_NOAUTHENTICATION=true` for local development, which means no login is required to access the UI. This is suitable for local development but should be configured with authentication for production use.
+
 ### Local Development
 
 When running the application locally (outside Docker), start Seq separately:
