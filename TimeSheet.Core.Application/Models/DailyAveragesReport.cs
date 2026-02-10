@@ -34,4 +34,10 @@ public record DailyAveragesReport
     /// Gets the total number of work days in the period (days with at least one work session).
     /// </summary>
     public int TotalWorkDays { get; init; }
+
+    /// <summary>
+    /// Gets the average total duration from first to last activity per day in hours.
+    /// This represents the average full "at work" span including idle time between sessions.
+    /// </summary>
+    public decimal AverageTotalDurationHours { get; init; }
 }

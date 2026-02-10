@@ -78,6 +78,7 @@ public class ReportingServiceTests
         Assert.Equal(0.5m, result.AverageCommuteToWorkHours);
         Assert.Equal(0.5m, result.AverageCommuteToHomeHours);
         Assert.Equal(1m, result.AverageLunchHours);
+        Assert.Equal(9.5m, result.AverageTotalDurationHours); // 8:00 to 17:30 = 9.5 hours
     }
 
     [Fact]
@@ -110,6 +111,53 @@ public class ReportingServiceTests
         Assert.Equal(2, result.DaysIncluded);
         Assert.Equal(2, result.TotalWorkDays);
         Assert.Equal(7m, result.AverageWorkHours); // (8 + 6) / 2 = 7 hours
+        Assert.Equal(7m, result.AverageTotalDurationHours); // Day 1: 8h, Day 2: 6h, avg = 7h
+    }
+
+    [Fact]
+    public async Task GetDailyAveragesAsync_CalculatesTotalDurationPerDay()
+    {
+        // Arrange
+        const long userId = 123456;
+        const int days = 7;
+        var baseDate = DateTime.UtcNow.Date;
+
+        var sessions = new List<TrackingSession>
+        {
+            // Day 1: 8:00 to 17:30 (9.5 hours total duration)
+            new(userId, TrackingState.Commuting, baseDate.AddHours(8), CommuteDirection.ToWork),
+            new(userId, TrackingState.Working, baseDate.AddHours(9)),
+            new(userId, TrackingState.Lunch, baseDate.AddHours(12)),
+            new(userId, TrackingState.Working, baseDate.AddHours(13)),
+            new(userId, TrackingState.Commuting, baseDate.AddHours(17), CommuteDirection.ToHome),
+
+            // Day 2: 7:00 to 16:00 (9 hours total duration)
+            new(userId, TrackingState.Commuting, baseDate.AddDays(1).AddHours(7), CommuteDirection.ToWork),
+            new(userId, TrackingState.Working, baseDate.AddDays(1).AddHours(8)),
+            new(userId, TrackingState.Working, baseDate.AddDays(1).AddHours(14)),
+        };
+
+        sessions[0].End(baseDate.AddHours(9));
+        sessions[1].End(baseDate.AddHours(12));
+        sessions[2].End(baseDate.AddHours(13));
+        sessions[3].End(baseDate.AddHours(17));
+        sessions[4].End(baseDate.AddHours(17.5));
+        sessions[5].End(baseDate.AddDays(1).AddHours(8));
+        sessions[6].End(baseDate.AddDays(1).AddHours(14));
+        sessions[7].End(baseDate.AddDays(1).AddHours(16));
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sut.GetDailyAveragesAsync(userId, days, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(2, result.DaysIncluded);
+        Assert.Equal(2, result.TotalWorkDays);
+        // Average total duration: (9.5 + 9) / 2 = 9.25 hours
+        Assert.Equal(9.25m, result.AverageTotalDurationHours);
     }
 
     [Fact]

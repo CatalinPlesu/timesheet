@@ -55,6 +55,7 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
         decimal totalCommuteToWorkHours = 0;
         decimal totalCommuteToHomeHours = 0;
         decimal totalLunchHours = 0;
+        decimal totalDurationHours = 0;
         int workDays = 0;
 
         foreach (var dayGroup in sessionsByDay)
@@ -92,6 +93,14 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
                 }
             }
 
+            // Calculate total duration for this day (first to last activity)
+            if (daySessions.Any())
+            {
+                var firstActivityStart = daySessions.Min(s => s.StartedAt);
+                var lastActivityEnd = daySessions.Max(s => s.EndedAt ?? DateTime.UtcNow);
+                totalDurationHours += (decimal)(lastActivityEnd - firstActivityStart).TotalHours;
+            }
+
             if (hasWork)
             {
                 workDays++;
@@ -105,7 +114,8 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             AverageCommuteToWorkHours = workDays > 0 ? totalCommuteToWorkHours / workDays : 0,
             AverageCommuteToHomeHours = workDays > 0 ? totalCommuteToHomeHours / workDays : 0,
             AverageLunchHours = workDays > 0 ? totalLunchHours / workDays : 0,
-            TotalWorkDays = workDays
+            TotalWorkDays = workDays,
+            AverageTotalDurationHours = workDays > 0 ? totalDurationHours / workDays : 0
         };
     }
 

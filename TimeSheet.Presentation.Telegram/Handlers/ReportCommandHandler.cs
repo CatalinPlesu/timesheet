@@ -326,6 +326,7 @@ public class ReportCommandHandler(
             builder.AppendLine($"  Avg commute to work: {FormatHours(report7Days.AverageCommuteToWorkHours)}");
             builder.AppendLine($"  Avg commute to home: {FormatHours(report7Days.AverageCommuteToHomeHours)}");
             builder.AppendLine($"  Avg lunch: {FormatHours(report7Days.AverageLunchHours)}");
+            builder.AppendLine($"  Avg total duration: {FormatHours(report7Days.AverageTotalDurationHours)}");
         }
         else
         {
@@ -342,6 +343,7 @@ public class ReportCommandHandler(
             builder.AppendLine($"  Avg commute to work: {FormatHours(report30Days.AverageCommuteToWorkHours)}");
             builder.AppendLine($"  Avg commute to home: {FormatHours(report30Days.AverageCommuteToHomeHours)}");
             builder.AppendLine($"  Avg lunch: {FormatHours(report30Days.AverageLunchHours)}");
+            builder.AppendLine($"  Avg total duration: {FormatHours(report30Days.AverageTotalDurationHours)}");
         }
         else
         {
@@ -358,6 +360,7 @@ public class ReportCommandHandler(
             builder.AppendLine($"  Avg commute to work: {FormatHours(report90Days.AverageCommuteToWorkHours)}");
             builder.AppendLine($"  Avg commute to home: {FormatHours(report90Days.AverageCommuteToHomeHours)}");
             builder.AppendLine($"  Avg lunch: {FormatHours(report90Days.AverageLunchHours)}");
+            builder.AppendLine($"  Avg total duration: {FormatHours(report90Days.AverageTotalDurationHours)}");
         }
         else
         {
