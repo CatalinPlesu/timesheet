@@ -7,7 +7,7 @@ using TimeSheet.Presentation.Telegram.Workers;
 
 // Configure Serilog early - before building the host
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
     .CreateBootstrapLogger();
 
 try
