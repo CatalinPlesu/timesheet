@@ -120,15 +120,13 @@ public sealed class LunchReminderWorker(
                 var userDayStartUtc = userLocalDate.ToDateTime(TimeOnly.MinValue).AddMinutes(-user.UtcOffsetMinutes);
                 var userDayEndUtc = userDayStartUtc.AddDays(1);
 
-                var todaySessions = await trackingSessionRepository.GetSessionsByDateAsync(
+                var todaySessions = await trackingSessionRepository.GetSessionsInRangeAsync(
                     user.TelegramUserId,
                     userDayStartUtc,
+                    userDayEndUtc,
                     cancellationToken);
 
-                var hasLunchToday = todaySessions.Any(s =>
-                    s.State == Core.Domain.Enums.TrackingState.Lunch &&
-                    s.StartedAt >= userDayStartUtc &&
-                    s.StartedAt < userDayEndUtc);
+                var hasLunchToday = todaySessions.Any(s => s.State == Core.Domain.Enums.TrackingState.Lunch);
 
                 if (hasLunchToday)
                 {
