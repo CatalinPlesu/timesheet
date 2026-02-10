@@ -401,51 +401,76 @@ public class ReportCommandHandler(
         builder.AppendLine("(Based on last 90 days)");
         builder.AppendLine();
 
-        // To Work patterns
-        builder.AppendLine("📍 Commute to Work:");
-        if (toWorkPatterns.Count > 0)
+        // Check if we have any data at all
+        if (toWorkPatterns.Count == 0 && toHomePatterns.Count == 0)
         {
-            foreach (var pattern in toWorkPatterns)
+            builder.AppendLine("No commute data available.");
+            return builder.ToString();
+        }
+
+        // Merge patterns by day of week
+        var allDays = Enum.GetValues<DayOfWeek>()
+            .OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d) // Monday-Sunday order
+            .ToList();
+
+        var toWorkByDay = toWorkPatterns.ToDictionary(p => p.DayOfWeek);
+        var toHomeByDay = toHomePatterns.ToDictionary(p => p.DayOfWeek);
+
+        // Use monospace formatting for table alignment
+        builder.AppendLine("```");
+
+        // Header
+        builder.AppendLine("Day       →Work  Best  Short →Home  Best  Short");
+        builder.AppendLine("          Avg    Time         Avg    Time       ");
+        builder.AppendLine("--------- ------ ----- ----- ------ ----- -----");
+
+        // Data rows
+        foreach (var day in allDays)
+        {
+            var hasToWork = toWorkByDay.TryGetValue(day, out var toWorkPattern);
+            var hasToHome = toHomeByDay.TryGetValue(day, out var toHomePattern);
+
+            // Skip days with no data
+            if (!hasToWork && !hasToHome)
             {
-                builder.AppendLine($"\n{GetDayName(pattern.DayOfWeek)}:");
-                builder.AppendLine($"  Sessions: {pattern.SessionCount}");
-                builder.AppendLine($"  Avg duration: {FormatHours(pattern.AverageDurationHours)}");
-
-                if (pattern.OptimalStartHour.HasValue && pattern.ShortestDurationHours.HasValue)
-                {
-                    builder.AppendLine($"  Best time to leave: {pattern.OptimalStartHour.Value:D2}:00");
-                    builder.AppendLine($"  Shortest commute: {FormatHours(pattern.ShortestDurationHours.Value)}");
-                }
+                continue;
             }
-        }
-        else
-        {
-            builder.AppendLine("  No data available");
+
+            var dayName = GetDayName(day).PadRight(9);
+
+            // To Work columns
+            var toWorkAvg = hasToWork && toWorkPattern != null
+                ? FormatHoursCompactFixed(toWorkPattern.AverageDurationHours, 6)
+                : "  -   ";
+            var toWorkBest = hasToWork && toWorkPattern != null && toWorkPattern.OptimalStartHour.HasValue
+                ? $"{toWorkPattern.OptimalStartHour.Value:D2}:00"
+                : " -   ";
+            var toWorkShort = hasToWork && toWorkPattern != null && toWorkPattern.ShortestDurationHours.HasValue
+                ? FormatHoursCompactFixed(toWorkPattern.ShortestDurationHours.Value, 5)
+                : "  -  ";
+
+            // To Home columns
+            var toHomeAvg = hasToHome && toHomePattern != null
+                ? FormatHoursCompactFixed(toHomePattern.AverageDurationHours, 6)
+                : "  -   ";
+            var toHomeBest = hasToHome && toHomePattern != null && toHomePattern.OptimalStartHour.HasValue
+                ? $"{toHomePattern.OptimalStartHour.Value:D2}:00"
+                : " -   ";
+            var toHomeShort = hasToHome && toHomePattern != null && toHomePattern.ShortestDurationHours.HasValue
+                ? FormatHoursCompactFixed(toHomePattern.ShortestDurationHours.Value, 5)
+                : "  -  ";
+
+            builder.AppendLine($"{dayName} {toWorkAvg} {toWorkBest} {toWorkShort} {toHomeAvg} {toHomeBest} {toHomeShort}");
         }
 
+        builder.AppendLine("```");
         builder.AppendLine();
 
-        // To Home patterns
-        builder.AppendLine("🏠 Commute to Home:");
-        if (toHomePatterns.Count > 0)
-        {
-            foreach (var pattern in toHomePatterns)
-            {
-                builder.AppendLine($"\n{GetDayName(pattern.DayOfWeek)}:");
-                builder.AppendLine($"  Sessions: {pattern.SessionCount}");
-                builder.AppendLine($"  Avg duration: {FormatHours(pattern.AverageDurationHours)}");
-
-                if (pattern.OptimalStartHour.HasValue && pattern.ShortestDurationHours.HasValue)
-                {
-                    builder.AppendLine($"  Best time to leave: {pattern.OptimalStartHour.Value:D2}:00");
-                    builder.AppendLine($"  Shortest commute: {FormatHours(pattern.ShortestDurationHours.Value)}");
-                }
-            }
-        }
-        else
-        {
-            builder.AppendLine("  No data available");
-        }
+        // Legend
+        builder.AppendLine("Legend:");
+        builder.AppendLine("  →Work/→Home Avg: Average commute duration");
+        builder.AppendLine("  Best Time: Optimal departure hour (requires 2+ samples)");
+        builder.AppendLine("  Short: Shortest average commute at best time");
 
         return builder.ToString();
     }
@@ -591,6 +616,39 @@ public class ReportCommandHandler(
         {
             return $"{m}m";
         }
+    }
+
+    /// <summary>
+    /// Formats hours as a fixed-width compact string for table display.
+    /// </summary>
+    private static string FormatHoursCompactFixed(decimal hours, int width)
+    {
+        if (hours == 0)
+        {
+            return new string(' ', width);
+        }
+
+        var totalMinutes = (int)Math.Round(hours * 60);
+        var h = totalMinutes / 60;
+        var m = totalMinutes % 60;
+
+        string result;
+        if (h > 0 && m > 0)
+        {
+            // Format as "7.5h" style
+            result = $"{hours:0.0}h";
+        }
+        else if (h > 0)
+        {
+            result = $"{h}h";
+        }
+        else
+        {
+            result = $"{m}m";
+        }
+
+        // Pad to fixed width
+        return result.PadLeft(width);
     }
 
     /// <summary>
