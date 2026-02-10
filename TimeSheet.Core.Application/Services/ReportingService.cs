@@ -264,4 +264,103 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             TotalDurationHours = totalDurationHours
         };
     }
+
+    /// <summary>
+    /// Generates a daily breakdown report for a specific time period.
+    /// Returns one row per day with detailed activity breakdown.
+    /// </summary>
+    /// <param name="userId">The Telegram user ID.</param>
+    /// <param name="startDate">The start date of the period (UTC).</param>
+    /// <param name="endDate">The end date of the period (UTC).</param>
+    /// <param name="cancellationToken">A cancellation token to observe while waiting for the task to complete.</param>
+    /// <returns>A list of daily breakdown rows, one for each day in the period.</returns>
+    public async Task<List<DailyBreakdownRow>> GetDailyBreakdownAsync(
+        long userId,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default)
+    {
+        var sessions = await trackingSessionRepository.GetSessionsInRangeAsync(
+            userId,
+            startDate,
+            endDate,
+            cancellationToken);
+
+        // Group sessions by day
+        var sessionsByDay = sessions
+            .GroupBy(s => s.StartedAt.Date)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        // Calculate all days in range (including days with no activity)
+        var result = new List<DailyBreakdownRow>();
+        var currentDate = startDate;
+
+        while (currentDate < endDate)
+        {
+            var daySessions = sessionsByDay
+                .FirstOrDefault(g => g.Key == currentDate)?
+                .ToList() ?? new List<TrackingSession>();
+
+            decimal workHours = 0;
+            decimal commuteToWorkHours = 0;
+            decimal commuteToHomeHours = 0;
+            decimal lunchHours = 0;
+            decimal? totalDurationHours = null;
+            bool hasActivity = daySessions.Any();
+
+            // Calculate totals for this day
+            foreach (var session in daySessions)
+            {
+                if (session.EndedAt == null) continue;
+
+                var duration = (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours;
+
+                switch (session.State)
+                {
+                    case TrackingState.Working:
+                        workHours += duration;
+                        break;
+
+                    case TrackingState.Commuting:
+                        if (session.CommuteDirection == CommuteDirection.ToWork)
+                        {
+                            commuteToWorkHours += duration;
+                        }
+                        else
+                        {
+                            commuteToHomeHours += duration;
+                        }
+                        break;
+
+                    case TrackingState.Lunch:
+                        lunchHours += duration;
+                        break;
+                }
+            }
+
+            // Calculate total duration for this day (first to last activity)
+            if (daySessions.Any())
+            {
+                var firstActivityStart = daySessions.Min(s => s.StartedAt);
+                var lastActivityEnd = daySessions.Max(s => s.EndedAt ?? DateTime.UtcNow);
+                totalDurationHours = (decimal)(lastActivityEnd - firstActivityStart).TotalHours;
+            }
+
+            result.Add(new DailyBreakdownRow
+            {
+                Date = currentDate,
+                WorkHours = workHours,
+                CommuteToWorkHours = commuteToWorkHours,
+                CommuteToHomeHours = commuteToHomeHours,
+                LunchHours = lunchHours,
+                TotalDurationHours = totalDurationHours,
+                HasActivity = hasActivity
+            });
+
+            currentDate = currentDate.AddDays(1);
+        }
+
+        return result;
+    }
 }
