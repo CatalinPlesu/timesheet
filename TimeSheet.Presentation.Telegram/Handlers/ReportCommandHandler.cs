@@ -13,7 +13,8 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 /// </summary>
 public class ReportCommandHandler(
     ILogger<ReportCommandHandler> logger,
-    IServiceScopeFactory serviceScopeFactory)
+    IServiceScopeFactory serviceScopeFactory,
+    IChartGenerationService chartGenerationService)
 {
     /// <summary>
     /// Handles the /report command.
@@ -63,6 +64,18 @@ public class ReportCommandHandler(
             {
                 responseText = await GenerateDailyAveragesReportAsync(reportingService, userId.Value, cancellationToken);
             }
+            else if (period.StartsWith("chart"))
+            {
+                // Chart report: /report chart [type]
+                // Types: breakdown, trend, activity, averages, commute
+                var chartParts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var chartType = chartParts.Length > 2 ? chartParts[2].ToLowerInvariant() : "breakdown";
+                var chartPeriod = chartParts.Length > 3 ? chartParts[3].ToLowerInvariant() : "week";
+
+                await SendChartReportAsync(botClient, message, reportingService, userId.Value, chartType, chartPeriod, cancellationToken);
+                logger.LogInformation("User {UserId} viewed {ChartType} chart for {Period}", userId.Value, chartType, chartPeriod);
+                return;
+            }
             else if (period.StartsWith("table"))
             {
                 // Table report: /report table [week|month|year]
@@ -108,7 +121,7 @@ public class ReportCommandHandler(
             logger.LogWarning(ex, "Invalid period argument for /report command from user {UserId}", userId.Value);
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid period. Use: /report [day|week|month|year|commute|daily|table|all]\n\n" +
+                text: "Invalid period. Use: /report [day|week|month|year|commute|daily|table|chart|all]\n\n" +
                       "Examples:\n" +
                       "  /report day - Today's summary\n" +
                       "  /report week - This week\n" +
@@ -118,6 +131,11 @@ public class ReportCommandHandler(
                       "  /report daily - Daily averages (7/30/90 days)\n" +
                       "  /report table week - Daily breakdown table for week\n" +
                       "  /report table month - Daily breakdown table for month\n" +
+                      "  /report chart breakdown week - Bar chart of daily work hours\n" +
+                      "  /report chart trend month - Line chart of work hours trend\n" +
+                      "  /report chart activity week - Stacked activity breakdown\n" +
+                      "  /report chart averages - Daily averages comparison (7/30/90 days)\n" +
+                      "  /report chart commute - Commute patterns by day of week\n" +
                       "  /report all - All reports as separate messages",
                 cancellationToken: cancellationToken);
         }
@@ -676,6 +694,106 @@ public class ReportCommandHandler(
         else
         {
             return $"{m}m";
+        }
+    }
+
+    /// <summary>
+    /// Sends a chart report as an image to the user.
+    /// </summary>
+    private async Task SendChartReportAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        IReportingService reportingService,
+        long userId,
+        string chartType,
+        string period,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            byte[] imageData;
+            string caption;
+
+            switch (chartType)
+            {
+                case "breakdown":
+                    {
+                        var (startDate, endDate, periodLabel) = GetDateRange(period);
+                        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+                        imageData = chartGenerationService.GenerateDailyBreakdownChart(breakdown, periodLabel);
+                        caption = $"Daily Work Hours - {periodLabel}";
+                        break;
+                    }
+
+                case "trend":
+                    {
+                        var (startDate, endDate, periodLabel) = GetDateRange(period);
+                        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+                        imageData = chartGenerationService.GenerateWorkHoursTrendChart(breakdown, periodLabel);
+                        caption = $"Work Hours Trend - {periodLabel}";
+                        break;
+                    }
+
+                case "activity":
+                    {
+                        var (startDate, endDate, periodLabel) = GetDateRange(period);
+                        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+                        imageData = chartGenerationService.GenerateActivityBreakdownChart(breakdown, periodLabel);
+                        caption = $"Activity Breakdown - {periodLabel}";
+                        break;
+                    }
+
+                case "averages":
+                    {
+                        var report7Days = await reportingService.GetDailyAveragesAsync(userId, 7, cancellationToken);
+                        var report30Days = await reportingService.GetDailyAveragesAsync(userId, 30, cancellationToken);
+                        var report90Days = await reportingService.GetDailyAveragesAsync(userId, 90, cancellationToken);
+                        imageData = chartGenerationService.GenerateDailyAveragesComparisonChart(report7Days, report30Days, report90Days);
+                        caption = "Daily Averages Comparison";
+                        break;
+                    }
+
+                case "commute":
+                    {
+                        var toWorkPatterns = await reportingService.GetCommutePatternsAsync(userId, CommuteDirection.ToWork, cancellationToken);
+                        var toHomePatterns = await reportingService.GetCommutePatternsAsync(userId, CommuteDirection.ToHome, cancellationToken);
+                        imageData = chartGenerationService.GenerateCommutePatternsChart(toWorkPatterns, toHomePatterns);
+                        caption = "Commute Patterns by Day of Week";
+                        break;
+                    }
+
+                default:
+                    await botClient.SendMessage(
+                        chatId: message.Chat.Id,
+                        text: $"Unknown chart type: {chartType}\n\n" +
+                              "Available chart types:\n" +
+                              "  breakdown - Daily work hours bar chart\n" +
+                              "  trend - Work hours trend line chart\n" +
+                              "  activity - Stacked activity breakdown\n" +
+                              "  averages - Daily averages comparison\n" +
+                              "  commute - Commute patterns by day\n\n" +
+                              "Example: /report chart breakdown week",
+                        cancellationToken: cancellationToken);
+                    return;
+            }
+
+            // Send the chart as a photo
+            using var stream = new MemoryStream(imageData);
+            var inputFile = InputFile.FromStream(stream, $"chart_{chartType}_{period}.png");
+
+            await botClient.SendPhoto(
+                chatId: message.Chat.Id,
+                photo: inputFile,
+                caption: caption,
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error generating chart {ChartType} for user {UserId}", chartType, userId);
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "An error occurred while generating the chart. Please try again.",
+                cancellationToken: cancellationToken);
         }
     }
 }
