@@ -18,10 +18,12 @@ public class ReportCommandHandler(
     /// <summary>
     /// Handles the /report command.
     /// </summary>
+    /// <param name="expandedText">Optional expanded alias text (e.g., "/report day" from "/r d")</param>
     public async Task HandleReportAsync(
         ITelegramBotClient botClient,
         Message message,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? expandedText = null)
     {
         var userId = message.From?.Id;
         if (userId == null)
@@ -32,8 +34,8 @@ public class ReportCommandHandler(
 
         try
         {
-            // Parse command arguments
-            var messageText = message.Text ?? string.Empty;
+            // Parse command arguments (use expanded text if provided, otherwise use message text)
+            var messageText = expandedText ?? message.Text ?? string.Empty;
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
             // Default to day if no argument provided

@@ -57,18 +57,17 @@ public class UpdateHandler(
             userId ?? 0,
             messageText);
 
+        // Expand aliases to full commands
+        messageText = ExpandAliases(messageText);
+
         // /about and /help are available to everyone (registered or not)
-        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase) ||
-            messageText.StartsWith("/a ", StringComparison.OrdinalIgnoreCase) ||
-            messageText == "/a")
+        if (messageText.StartsWith("/about", StringComparison.OrdinalIgnoreCase))
         {
             await aboutCommandHandler.HandleAboutAsync(botClient, message, cancellationToken);
             return;
         }
 
-        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase) ||
-            messageText.StartsWith("/h ", StringComparison.OrdinalIgnoreCase) ||
-            messageText == "/h")
+        if (messageText.StartsWith("/help", StringComparison.OrdinalIgnoreCase))
         {
             var helpParts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             await helpCommandHandler.HandleHelpAsync(botClient, message, helpParts, cancellationToken);
@@ -76,9 +75,7 @@ public class UpdateHandler(
         }
 
         // /register is available to everyone (but requires valid mnemonic)
-        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase) ||
-            messageText.StartsWith("/re ", StringComparison.OrdinalIgnoreCase) ||
-            messageText == "/re")
+        if (messageText.StartsWith("/register", StringComparison.OrdinalIgnoreCase))
         {
             await registrationCommandHandler.HandleRegisterAsync(botClient, message, cancellationToken);
             return;
@@ -103,51 +100,35 @@ public class UpdateHandler(
         }
 
         // Route commands for registered users
-        if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase) ||
-            messageText.StartsWith("/c ", StringComparison.OrdinalIgnoreCase) ||
-            messageText == "/c")
+        if (messageText.StartsWith("/commute", StringComparison.OrdinalIgnoreCase))
         {
             await trackingCommandHandler.HandleCommuteAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/work", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/w ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/w")
+        else if (messageText.StartsWith("/work", StringComparison.OrdinalIgnoreCase))
         {
             await trackingCommandHandler.HandleWorkAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/lunch", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/l ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/l")
+        else if (messageText.StartsWith("/lunch", StringComparison.OrdinalIgnoreCase))
         {
             await trackingCommandHandler.HandleLunchAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/e ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/e")
+        else if (messageText.StartsWith("/edit", StringComparison.OrdinalIgnoreCase))
         {
             await editCommandHandler.HandleEditAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/d ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/d")
+        else if (messageText.StartsWith("/delete", StringComparison.OrdinalIgnoreCase))
         {
             await deleteCommandHandler.HandleDeleteAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/g ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/g")
+        else if (messageText.StartsWith("/generate", StringComparison.OrdinalIgnoreCase))
         {
             await generateCommandHandler.HandleGenerateAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/li ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/li")
+        else if (messageText.StartsWith("/list", StringComparison.OrdinalIgnoreCase))
         {
             await listCommandHandler.HandleListAsync(botClient, message, cancellationToken);
         }
-        else if (messageText.StartsWith("/settings", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/se ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/se")
+        else if (messageText.StartsWith("/settings", StringComparison.OrdinalIgnoreCase))
         {
             // Parse the command to see if it's a settings update
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -172,15 +153,11 @@ public class UpdateHandler(
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);
             }
         }
-        else if (messageText.StartsWith("/report", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/r ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/r")
+        else if (messageText.StartsWith("/report", StringComparison.OrdinalIgnoreCase))
         {
-            await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken);
+            await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken, expandedText: messageText);
         }
-        else if (messageText.StartsWith("/status", StringComparison.OrdinalIgnoreCase) ||
-                 messageText.StartsWith("/s ", StringComparison.OrdinalIgnoreCase) ||
-                 messageText == "/s")
+        else if (messageText.StartsWith("/status", StringComparison.OrdinalIgnoreCase))
         {
             await statusCommandHandler.HandleStatusAsync(botClient, message, cancellationToken);
         }
@@ -262,5 +239,89 @@ public class UpdateHandler(
     {
         logger.LogError(exception, "Error occurred while processing Telegram update");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Expands command aliases to their full forms at all levels.
+    /// For example: "/h r" becomes "/help report", "/c" becomes "/commute"
+    /// </summary>
+    private static string ExpandAliases(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input) || !input.StartsWith('/'))
+        {
+            return input;
+        }
+
+        // Split the command into parts
+        var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return input;
+        }
+
+        // Define command-level alias mappings
+        var commandAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "/a", "/about" },
+            { "/h", "/help" },
+            { "/re", "/register" },
+            { "/c", "/commute" },
+            { "/w", "/work" },
+            { "/l", "/lunch" },
+            { "/e", "/edit" },
+            { "/d", "/delete" },
+            { "/g", "/generate" },
+            { "/li", "/list" },
+            { "/se", "/settings" },
+            { "/r", "/report" },
+            { "/s", "/status" }
+        };
+
+        // Expand the command (first part)
+        if (commandAliases.TryGetValue(parts[0], out var expandedCommand))
+        {
+            parts[0] = expandedCommand;
+        }
+
+        // Expand the subcommand (second part, if present) - context-aware based on parent command
+        if (parts.Length >= 2 && parts[1].Length == 1)
+        {
+            var subcommand = parts[1];
+            var parentCommand = parts[0].TrimStart('/');
+
+            // Define subcommand aliases per parent command
+            var expandedSubcommand = (parentCommand.ToLowerInvariant(), subcommand.ToLowerInvariant()) switch
+            {
+                // /help subcommands
+                ("help", "t") => "tracking",
+                ("help", "r") => "report",
+                ("help", "s") => "settings",
+
+                // /report subcommands
+                ("report", "d") => "day",
+                ("report", "w") => "week",
+                ("report", "m") => "month",
+                ("report", "y") => "year",
+                ("report", "c") => "commute",
+                ("report", "a") => "all",
+
+                // /settings subcommands
+                ("settings", "u") => "utc",
+                ("settings", "l") => "lunch",
+                ("settings", "t") => "target",
+                ("settings", "f") => "forgot",
+
+                // No match - keep original
+                _ => null
+            };
+
+            if (expandedSubcommand != null)
+            {
+                parts[1] = expandedSubcommand;
+            }
+        }
+
+        // Reconstruct the command
+        return string.Join(' ', parts);
     }
 }
