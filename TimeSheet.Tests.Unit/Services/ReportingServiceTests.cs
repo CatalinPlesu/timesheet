@@ -480,4 +480,203 @@ public class ReportingServiceTests
         // Total duration should span from day1 8:00 to day2 17:30 = 33.5 hours
         Assert.Equal(33.5m, result.TotalDurationHours);
     }
+
+    [Fact]
+    public async Task GetDailyBreakdownAsync_WithNoSessions_ReturnsEmptyRowsForAllDays()
+    {
+        // Arrange
+        const long userId = 123456;
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = startDate.AddDays(7);
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<TrackingSession>());
+
+        // Act
+        var result = await _sut.GetDailyBreakdownAsync(userId, startDate, endDate, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(7, result.Count); // 7 days in range
+        Assert.All(result, row =>
+        {
+            Assert.False(row.HasActivity);
+            Assert.Equal(0, row.WorkHours);
+            Assert.Equal(0, row.CommuteToWorkHours);
+            Assert.Equal(0, row.CommuteToHomeHours);
+            Assert.Equal(0, row.LunchHours);
+            Assert.Null(row.TotalDurationHours);
+        });
+    }
+
+    [Fact]
+    public async Task GetDailyBreakdownAsync_WithSessions_CalculatesCorrectBreakdownPerDay()
+    {
+        // Arrange
+        const long userId = 123456;
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = startDate.AddDays(3);
+        var day1 = startDate;
+        var day2 = startDate.AddDays(1);
+
+        var sessions = new List<TrackingSession>
+        {
+            // Day 1: Full work day
+            new(userId, TrackingState.Commuting, day1.AddHours(8), CommuteDirection.ToWork),
+            new(userId, TrackingState.Working, day1.AddHours(9)),
+            new(userId, TrackingState.Lunch, day1.AddHours(12)),
+            new(userId, TrackingState.Working, day1.AddHours(13)),
+            new(userId, TrackingState.Commuting, day1.AddHours(17), CommuteDirection.ToHome),
+
+            // Day 2: Partial work day
+            new(userId, TrackingState.Working, day2.AddHours(9)),
+        };
+
+        sessions[0].End(day1.AddHours(9));   // 1 hour commute to work
+        sessions[1].End(day1.AddHours(12));  // 3 hours work
+        sessions[2].End(day1.AddHours(13));  // 1 hour lunch
+        sessions[3].End(day1.AddHours(17));  // 4 hours work
+        sessions[4].End(day1.AddHours(17.5)); // 0.5 hours commute to home
+        sessions[5].End(day2.AddHours(15));  // 6 hours work
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sut.GetDailyBreakdownAsync(userId, startDate, endDate, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(3, result.Count);
+
+        // Day 1
+        var day1Row = result[0];
+        Assert.Equal(day1, day1Row.Date);
+        Assert.True(day1Row.HasActivity);
+        Assert.Equal(7m, day1Row.WorkHours); // 3 + 4
+        Assert.Equal(1m, day1Row.CommuteToWorkHours);
+        Assert.Equal(0.5m, day1Row.CommuteToHomeHours);
+        Assert.Equal(1m, day1Row.LunchHours);
+        Assert.Equal(9.5m, day1Row.TotalDurationHours); // 8:00 to 17:30
+
+        // Day 2
+        var day2Row = result[1];
+        Assert.Equal(day2, day2Row.Date);
+        Assert.True(day2Row.HasActivity);
+        Assert.Equal(6m, day2Row.WorkHours);
+        Assert.Equal(0m, day2Row.CommuteToWorkHours);
+        Assert.Equal(0m, day2Row.CommuteToHomeHours);
+        Assert.Equal(0m, day2Row.LunchHours);
+        Assert.Equal(6m, day2Row.TotalDurationHours); // 9:00 to 15:00
+
+        // Day 3 (no activity)
+        var day3Row = result[2];
+        Assert.False(day3Row.HasActivity);
+        Assert.Equal(0m, day3Row.WorkHours);
+        Assert.Null(day3Row.TotalDurationHours);
+    }
+
+    [Fact]
+    public async Task GetDailyBreakdownAsync_IncludesAllDaysInRange()
+    {
+        // Arrange
+        const long userId = 123456;
+        var startDate = new DateTime(2026, 2, 1); // Feb 1
+        var endDate = new DateTime(2026, 2, 8);   // Feb 8 (7 days)
+
+        // Only one session on Feb 3
+        var sessions = new List<TrackingSession>
+        {
+            new(userId, TrackingState.Working, new DateTime(2026, 2, 3, 9, 0, 0))
+        };
+        sessions[0].End(new DateTime(2026, 2, 3, 17, 0, 0));
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sut.GetDailyBreakdownAsync(userId, startDate, endDate, CancellationToken.None);
+
+        // Assert
+        Assert.Equal(7, result.Count);
+
+        // Check that only Feb 3 has activity
+        Assert.False(result[0].HasActivity); // Feb 1
+        Assert.False(result[1].HasActivity); // Feb 2
+        Assert.True(result[2].HasActivity);  // Feb 3
+        Assert.False(result[3].HasActivity); // Feb 4
+        Assert.False(result[4].HasActivity); // Feb 5
+        Assert.False(result[5].HasActivity); // Feb 6
+        Assert.False(result[6].HasActivity); // Feb 7
+
+        Assert.Equal(8m, result[2].WorkHours); // 9:00 to 17:00
+    }
+
+    [Fact]
+    public async Task GetDailyBreakdownAsync_HandlesActiveSessions()
+    {
+        // Arrange
+        const long userId = 123456;
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = startDate.AddDays(1);
+
+        var sessions = new List<TrackingSession>
+        {
+            new(userId, TrackingState.Working, startDate.AddHours(9)),
+            // Active session (no end time)
+            new(userId, TrackingState.Working, startDate.AddHours(14)),
+        };
+
+        sessions[0].End(startDate.AddHours(12)); // 3 hours work
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sut.GetDailyBreakdownAsync(userId, startDate, endDate, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result);
+        var row = result[0];
+        Assert.True(row.HasActivity);
+        Assert.Equal(3m, row.WorkHours); // Only completed session counts
+        Assert.NotNull(row.TotalDurationHours);
+        // Total duration should span from 9:00 to now (active session)
+        Assert.True(row.TotalDurationHours >= 5m); // At least 5 hours (9:00 to 14:00)
+    }
+
+    [Fact]
+    public async Task GetDailyBreakdownAsync_SeparatesCommuteDirections()
+    {
+        // Arrange
+        const long userId = 123456;
+        var startDate = DateTime.UtcNow.Date;
+        var endDate = startDate.AddDays(1);
+
+        var sessions = new List<TrackingSession>
+        {
+            new(userId, TrackingState.Commuting, startDate.AddHours(8), CommuteDirection.ToWork),
+            new(userId, TrackingState.Working, startDate.AddHours(9)),
+            new(userId, TrackingState.Commuting, startDate.AddHours(17), CommuteDirection.ToHome),
+        };
+
+        sessions[0].End(startDate.AddHours(9));   // 1 hour to work
+        sessions[1].End(startDate.AddHours(17));  // 8 hours work
+        sessions[2].End(startDate.AddHours(17.75)); // 0.75 hours to home
+
+        _mockTrackingSessionRepository
+            .Setup(x => x.GetSessionsInRangeAsync(userId, startDate, endDate, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessions);
+
+        // Act
+        var result = await _sut.GetDailyBreakdownAsync(userId, startDate, endDate, CancellationToken.None);
+
+        // Assert
+        var row = result[0];
+        Assert.Equal(1m, row.CommuteToWorkHours);
+        Assert.Equal(0.75m, row.CommuteToHomeHours);
+        Assert.Equal(8m, row.WorkHours);
+    }
 }
