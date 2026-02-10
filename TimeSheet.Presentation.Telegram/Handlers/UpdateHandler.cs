@@ -304,6 +304,7 @@ public class UpdateHandler(
                 ("report", "y") => "year",
                 ("report", "c") => "commute",
                 ("report", "a") => "all",
+                ("report", "t") => "table",
 
                 // /settings subcommands
                 ("settings", "u") => "utc",
@@ -318,6 +319,30 @@ public class UpdateHandler(
             if (expandedSubcommand != null)
             {
                 parts[1] = expandedSubcommand;
+            }
+        }
+
+        // Expand the third level (e.g., /report table w -> /report table week)
+        if (parts.Length >= 3 && parts[2].Length == 1)
+        {
+            var parentCommand = parts[0].TrimStart('/');
+            var subcommand = parts[1];
+            var thirdLevel = parts[2];
+
+            var expandedThirdLevel = (parentCommand.ToLowerInvariant(), subcommand.ToLowerInvariant(), thirdLevel.ToLowerInvariant()) switch
+            {
+                // /report table subcommands
+                ("report", "table", "w") => "week",
+                ("report", "table", "m") => "month",
+                ("report", "table", "y") => "year",
+
+                // No match - keep original
+                _ => null
+            };
+
+            if (expandedThirdLevel != null)
+            {
+                parts[2] = expandedThirdLevel;
             }
         }
 
