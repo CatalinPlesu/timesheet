@@ -136,6 +136,32 @@ Seq is free for development use with some limitations:
 
 For production use with multiple users or advanced features, see [Seq licensing](https://datalust.co/pricing).
 
+## Testing the Setup
+
+To verify logs are flowing to Seq:
+
+1. Start Seq (if not already running):
+   ```bash
+   docker compose up -d seq
+   ```
+
+2. Run the application locally:
+   ```bash
+   dotnet run --project TimeSheet.Presentation.Telegram
+   ```
+
+3. Open Seq in your browser: http://localhost:5341
+
+4. You should see logs appearing in real-time with structured properties like:
+   - `SourceContext` (which class logged the message)
+   - `Level` (Information, Warning, Error, etc.)
+   - Message templates with extracted properties
+
+5. Query the Seq API to verify logs programmatically:
+   ```bash
+   curl -s "http://localhost:5341/api/events?count=5"
+   ```
+
 ## Alternatives Considered
 
 - **Jaeger + OpenTelemetry**: Better for distributed tracing, but overkill for a single-service bot
