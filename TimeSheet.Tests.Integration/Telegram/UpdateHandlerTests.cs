@@ -423,4 +423,112 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         var statusResponses = await SendTextAsync("/s", userId: userId);
         Assert.Contains("Current Status", statusResponses[0].Text);
     }
+
+    [Fact]
+    public async Task HelpCommand_RegularUser_DoesNotShowAdminCommands()
+    {
+        // Arrange - register a regular (non-admin) user
+        const long userId = 30001;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: false);
+
+        // Act - request main help
+        var responses = await SendTextAsync("/help", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("TimeSheet Bot", responses[0].Text);
+        // Should NOT contain admin section
+        Assert.DoesNotContain("Admin:", responses[0].Text);
+        Assert.DoesNotContain("/g", responses[0].Text);
+        // Should not show /help admin option
+        Assert.DoesNotContain("/help admin", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HelpCommand_AdminUser_ShowsAdminCommands()
+    {
+        // Arrange - register an admin user
+        const long userId = 30002;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: true);
+
+        // Act - request main help
+        var responses = await SendTextAsync("/help", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("TimeSheet Bot", responses[0].Text);
+        // Should contain admin section
+        Assert.Contains("Admin:", responses[0].Text);
+        Assert.Contains("/g", responses[0].Text);
+        // Should show /help admin option
+        Assert.Contains("/help admin", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HelpCommand_AdminSubmenu_AdminUser_ShowsAdminHelp()
+    {
+        // Arrange - register an admin user
+        const long userId = 30003;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: true);
+
+        // Act - request admin help submenu
+        var responses = await SendTextAsync("/help admin", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Admin Commands", responses[0].Text);
+        Assert.Contains("/generate", responses[0].Text);
+        Assert.Contains("BIP39 mnemonic", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HelpCommand_AdminSubmenu_RegularUser_ShowsAccessDenied()
+    {
+        // Arrange - register a regular (non-admin) user
+        const long userId = 30004;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: false);
+
+        // Act - attempt to request admin help submenu
+        var responses = await SendTextAsync("/help admin", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Admin commands are only available to administrators", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HelpCommand_Alias_WorksCorrectly()
+    {
+        // Arrange
+        const long userId = 30005;
+        await RegisterTestUserAsync(telegramUserId: userId);
+
+        // Act - use alias /h instead of /help
+        var responses = await SendTextAsync("/h", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("TimeSheet Bot", responses[0].Text);
+    }
+
+    [Fact]
+    public async Task HelpCommand_AdminAlias_WorksCorrectly()
+    {
+        // Arrange - register an admin user
+        const long userId = 30006;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: true);
+
+        // Act - use multi-level alias /h admin (expanded from potential future /h a)
+        var responses = await SendTextAsync("/h admin", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Admin Commands", responses[0].Text);
+    }
 }
