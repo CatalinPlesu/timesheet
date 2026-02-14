@@ -1,41 +1,37 @@
 # Epic 8 - REST API + Svelte Frontend - Execution State
 
 **Epic:** TimeSheet-zei
-**Status:** In Progress
+**Status:** ✅ COMPLETED
 **Started:** 2026-02-14
+**Completed:** 2026-02-14
 
-## Active Work
+## Completed Tasks (All Merged to Main)
 
-| Agent | Task | Worktree | Branch | Status | Progress |
-|-------|------|----------|--------|--------|----------|
-| None | - | - | - | - | - |
-
-## Recently Completed (2026-02-14)
-
+**Phase 1 - Foundation:**
 - ✅ **zei.1** - API project + OpenAPI/Scalar setup
 - ✅ **zei.2** - JWT authentication endpoints
 - ✅ **zei.6** - Telegram /login command
 - ✅ **zei.7** - Frontend project (SvelteKit + DaisyUI + Heroicons)
+- ✅ **zei.8** - NSwag API client generation
 
-## Next Tasks (Ready to Start)
+**Phase 2 - API Endpoints:**
+- ✅ **zei.3** - Tracking state endpoints (GET current, POST toggle)
+- ✅ **zei.4** - Entries CRUD endpoints (list, get, update, delete)
+- ✅ **zei.5** - Analytics endpoints (averages, patterns, chart data)
 
-**High Priority:**
-- **zei.8** - NSwag API client generation (depends on zei.1 ✅ + zei.7 ✅)
-- **zei.3** - Tracking state endpoints implementation (depends on zei.1 ✅)
-- **zei.4** - Entries CRUD endpoints implementation (depends on zei.1 ✅)
-- **zei.5** - Analytics endpoints implementation (depends on zei.1 ✅)
+**Phase 3 - Frontend UI:**
+- ✅ **zei.9** - Authentication flow UI (login, JWT refresh, route protection)
+- ✅ **zei.10** - Main tracking page (3 toggle buttons, time offset menu)
+- ✅ **zei.11** - Audit table view (grouping, filtering, pagination)
+- ✅ **zei.12** - Edit/Delete entry UI (modals, optimistic updates)
+- ✅ **zei.13** - Charts/Analytics page (Chart.js with idle time)
 
-**Medium Priority (after zei.8):**
-- **zei.9** - Auth UI (depends on zei.8)
-- **zei.10** - Tracking page UI (depends on zei.8)
-- **zei.11** - Audit table UI (depends on zei.8)
-- **zei.12** - Edit/Delete UI (depends on zei.8)
-- **zei.13** - Charts/Analytics page (depends on zei.8)
+## Remaining Tasks (Optional/Polish)
 
 **Lower Priority:**
-- **zei.14** - PWA support (depends on zei.7 ✅)
+- **zei.14** - PWA support (manifest, service worker, add-to-home)
 - **zei.15** - Docker Compose (3 services: bot, API, frontend)
-- **zei.16** - Justfile updates
+- **zei.16** - Justfile updates (namespaced commands for all services)
 
 ## Known Issues
 
