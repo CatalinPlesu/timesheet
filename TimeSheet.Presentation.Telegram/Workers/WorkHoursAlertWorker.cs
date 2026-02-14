@@ -75,19 +75,18 @@ public sealed class WorkHoursAlertWorker(
             {
                 // Calculate user's local date
                 var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
+                var userLocalDate = DateOnly.FromDateTime(userLocalTime);
 
                 // Skip weekend notifications
                 if (userLocalTime.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     continue;
 
-                // Check if we've already alerted this user today
+                // Check if we've already alerted this user today (using user's local date)
                 if (_alertsSentToday.TryGetValue(user.TelegramUserId, out var lastAlertDate) &&
-                    lastAlertDate == today)
+                    lastAlertDate == userLocalDate)
                 {
                     continue; // Already alerted today
                 }
-
-                var userLocalDate = DateOnly.FromDateTime(userLocalTime);
 
                 // Calculate the start of the user's day in UTC
                 var userDayStartUtc = userLocalDate.ToDateTime(TimeOnly.MinValue).AddMinutes(-user.UtcOffsetMinutes);
@@ -108,8 +107,8 @@ public sealed class WorkHoursAlertWorker(
                         totalWorkHours,
                         cancellationToken);
 
-                    // Mark as alerted today
-                    _alertsSentToday[user.TelegramUserId] = today;
+                    // Mark as alerted today (using user's local date)
+                    _alertsSentToday[user.TelegramUserId] = userLocalDate;
                     alertsCount++;
 
                     logger.LogInformation(

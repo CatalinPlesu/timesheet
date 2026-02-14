@@ -77,21 +77,21 @@ public sealed class LunchReminderWorker(
             {
                 // Calculate user's current local time
                 var userLocalTime = now.AddMinutes(user.UtcOffsetMinutes);
+                var userLocalDate = DateOnly.FromDateTime(userLocalTime);
 
                 // Skip weekend notifications
                 if (userLocalTime.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     continue;
 
-                // Check if we've already reminded this user today
+                // Check if we've already reminded this user today (using user's local date)
                 if (_remindersSentToday.TryGetValue(user.TelegramUserId, out var lastReminderDate) &&
-                    lastReminderDate == today)
+                    lastReminderDate == userLocalDate)
                 {
                     continue; // Already reminded today
                 }
 
                 var userLocalHour = userLocalTime.Hour;
                 var userLocalMinute = userLocalTime.Minute;
-                var userLocalDate = DateOnly.FromDateTime(userLocalTime);
 
                 // Check if it's past the reminder time (hour and minute)
                 var reminderHour = user.LunchReminderHour!.Value;
@@ -136,8 +136,8 @@ public sealed class LunchReminderWorker(
                 // Send the reminder
                 await notificationService.SendLunchReminderAsync(user.TelegramUserId, cancellationToken);
 
-                // Mark as reminded today
-                _remindersSentToday[user.TelegramUserId] = today;
+                // Mark as reminded today (using user's local date)
+                _remindersSentToday[user.TelegramUserId] = userLocalDate;
                 remindersCount++;
 
                 logger.LogInformation(
