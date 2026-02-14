@@ -63,11 +63,12 @@ public sealed class WorkHoursAlertWorker(
         }
 
         var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
         var alertsCount = 0;
 
         // Clean up old alert records (from previous days)
-        CleanupOldAlertRecords(today);
+        // Note: This cleanup is conservative - it only removes entries that are definitely old
+        // (more than 2 days old) to avoid timezone-related issues
+        CleanupOldAlertRecords(now);
 
         foreach (var user in usersWithTarget)
         {
@@ -132,11 +133,18 @@ public sealed class WorkHoursAlertWorker(
 
     /// <summary>
     /// Removes alert records from previous days to prevent memory growth.
+    /// Uses a conservative approach: removes entries older than 2 days to avoid
+    /// timezone-related issues (since users can be in different timezones).
     /// </summary>
-    private void CleanupOldAlertRecords(DateOnly today)
+    private void CleanupOldAlertRecords(DateTime nowUtc)
     {
+        // Calculate a conservative cutoff: 2 days ago
+        // This ensures we don't accidentally remove today's alerts for users
+        // in very different timezones (e.g., UTC-12 to UTC+14 is 26 hours difference)
+        var cutoffDate = DateOnly.FromDateTime(nowUtc).AddDays(-2);
+
         var usersToRemove = _alertsSentToday
-            .Where(kvp => kvp.Value < today)
+            .Where(kvp => kvp.Value < cutoffDate)
             .Select(kvp => kvp.Key)
             .ToList();
 

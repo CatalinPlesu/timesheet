@@ -65,11 +65,12 @@ public sealed class LunchReminderWorker(
         }
 
         var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
         var remindersCount = 0;
 
         // Clean up old reminder records (from previous days)
-        CleanupOldReminderRecords(today);
+        // Note: This cleanup is conservative - it only removes entries that are definitely old
+        // (more than 2 days old) to avoid timezone-related issues
+        CleanupOldReminderRecords(now);
 
         foreach (var user in usersWithReminder)
         {
@@ -159,11 +160,18 @@ public sealed class LunchReminderWorker(
 
     /// <summary>
     /// Removes reminder records from previous days to prevent memory growth.
+    /// Uses a conservative approach: removes entries older than 2 days to avoid
+    /// timezone-related issues (since users can be in different timezones).
     /// </summary>
-    private void CleanupOldReminderRecords(DateOnly today)
+    private void CleanupOldReminderRecords(DateTime nowUtc)
     {
+        // Calculate a conservative cutoff: 2 days ago
+        // This ensures we don't accidentally remove today's reminders for users
+        // in very different timezones (e.g., UTC-12 to UTC+14 is 26 hours difference)
+        var cutoffDate = DateOnly.FromDateTime(nowUtc).AddDays(-2);
+
         var usersToRemove = _remindersSentToday
-            .Where(kvp => kvp.Value < today)
+            .Where(kvp => kvp.Value < cutoffDate)
             .Select(kvp => kvp.Key)
             .ToList();
 
