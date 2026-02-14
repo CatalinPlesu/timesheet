@@ -1,14 +1,18 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TimeSheet.Core.Application.Interfaces;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
 /// <summary>
 /// Handles the /help command, which explains how to use the bot.
-/// Supports submenus: /help tracking, /help report, /help settings.
+/// Supports submenus: /help tracking, /help report, /help settings, /help admin.
+/// Shows context-aware help based on user role (admin vs regular user).
 /// </summary>
-public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
+public class HelpCommandHandler(
+    ILogger<HelpCommandHandler> logger,
+    IServiceScopeFactory serviceScopeFactory)
 {
     private const string MainHelpMessage = """
         *TimeSheet Bot*
@@ -20,6 +24,19 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         *Other:* `/a` `/h` — about, help
 
         For details: `/help tracking`, `/help report`, `/help settings`
+        """;
+
+    private const string MainHelpMessageAdmin = """
+        *TimeSheet Bot*
+
+        *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
+        *View & Edit:* `/li` `/e` `/d` — list, edit, delete
+        *Reports:* `/r` [day|week|month|year|commute|daily|all]
+        *Settings:* `/se` — timezone, reminders, alerts
+        *Admin:* `/g` — generate registration mnemonic
+        *Other:* `/a` `/h` — about, help
+
+        For details: `/help tracking`, `/help report`, `/help settings`, `/help admin`
         """;
 
     private const string TrackingHelpMessage = """
@@ -82,8 +99,24 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         • `/settings forgot off` — Disable alert
         """;
 
+    private const string AdminHelpMessage = """
+        *Admin Commands*
+
+        `/generate` or `/g` — Generate registration mnemonic
+
+        Generates a new BIP39 mnemonic for user registration. The mnemonic is single-use and will be consumed when a new user registers with it.
+
+        *Usage:*
+        1. Run `/generate` to create a new mnemonic
+        2. Share the generated `/register [mnemonic]` command with the new user
+        3. The new user runs the command to complete registration
+
+        *Note:* This command is only available to administrators.
+        """;
+
     /// <summary>
     /// Handles the /help command with optional subtopic argument.
+    /// Shows context-aware help based on user role (admin vs regular user).
     /// </summary>
     public async Task HandleHelpAsync(
         ITelegramBotClient botClient,
@@ -91,10 +124,20 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
         string[] commandParts,
         CancellationToken cancellationToken)
     {
+        var userId = message.From?.Id;
+        var username = message.From?.Username;
+
         logger.LogInformation(
             "Help command from user {UserId} ({Username})",
-            message.From?.Id ?? 0,
-            message.From?.Username ?? "Unknown");
+            userId ?? 0,
+            username ?? "Unknown");
+
+        // Check if the user is an admin
+        var isAdmin = false;
+        if (userId.HasValue)
+        {
+            isAdmin = await IsUserAdminAsync(userId.Value, cancellationToken);
+        }
 
         var subtopic = commandParts.Length >= 2 ? commandParts[1].ToLowerInvariant() : null;
 
@@ -103,7 +146,9 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
             "tracking" => TrackingHelpMessage,
             "report" => ReportHelpMessage,
             "settings" => SettingsHelpMessage,
-            _ => MainHelpMessage
+            "admin" when isAdmin => AdminHelpMessage,
+            "admin" => "⛔ Admin commands are only available to administrators.",
+            _ => isAdmin ? MainHelpMessageAdmin : MainHelpMessage
         };
 
         await botClient.SendMessage(
@@ -111,5 +156,24 @@ public class HelpCommandHandler(ILogger<HelpCommandHandler> logger)
             text: text,
             parseMode: ParseMode.Markdown,
             cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Checks if a user is an admin.
+    /// </summary>
+    private async Task<bool> IsUserAdminAsync(long telegramUserId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByTelegramUserIdAsync(telegramUserId, cancellationToken);
+            return user?.IsAdmin ?? false;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error checking admin status for user {UserId}", telegramUserId);
+            return false;
+        }
     }
 }
