@@ -1,5 +1,5 @@
 using ScottPlot;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Models;
 
 namespace TimeSheet.Core.Application.Services;

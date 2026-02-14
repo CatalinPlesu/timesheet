@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Parsers;
 using TimeSheet.Core.Application.Services;
 using TimeSheet.Core.Domain.Services;

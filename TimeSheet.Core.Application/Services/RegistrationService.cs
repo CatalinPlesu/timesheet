@@ -1,7 +1,9 @@
-namespace TimeSheet.Core.Application.Services;
-
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Repositories;
+
+namespace TimeSheet.Core.Application.Services;
 
 /// <summary>
 /// Service for handling user registration with BIP39 mnemonic authentication.

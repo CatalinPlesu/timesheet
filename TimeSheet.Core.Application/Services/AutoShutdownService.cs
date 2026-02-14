@@ -1,8 +1,10 @@
-namespace TimeSheet.Core.Application.Services;
-
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
+using TimeSheet.Core.Domain.Repositories;
+
+namespace TimeSheet.Core.Application.Services;
 
 /// <summary>
 /// Service for checking and handling auto-shutdown of long-running tracking sessions.

@@ -1,10 +1,11 @@
-namespace TimeSheet.Core.Application.Services;
-
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
+using TimeSheet.Core.Domain.Repositories;
+
+namespace TimeSheet.Core.Application.Services;
 
 /// <summary>
 /// Service for detecting and notifying users about long-running sessions that may have been forgotten.

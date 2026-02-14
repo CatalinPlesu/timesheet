@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using NBitcoin;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.ValueObjects;
 
 namespace TimeSheet.Core.Application.Services;
