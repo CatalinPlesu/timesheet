@@ -510,3 +510,8 @@ zei-11-audit-table/
 zei-12-edit-delete/
 # bd worktree
 zei-13-analytics-charts/
+
+# Shared database symlink (local dev only)
+TimeSheet.Presentation.API/timesheet.db
+TimeSheet.Presentation.API/timesheet.db-shm
+TimeSheet.Presentation.API/timesheet.db-wal
