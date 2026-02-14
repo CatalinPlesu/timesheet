@@ -2,7 +2,7 @@ using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Core.Domain.Interfaces;
 
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for TrackingSession entities with specialized query methods.

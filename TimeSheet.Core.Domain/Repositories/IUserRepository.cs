@@ -1,7 +1,7 @@
-namespace TimeSheet.Core.Application.Interfaces;
-
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Interfaces;
+
+namespace TimeSheet.Core.Domain.Repositories;
 
 /// <summary>
 /// Repository interface for User entity operations.

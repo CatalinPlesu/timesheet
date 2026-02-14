@@ -1,6 +1,6 @@
 using TimeSheet.Core.Domain.ValueObjects;
 
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
 /// Service for generating and managing BIP39 mnemonics for user registration.

@@ -1,6 +1,6 @@
 using TimeSheet.Core.Application.Models;
 
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
 /// Service for generating chart images from report data.

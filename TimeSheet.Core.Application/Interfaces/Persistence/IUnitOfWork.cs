@@ -1,4 +1,4 @@
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Persistence;
 
 /// <summary>
 /// Unit of Work pattern interface for coordinating multiple repository operations

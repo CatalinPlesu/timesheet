@@ -1,7 +1,7 @@
 using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Domain.Enums;
 
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
 /// Application service for generating reports and analytics.

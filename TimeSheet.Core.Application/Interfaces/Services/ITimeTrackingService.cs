@@ -2,7 +2,7 @@ using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
 /// Defines the contract for the time tracking application service.

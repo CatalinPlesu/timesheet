@@ -1,4 +1,4 @@
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
 /// Service for sending notifications to users via Telegram.

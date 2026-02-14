@@ -1,4 +1,4 @@
-namespace TimeSheet.Core.Application.Interfaces;
+namespace TimeSheet.Core.Application.Interfaces.Services;
 
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
