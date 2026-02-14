@@ -24,12 +24,18 @@ public class GenerateCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Act
         var responses = await SendTextAsync("/generate", userId: adminUserId);
 
-        // Assert
-        Assert.Single(responses);
+        // Assert - should receive 2 messages
+        Assert.Equal(2, responses.Count);
         Assert.Equal(ResponseType.Message, responses[0].Type);
-        Assert.Contains("Generated new registration mnemonic", responses[0].Text);
-        Assert.Contains("/register", responses[0].Text);
-        Assert.Contains("single-use", responses[0].Text);
+        Assert.Equal(ResponseType.Message, responses[1].Type);
+
+        // First message: intro/explanation
+        Assert.Contains("TimeSheet", responses[0].Text);
+        Assert.Contains("time-tracking bot", responses[0].Text);
+
+        // Second message: registration command
+        Assert.Contains("/register", responses[1].Text);
+        Assert.Contains("single-use", responses[1].Text);
     }
 
     [Fact]
@@ -71,9 +77,9 @@ public class GenerateCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Act - generate a mnemonic
         var responses = await SendTextAsync("/generate", userId: adminUserId);
 
-        // Assert - extract the mnemonic from the response
-        Assert.Single(responses);
-        var responseText = responses[0].Text;
+        // Assert - should receive 2 messages, extract from the second one
+        Assert.Equal(2, responses.Count);
+        var responseText = responses[1].Text;
         Assert.Contains("/register", responseText);
 
         // Extract the mnemonic phrase (everything after "`/register " and before the "`")
@@ -103,8 +109,8 @@ public class GenerateCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Act - generate a mnemonic
         var responses = await SendTextAsync("/generate", userId: adminUserId);
 
-        // Extract the mnemonic
-        var responseText = responses[0].Text!;
+        // Extract the mnemonic from the second message
+        var responseText = responses[1].Text!;
         var registerIndex = responseText.IndexOf("`/register ", StringComparison.Ordinal);
         var mnemonicStart = registerIndex + "`/register ".Length;
         var mnemonicEnd = responseText.IndexOf('`', mnemonicStart);
@@ -133,8 +139,8 @@ public class GenerateCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         // Act
         var responses = await SendTextAsync("/generate", userId: adminUserId);
 
-        // Extract the mnemonic
-        var responseText = responses[0].Text!;
+        // Extract the mnemonic from the second message
+        var responseText = responses[1].Text!;
         var registerIndex = responseText.IndexOf("`/register ", StringComparison.Ordinal);
         var mnemonicStart = registerIndex + "`/register ".Length;
         var mnemonicEnd = responseText.IndexOf('`', mnemonicStart);
@@ -157,14 +163,14 @@ public class GenerateCommandHandlerTests(TelegramBotTestFixture fixture) : Teleg
         Fixture.MockBotClient.ClearResponses();
         var responses2 = await SendTextAsync("/generate", userId: adminUserId);
 
-        // Extract both mnemonics
-        var responseText1 = responses1[0].Text!;
+        // Extract both mnemonics from the second message of each response
+        var responseText1 = responses1[1].Text!;
         var registerIndex1 = responseText1.IndexOf("`/register ", StringComparison.Ordinal);
         var mnemonicStart1 = registerIndex1 + "`/register ".Length;
         var mnemonicEnd1 = responseText1.IndexOf('`', mnemonicStart1);
         var mnemonicPhrase1 = responseText1[mnemonicStart1..mnemonicEnd1].Trim();
 
-        var responseText2 = responses2[0].Text!;
+        var responseText2 = responses2[1].Text!;
         var registerIndex2 = responseText2.IndexOf("`/register ", StringComparison.Ordinal);
         var mnemonicStart2 = registerIndex2 + "`/register ".Length;
         var mnemonicEnd2 = responseText2.IndexOf('`', mnemonicStart2);

@@ -77,18 +77,36 @@ public class GenerateCommandHandler(
             // Store it as pending
             mnemonicService.StorePendingMnemonic(mnemonic);
 
-            // Return the mnemonic to the admin
-            var responseMessage = $"""
-                ✅ Generated new registration mnemonic:
+            // Get bot information to include the username
+            var botInfo = await botClient.GetMe(cancellationToken);
+            var botUsername = botInfo.Username ?? "timesheetbot";
 
-                `/register {mnemonic}`
+            // Send first message: explanation of what the bot is
+            var introMessage = $"""
+                ✅ Generated new registration for TimeSheet bot.
 
-                Share this command with the new user. The mnemonic is single-use and will be consumed upon registration.
+                **What is TimeSheet?**
+                A private time-tracking bot that helps you monitor your work hours, commute time, and lunch breaks. It's for your personal use - not employer surveillance.
+
+                **Bot:** @{botUsername}
                 """;
 
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: responseMessage,
+                text: introMessage,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+
+            // Send second message: the registration command
+            var registrationMessage = $"""
+                `/register {mnemonic}`
+
+                Share both messages with the new user. The mnemonic is single-use and will be consumed upon registration.
+                """;
+
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: registrationMessage,
                 parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
 

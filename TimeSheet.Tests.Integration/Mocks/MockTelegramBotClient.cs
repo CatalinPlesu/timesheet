@@ -159,6 +159,22 @@ public class MockTelegramBotClient
                     Chat = new Chat { Id = 0, Type = Telegram.Bot.Types.Enums.ChatType.Private }
                 };
             });
+
+        // Capture GetMe calls (returns User)
+        _mock.Setup(x => x.SendRequest<User>(
+                It.IsAny<IRequest<User>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IRequest<User> req, CancellationToken ct) =>
+            {
+                // Return a mock bot user
+                return new User
+                {
+                    Id = 123456789,
+                    IsBot = true,
+                    FirstName = "TimeSheet Bot",
+                    Username = "timesheetbot"
+                };
+            });
     }
 }
 
