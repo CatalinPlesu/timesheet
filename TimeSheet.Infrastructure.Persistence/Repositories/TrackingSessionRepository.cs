@@ -137,7 +137,6 @@ public class TrackingSessionRepository(AppDbContext dbContext)
     {
         return await DbSet
             .Where(s => s.UserId == userId
-                     && s.EndedAt != null
                      && s.StartedAt >= startDate
                      && s.StartedAt < endDate)
             .OrderBy(s => s.StartedAt)

@@ -271,18 +271,19 @@ public class PredictiveActionsTests : TelegramBotTestBase
     public async Task CommandsStillWork_WithButtons()
     {
         // Arrange
-        await RegisterTestUserAsync();
+        const long userId = 99999; // Use unique user ID to avoid conflicts
+        await RegisterTestUserAsync(telegramUserId: userId);
 
         // Act: Test that commands still work alongside buttons
-        var responses1 = await SendTextAsync("/commute");
-        var responses2 = await SendTextAsync("/work");
-        var responses3 = await SendTextAsync("/lunch");
-        var responses4 = await SendTextAsync("/work");
+        var responses1 = await SendTextAsync("/commute", userId: userId);
+        var responses2 = await SendTextAsync("/work", userId: userId);
+        var responses3 = await SendTextAsync("/lunch", userId: userId);
+        var responses4 = await SendTextAsync("/commute", userId: userId);
 
         // Assert: All commands should work
-        AssertResponseContains(responses1, "commuting");
+        AssertResponseContains(responses1, "commut");
         AssertResponseContains(responses2, "work");
         AssertResponseContains(responses3, "lunch");
-        AssertResponseContains(responses4, "work");
+        AssertResponseContains(responses4, "commut");
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot.Types;
 using TimeSheet.Core.Domain.Entities;
@@ -134,6 +135,16 @@ public abstract class TelegramBotTestBase(TelegramBotTestFixture fixture) : ICla
     {
         using var scope = Fixture.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TimeSheet.Infrastructure.Persistence.AppDbContext>();
+
+        // Clean slate: Remove ALL users and sessions to avoid test pollution
+        // This ensures each test starts with a fresh database state
+        var allSessions = dbContext.Set<TrackingSession>();
+        dbContext.Set<TrackingSession>().RemoveRange(allSessions);
+
+        var allUsers = dbContext.Set<DomainUser>();
+        dbContext.Set<DomainUser>().RemoveRange(allUsers);
+
+        await dbContext.SaveChangesAsync();
 
         var user = new DomainUser(
             telegramUserId: telegramUserId,
