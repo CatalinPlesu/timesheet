@@ -1,17 +1,20 @@
-<div class="hero min-h-[60vh]">
-	<div class="hero-content text-center">
-		<div class="max-w-md">
-			<h1 class="text-5xl font-bold">TimeSheet</h1>
-			<p class="py-6">
-				Personal work-hour tracking to help you ensure work doesn't take more time than it should.
-			</p>
-			<div class="card bg-base-200 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title">Login</h2>
-					<p class="text-sm text-base-content/70">Coming soon</p>
-					<p class="text-xs mt-2">Use the Telegram bot /login command to get your authentication token</p>
-				</div>
-			</div>
-		</div>
-	</div>
+<script lang="ts">
+	import { auth } from '$lib/stores/auth';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		const unsubscribe = auth.subscribe(state => {
+			if (state.isAuthenticated) {
+				goto('/tracking');
+			} else {
+				goto('/login');
+			}
+		});
+		return unsubscribe;
+	});
+</script>
+
+<div class="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+	<div class="loading loading-spinner loading-lg"></div>
 </div>
