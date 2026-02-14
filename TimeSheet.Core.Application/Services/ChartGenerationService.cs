@@ -94,7 +94,8 @@ public class ChartGenerationService : IChartGenerationService
     }
 
     /// <summary>
-    /// Generates a stacked bar chart showing the breakdown of activities (work, commute, lunch) by day.
+    /// Generates a grouped bar chart showing the breakdown of activities (work, commute, lunch) by day.
+    /// Note: Simplified from stacked to grouped bars due to ScottPlot 5.x API limitations.
     /// </summary>
     public byte[] GenerateActivityBreakdownChart(List<DailyBreakdownRow> breakdown, string periodLabel)
     {
@@ -116,25 +117,20 @@ public class ChartGenerationService : IChartGenerationService
         var commuteHours = activeDays.Select(d => (double)(d.CommuteToWorkHours + d.CommuteToHomeHours)).ToArray();
         var lunchHours = activeDays.Select(d => (double)d.LunchHours).ToArray();
 
-        // Add stacked bars
-        var workBars = plot.Add.Bars(positions, workHours);
+        // Use grouped bars instead of stacked (simpler with ScottPlot 5.x)
+        var barWidth = 0.25;
+
+        var workBars = plot.Add.Bars(positions.Select(p => p - barWidth).ToArray(), workHours);
         workBars.Color = ScottPlot.Color.FromHex("#4472C4"); // Blue
-        workBars.Label = "Work";
+        workBars.LegendText = "Work";
 
         var commuteBars = plot.Add.Bars(positions, commuteHours);
         commuteBars.Color = ScottPlot.Color.FromHex("#ED7D31"); // Orange
-        commuteBars.Label = "Commute";
+        commuteBars.LegendText = "Commute";
 
-        var lunchBars = plot.Add.Bars(positions, lunchHours);
+        var lunchBars = plot.Add.Bars(positions.Select(p => p + barWidth).ToArray(), lunchHours);
         lunchBars.Color = ScottPlot.Color.FromHex("#A5A5A5"); // Gray
-        lunchBars.Label = "Lunch";
-
-        // Stack the bars
-        for (int i = 0; i < activeDays.Count; i++)
-        {
-            commuteBars.ValueOffsets[i] = workBars.Values[i];
-            lunchBars.ValueOffsets[i] = workBars.Values[i] + commuteBars.Values[i];
-        }
+        lunchBars.LegendText = "Lunch";
 
         // Configure axes
         plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
@@ -194,15 +190,15 @@ public class ChartGenerationService : IChartGenerationService
 
         var workBars = plot.Add.Bars(positions.Select(p => p - barWidth).ToArray(), workData);
         workBars.Color = ScottPlot.Color.FromHex("#4472C4");
-        workBars.Label = "Work";
+        workBars.LegendText = "Work";
 
         var commuteBars = plot.Add.Bars(positions, commuteData);
         commuteBars.Color = ScottPlot.Color.FromHex("#ED7D31");
-        commuteBars.Label = "Commute";
+        commuteBars.LegendText = "Commute";
 
         var lunchBars = plot.Add.Bars(positions.Select(p => p + barWidth).ToArray(), lunchData);
         lunchBars.Color = ScottPlot.Color.FromHex("#A5A5A5");
-        lunchBars.Label = "Lunch";
+        lunchBars.LegendText = "Lunch";
 
         // Configure axes
         plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
@@ -269,11 +265,11 @@ public class ChartGenerationService : IChartGenerationService
 
         var toWorkBars = plot.Add.Bars(positions.Select(p => p - barWidth / 2).ToArray(), toWorkDurations);
         toWorkBars.Color = ScottPlot.Color.FromHex("#4472C4");
-        toWorkBars.Label = "To Work";
+        toWorkBars.LegendText = "To Work";
 
         var toHomeBars = plot.Add.Bars(positions.Select(p => p + barWidth / 2).ToArray(), toHomeDurations);
         toHomeBars.Color = ScottPlot.Color.FromHex("#ED7D31");
-        toHomeBars.Label = "To Home";
+        toHomeBars.LegendText = "To Home";
 
         // Configure axes
         plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.NumericManual(
@@ -298,9 +294,8 @@ public class ChartGenerationService : IChartGenerationService
     /// </summary>
     private static byte[] RenderPlotToBytes(Plot plot)
     {
-        using var memoryStream = new MemoryStream();
-        plot.SavePng(memoryStream, ChartWidth, ChartHeight);
-        return memoryStream.ToArray();
+        // ScottPlot 5.x GetImageBytes method returns PNG bytes directly
+        return plot.GetImageBytes(ChartWidth, ChartHeight);
     }
 
     /// <summary>
