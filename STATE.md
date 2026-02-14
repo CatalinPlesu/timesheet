@@ -8,11 +8,42 @@
 
 | Agent | Task | Worktree | Branch | Status | Progress |
 |-------|------|----------|--------|--------|----------|
-| Opus (main) | zei.1 | main | main | In Progress | Creating API project skeleton |
+| None | - | - | - | - | - |
 
 ## Completed Work
 
-None yet.
+### Task zei.1 - API Project + OpenAPI/Scalar (Completed 2026-02-14)
+
+**Summary:**
+- Created TimeSheet.Presentation.API project with controllers and DTOs
+- Configured OpenAPI/Swagger with Scalar UI at /scalar endpoint
+- Set up JWT authentication with Bearer token support
+- Added CORS policy for frontend origins
+- Defined all API endpoints as stubs (NotImplementedException)
+- All DTOs created with comprehensive XML documentation
+
+**Deliverables:**
+- Project structure: TimeSheet.Presentation.API with Controllers/ and Models/ directories
+- Auth DTOs: LoginRequest, LoginResponse, RefreshTokenRequest
+- Tracking DTOs: TrackingStateRequest, TrackingStateWithOffsetRequest, CurrentStateResponse, TrackingStateResponse
+- Entry DTOs: TrackingEntryDto, EntryListRequest, EntryListResponse, EntryUpdateRequest
+- Analytics DTOs: DailyAveragesDto, CommutePatternsDto, PeriodAggregateDto, DailyBreakdownDto, ChartDataDto
+- Settings DTOs: UserSettingsDto, UpdateUtcOffsetRequest, UpdateAutoShutdownRequest, UpdateLunchReminderRequest, UpdateTargetHoursRequest, UpdateForgotThresholdRequest
+- Controllers: AuthController, TrackingController, EntriesController, AnalyticsController, SettingsController
+- OpenAPI + Scalar configuration in Program.cs
+- JWT authentication configuration
+- appsettings.json with JWT and CORS settings
+
+**Quality Gates:**
+- ✅ API project builds successfully
+- ✅ API runs without crashing (tested for 20 seconds)
+- ⚠️ Test suite: 3 unit tests failing, 3 integration tests failing (pre-existing failures, not related to API project)
+- ✅ Scalar UI accessible at /scalar in development mode
+
+**Commits:**
+- dceb9a4: feat: add TimeSheet.Presentation.API project with DTOs
+- ef4337e: feat: add API controllers with comprehensive OpenAPI documentation
+- 087edcf: feat: configure OpenAPI, Scalar, JWT auth, and CORS
 
 ## Next Steps
 
