@@ -20,7 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAutoShutdownService, AutoShutdownService>();
         services.AddScoped<IForgotShutdownService, ForgotShutdownService>();
         services.AddScoped<IReportingService, ReportingService>();
-        services.AddScoped<IChartGenerationService, ChartGenerationService>();
+        services.AddSingleton<IChartGenerationService, ChartGenerationService>();
         services.AddSingleton<IMnemonicService, MnemonicService>();
 
         // Parsers
