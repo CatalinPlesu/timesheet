@@ -5,21 +5,30 @@ interface AuthState {
 	isAuthenticated: boolean;
 }
 
+const TOKEN_KEY = 'timesheet_auth_token';
+
 function createAuthStore() {
+	// Initialize from localStorage if available
+	const storedToken = typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY) : null;
+
 	const { subscribe, set, update } = writable<AuthState>({
-		token: null,
-		isAuthenticated: false
+		token: storedToken,
+		isAuthenticated: !!storedToken
 	});
 
 	return {
 		subscribe,
 		login: (token: string) => {
 			set({ token, isAuthenticated: true });
-			// TODO: Store token in localStorage
+			if (typeof window !== 'undefined') {
+				localStorage.setItem(TOKEN_KEY, token);
+			}
 		},
 		logout: () => {
 			set({ token: null, isAuthenticated: false });
-			// TODO: Clear token from localStorage
+			if (typeof window !== 'undefined') {
+				localStorage.removeItem(TOKEN_KEY);
+			}
 		}
 	};
 }
