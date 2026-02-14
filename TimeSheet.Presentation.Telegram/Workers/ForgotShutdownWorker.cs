@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Options;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Presentation.Telegram.Options;
 
 namespace TimeSheet.Presentation.Telegram.Workers;

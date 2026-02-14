@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Options;
 using TimeSheet.Presentation.Telegram.Handlers;
 using TimeSheet.Presentation.Telegram.Options;

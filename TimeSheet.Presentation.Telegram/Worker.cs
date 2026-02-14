@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Presentation.Telegram.Handlers;
 
 namespace TimeSheet.Presentation.Telegram;

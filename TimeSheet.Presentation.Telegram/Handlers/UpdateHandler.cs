@@ -1,7 +1,7 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Presentation.Telegram.Services;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;

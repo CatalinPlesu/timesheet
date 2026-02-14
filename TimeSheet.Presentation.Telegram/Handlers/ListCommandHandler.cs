@@ -1,7 +1,7 @@
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 

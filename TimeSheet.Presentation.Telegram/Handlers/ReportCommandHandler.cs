@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Domain.Enums;
 

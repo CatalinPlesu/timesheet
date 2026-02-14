@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Infrastructure.Persistence;
