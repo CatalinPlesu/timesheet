@@ -12,6 +12,33 @@
 
 ## Completed Work
 
+### Task zei.6 - Telegram /login Command (Completed 2026-02-14)
+
+**Summary:**
+- Created LoginCommandHandler for generating one-time OTP mnemonics
+- Registered handler in DI container and UpdateHandler routing
+- Added /lo alias for /login command
+- Implemented security checks (user must be registered)
+- Clear error messaging for non-registered users
+- Comprehensive integration test suite with 8 tests
+
+**Deliverables:**
+- LoginCommandHandler.cs with mnemonic generation logic
+- UpdateHandler routing for /login command
+- ServiceCollectionExtensions registration
+- LoginCommandHandlerTests.cs with 8 comprehensive integration tests
+- All tests passing (8/8)
+
+**Quality Gates:**
+- ✅ All 8 integration tests passing
+- ✅ Bot builds successfully
+- ✅ Bot runs without crashing (tested for 20 seconds)
+- ⚠️ Test suite: 4 pre-existing test failures (not related to /login command)
+
+**Commits:**
+- 0bff947: feat: add /login command handler for one-time OTP mnemonic generation
+- 4c1697c: test: add comprehensive integration tests for /login command
+
 ### Task zei.1 - API Project + OpenAPI/Scalar (Completed 2026-02-14)
 
 **Summary:**

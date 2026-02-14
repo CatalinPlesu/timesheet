@@ -22,6 +22,7 @@ public class UpdateHandler(
     SettingsCommandHandler settingsCommandHandler,
     ReportCommandHandler reportCommandHandler,
     StatusCommandHandler statusCommandHandler,
+    LoginCommandHandler loginCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -163,6 +164,10 @@ public class UpdateHandler(
         {
             await statusCommandHandler.HandleStatusAsync(botClient, message, cancellationToken);
         }
+        else if (messageText.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            await loginCommandHandler.HandleLoginAsync(botClient, message, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized command: {MessageText}", messageText);
@@ -280,7 +285,8 @@ public class UpdateHandler(
             { "/li", "/list" },
             { "/se", "/settings" },
             { "/r", "/report" },
-            { "/s", "/status" }
+            { "/s", "/status" },
+            { "/lo", "/login" }
         };
 
         // Expand the command (first part)
