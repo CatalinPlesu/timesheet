@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Repositories;
 
 namespace TimeSheet.Infrastructure.Persistence.Repositories;
 

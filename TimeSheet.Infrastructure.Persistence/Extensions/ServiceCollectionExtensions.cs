@@ -2,9 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Persistence;
 using TimeSheet.Core.Application.Options;
 using TimeSheet.Core.Domain.Interfaces;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Infrastructure.Persistence.Repositories;
 
 namespace TimeSheet.Infrastructure.Persistence.Extensions;

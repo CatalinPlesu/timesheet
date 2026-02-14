@@ -1,4 +1,4 @@
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Persistence;
 
 namespace TimeSheet.Infrastructure.Persistence;
 
