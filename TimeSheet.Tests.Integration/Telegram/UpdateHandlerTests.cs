@@ -170,7 +170,7 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
     }
 
     [Fact]
-    public async Task CommuteCommand_Started_IncludesSuggestion()
+    public async Task CommuteCommand_Started_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10005;
@@ -182,11 +182,12 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Started tracking commuting", responses[0].Text);
-        Assert.Contains("Press /commute to stop when you reach your destination, or /work to start working", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
-    public async Task WorkCommand_Started_IncludesSuggestion()
+    public async Task WorkCommand_Started_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10006;
@@ -198,13 +199,12 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Started tracking working", responses[0].Text);
-        // Should include a suggestion about lunch, work stop, or commute
-        Assert.Contains("Press", responses[0].Text);
-        Assert.Contains("/lunch", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
-    public async Task LunchCommand_Started_IncludesSuggestion()
+    public async Task LunchCommand_Started_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10007;
@@ -216,11 +216,12 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Started tracking on lunch break", responses[0].Text);
-        Assert.Contains("Press /work when you're ready to continue working", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
-    public async Task CommuteCommand_Ended_IncludesSuggestion()
+    public async Task CommuteCommand_Ended_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10008;
@@ -234,11 +235,12 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Stopped commuting", responses[0].Text);
-        Assert.Contains("Press /work to start tracking your work time", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
-    public async Task WorkCommand_Ended_IncludesSuggestion()
+    public async Task WorkCommand_Ended_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10009;
@@ -252,11 +254,12 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         // Assert
         Assert.Single(responses);
         Assert.Contains("Stopped work session", responses[0].Text);
-        Assert.Contains("Press /commute if you're heading home", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
-    public async Task SwitchingStates_IncludesSuggestion()
+    public async Task SwitchingStates_IncludesActionButtons()
     {
         // Arrange - use unique user ID to avoid state pollution from other tests
         const long userId = 10010;
@@ -271,9 +274,8 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         Assert.Single(responses);
         Assert.Contains("Stopped commuting", responses[0].Text);
         Assert.Contains("started tracking working", responses[0].Text);
-        // Should include work-related suggestions
-        Assert.Contains("Press", responses[0].Text);
-        Assert.Contains("/lunch", responses[0].Text);
+        // Should include inline keyboard with action buttons instead of text suggestions
+        Assert.NotNull(responses[0].ReplyMarkup);
     }
 
     [Fact]
