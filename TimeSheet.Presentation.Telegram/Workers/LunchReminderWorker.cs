@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Presentation.Telegram.Options;
 
 namespace TimeSheet.Presentation.Telegram.Workers;

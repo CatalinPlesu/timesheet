@@ -3,6 +3,8 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Infrastructure.Persistence;
