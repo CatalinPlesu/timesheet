@@ -3,6 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using System.Text;
+using TimeSheet.Core.Application.Extensions;
+using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Infrastructure.Persistence.Extensions;
+using TimeSheet.Presentation.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +64,14 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Register application services
+builder.Services.AddApplicationServices();
+builder.Services.AddPersistenceServices(builder.Configuration);
+
+// Register API-specific services
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddSingleton<INotificationService, StubNotificationService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -86,3 +98,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Make Program class accessible to integration tests
+public partial class Program { }
