@@ -8,8 +8,7 @@
 
 | Agent | Task | Worktree | Branch | Status | Progress |
 |-------|------|----------|--------|--------|----------|
-| Agent-Frontend | zei.7 | zei-7-frontend | zei-7-frontend | Starting | Frontend project setup |
-| Agent-JwtAuth | zei.2 | zei-2-jwt-auth | zei-2-jwt-auth | Starting | JWT auth implementation |
+| Agent-JwtAuth | zei.2 | zei-2-jwt-auth | zei-2-jwt-auth | In Progress | JWT auth implementation |
 
 ## Completed Work
 
