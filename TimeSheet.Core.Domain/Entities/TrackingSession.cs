@@ -117,6 +117,28 @@ public class TrackingSession : BaseEntity
     }
 
     /// <summary>
+    /// Adjusts the end time of a completed session by a specified number of minutes.
+    /// Positive values extend the session, negative values shorten it.
+    /// </summary>
+    /// <param name="adjustmentMinutes">The number of minutes to adjust (positive to extend, negative to shorten).</param>
+    /// <exception cref="InvalidOperationException">Thrown when the session is still active (not ended).</exception>
+    /// <exception cref="ArgumentException">Thrown when the adjustment would result in end time before start time.</exception>
+    public void AdjustEndTime(int adjustmentMinutes)
+    {
+        if (IsActive)
+            throw new InvalidOperationException("Cannot adjust an active session. End the session first.");
+
+        var newEndTime = EndedAt!.Value.AddMinutes(adjustmentMinutes);
+
+        if (newEndTime <= StartedAt)
+            throw new ArgumentException(
+                $"Adjustment of {adjustmentMinutes} minutes would result in end time before or equal to start time.",
+                nameof(adjustmentMinutes));
+
+        EndedAt = newEndTime;
+    }
+
+    /// <summary>
     /// Validates that commute direction is provided if and only if the state is Commuting.
     /// </summary>
     private static void ValidateCommuteDirection(TrackingState state, CommuteDirection? commuteDirection)

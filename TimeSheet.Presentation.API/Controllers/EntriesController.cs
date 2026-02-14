@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Presentation.API.Models.Entries;
 
 namespace TimeSheet.Presentation.API.Controllers;
@@ -13,6 +15,19 @@ namespace TimeSheet.Presentation.API.Controllers;
 [Authorize]
 public class EntriesController : ControllerBase
 {
+    private readonly ITrackingSessionRepository _sessionRepository;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly ILogger<EntriesController> _logger;
+
+    public EntriesController(
+        ITrackingSessionRepository sessionRepository,
+        IJwtTokenService jwtTokenService,
+        ILogger<EntriesController> logger)
+    {
+        _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
+        _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
     /// <summary>
     /// Lists tracking entries for the authenticated user with optional filtering and pagination.
     /// Supports grouping by day, week, month, or year.
@@ -28,9 +43,90 @@ public class EntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<ActionResult<EntryListResponse>> GetEntries([FromQuery] EntryListRequest request)
+    public async Task<ActionResult<EntryListResponse>> GetEntries([FromQuery] EntryListRequest request, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("List entries endpoint will be implemented in TimeSheet-zei.4");
+        try
+        {
+            // Extract user ID from JWT token
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            // Validate pagination parameters
+            if (request.Page < 1)
+            {
+                return BadRequest(new { error = "Page number must be at least 1" });
+            }
+
+            if (request.PageSize < 1 || request.PageSize > 500)
+            {
+                return BadRequest(new { error = "Page size must be between 1 and 500" });
+            }
+
+            // Validate date range
+            if (request.StartDate.HasValue && request.EndDate.HasValue && request.StartDate.Value > request.EndDate.Value)
+            {
+                return BadRequest(new { error = "Start date must be before or equal to end date" });
+            }
+
+            // Set default date range if not provided (last 30 days)
+            var startDate = request.StartDate ?? DateTime.UtcNow.AddDays(-30).Date;
+            var endDate = request.EndDate ?? DateTime.UtcNow.Date.AddDays(1);
+
+            // Get sessions in the specified range
+            var allSessions = await _sessionRepository.GetSessionsInRangeAsync(
+                userId,
+                startDate,
+                endDate,
+                cancellationToken);
+
+            // Calculate pagination
+            var totalCount = allSessions.Count;
+            var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+            // Apply pagination
+            var sessions = allSessions
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToList();
+
+            // Map to DTOs
+            var entryDtos = sessions.Select(s => new TrackingEntryDto
+            {
+                Id = s.Id,
+                State = s.State,
+                StartedAt = s.StartedAt,
+                EndedAt = s.EndedAt,
+                DurationHours = s.EndedAt.HasValue
+                    ? (decimal)(s.EndedAt.Value - s.StartedAt).TotalHours
+                    : null,
+                CommuteDirection = s.CommuteDirection,
+                IsActive = s.IsActive
+            }).ToList();
+
+            var response = new EntryListResponse
+            {
+                Entries = entryDtos,
+                TotalCount = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalPages = totalPages
+            };
+
+            _logger.LogInformation(
+                "User {UserId} retrieved {Count} entries (page {Page}/{TotalPages})",
+                userId, entryDtos.Count, request.Page, totalPages);
+
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Unauthorized(new { error = "Invalid user token" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving entries");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving entries" });
+        }
     }
 
     /// <summary>
@@ -47,9 +143,59 @@ public class EntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<ActionResult<TrackingEntryDto>> GetEntry(Guid id)
+    public async Task<ActionResult<TrackingEntryDto>> GetEntry(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Get entry endpoint will be implemented in TimeSheet-zei.4");
+        try
+        {
+            // Extract user ID from JWT token
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            // Get the session by ID
+            var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to access non-existent entry {EntryId}", userId, id);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Verify the session belongs to the authenticated user
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to access entry {EntryId} belonging to user {OwnerId}",
+                    userId, id, session.UserId);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Map to DTO
+            var entryDto = new TrackingEntryDto
+            {
+                Id = session.Id,
+                State = session.State,
+                StartedAt = session.StartedAt,
+                EndedAt = session.EndedAt,
+                DurationHours = session.EndedAt.HasValue
+                    ? (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours
+                    : null,
+                CommuteDirection = session.CommuteDirection,
+                IsActive = session.IsActive
+            };
+
+            _logger.LogInformation("User {UserId} retrieved entry {EntryId}", userId, id);
+
+            return Ok(entryDto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Unauthorized(new { error = "Invalid user token" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving entry {EntryId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving the entry" });
+        }
     }
 
     /// <summary>
@@ -70,9 +216,89 @@ public class EntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<ActionResult<TrackingEntryDto>> UpdateEntry(Guid id, [FromBody] EntryUpdateRequest request)
+    public async Task<ActionResult<TrackingEntryDto>> UpdateEntry(Guid id, [FromBody] EntryUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Update entry endpoint will be implemented in TimeSheet-zei.4");
+        try
+        {
+            // Extract user ID from JWT token
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            // Validate request
+            if (request.AdjustmentMinutes == 0)
+            {
+                return BadRequest(new { error = "Adjustment cannot be zero" });
+            }
+
+            // Get the session by ID
+            var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to update non-existent entry {EntryId}", userId, id);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Verify the session belongs to the authenticated user
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to update entry {EntryId} belonging to user {OwnerId}",
+                    userId, id, session.UserId);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Apply the adjustment
+            try
+            {
+                session.AdjustEndTime(request.AdjustmentMinutes);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "User {UserId} attempted to adjust active entry {EntryId}", userId, id);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "User {UserId} attempted invalid adjustment of {Minutes} minutes on entry {EntryId}",
+                    userId, request.AdjustmentMinutes, id);
+                return BadRequest(new { error = ex.Message });
+            }
+
+            // Update the session in the repository
+            _sessionRepository.Update(session);
+
+            // Map to DTO
+            var entryDto = new TrackingEntryDto
+            {
+                Id = session.Id,
+                State = session.State,
+                StartedAt = session.StartedAt,
+                EndedAt = session.EndedAt,
+                DurationHours = session.EndedAt.HasValue
+                    ? (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours
+                    : null,
+                CommuteDirection = session.CommuteDirection,
+                IsActive = session.IsActive
+            };
+
+            _logger.LogInformation(
+                "User {UserId} adjusted entry {EntryId} by {Minutes} minutes",
+                userId, id, request.AdjustmentMinutes);
+
+            return Ok(entryDto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Unauthorized(new { error = "Invalid user token" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating entry {EntryId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while updating the entry" });
+        }
     }
 
     /// <summary>
@@ -89,8 +315,47 @@ public class EntriesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<ActionResult> DeleteEntry(Guid id)
+    public async Task<ActionResult> DeleteEntry(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Delete entry endpoint will be implemented in TimeSheet-zei.4");
+        try
+        {
+            // Extract user ID from JWT token
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            // Get the session by ID
+            var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to delete non-existent entry {EntryId}", userId, id);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Verify the session belongs to the authenticated user
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to delete entry {EntryId} belonging to user {OwnerId}",
+                    userId, id, session.UserId);
+                return NotFound(new { error = "Entry not found" });
+            }
+
+            // Delete the session
+            _sessionRepository.Remove(session);
+
+            _logger.LogInformation("User {UserId} deleted entry {EntryId}", userId, id);
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Unauthorized(new { error = "Invalid user token" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting entry {EntryId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while deleting the entry" });
+        }
     }
 }
