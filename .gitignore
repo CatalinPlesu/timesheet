@@ -486,3 +486,9 @@ $RECYCLE.BIN/
 *.db
 *.db-shm
 *.db-wal
+# bd worktree
+zei-7-frontend/
+# bd worktree
+zei-6-telegram-login/
+# bd worktree
+zei-2-jwt-auth/
