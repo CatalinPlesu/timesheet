@@ -209,6 +209,10 @@ public class UpdateHandler(
         {
             await statusCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
         }
+        else if (data.StartsWith("track:", StringComparison.OrdinalIgnoreCase))
+        {
+            await trackingCommandHandler.HandleCallbackQueryAsync(botClient, callbackQuery, cancellationToken);
+        }
         else
         {
             logger.LogDebug("Unrecognized callback query data: {Data}", data);

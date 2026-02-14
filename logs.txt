@@ -1,0 +1,710 @@
+# podman logs timesheet
+[13:30:43 INF] Starting TimeSheet Telegram Bot
+[13:30:43 INF] Application started. Press Ctrl+C to shut down.
+[13:30:43 INF] Hosting environment: Production
+[13:30:43 INF] Content root path: /app
+[13:30:43 INF] Auto-shutdown worker started. Check interval: 3 minutes
+[13:30:43 INF] Lunch reminder worker started. Check interval: 3 minutes
+[13:30:43 INF] Work hours alert worker started. Check interval: 3 minutes
+[13:30:43 INF] Forgot-shutdown worker started. Check interval: 3 minutes
+[13:30:44 INF] Telegram bot started: @catp_timesheet_bot (ID: 8010591314)
+[13:30:44 INF] Database initialized
+[13:31:06 INF] Received update of type: Message
+[13:31:06 INF] Received message from catalinplesu (709340765): /help
+[13:31:06 INF] Help command from user 709340765 (catalinplesu)
+[13:31:10 INF] Received update of type: Message
+[13:31:10 INF] Received message from catalinplesu (709340765): /settings
+[13:31:11 INF] Settings command from user 709340765 (catalinplesu)
+[13:31:31 INF] Received update of type: Message
+[13:31:31 INF] Received message from catalinplesu (709340765): /list
+[13:31:31 INF] User 709340765 listed 0 sessions for today
+[13:32:16 INF] Received update of type: Message
+[13:32:16 INF] Received message from catalinplesu (709340765): /s
+[13:32:16 INF] Status command from user 709340765 (catalinplesu)
+[13:32:17 INF] Sent status to user 709340765: Idle
+[15:47:43 INF] Received update of type: Message
+[15:47:43 INF] Received message from catalinplesu (709340765): /s
+[15:47:43 INF] Status command from user 709340765 (catalinplesu)
+[15:47:43 INF] Sent status to user 709340765: Idle
+[06:02:55 INF] Received update of type: Message
+[06:02:55 INF] Received message from catalinplesu (709340765): /c
+[06:02:55 INF] User 709340765 executed Commuting command: SessionStarted
+[06:28:00 INF] Received update of type: Message
+[06:28:00 INF] Received message from catalinplesu (709340765): /s
+[06:28:00 INF] Status command from user 709340765 (catalinplesu)
+[06:28:00 INF] Sent status to user 709340765: Commuting
+[06:28:16 INF] Received update of type: Message
+[06:28:16 INF] Received message from catalinplesu (709340765): /help
+[06:28:16 INF] Help command from user 709340765 (catalinplesu)
+[06:28:29 INF] Received update of type: Message
+[06:28:29 INF] Received message from catalinplesu (709340765): /help tracking
+[06:28:29 INF] Help command from user 709340765 (catalinplesu)
+[07:05:38 INF] Received update of type: Message
+[07:05:38 INF] Received message from catalinplesu (709340765): /c
+[07:05:38 INF] User 709340765 executed Commuting command: SessionEnded
+[07:09:44 INF] Received update of type: Message
+[07:09:44 INF] Received message from catalinplesu (709340765): /w
+[07:09:44 INF] User 709340765 executed Working command: SessionStarted
+[07:23:34 INF] Received update of type: Message
+[07:23:34 INF] Received message from catalinplesu (709340765): /s
+[07:23:34 INF] Status command from user 709340765 (catalinplesu)
+[07:23:34 INF] Sent status to user 709340765: Working
+[07:24:26 INF] Received update of type: Message
+[07:24:26 INF] Received message from catalinplesu (709340765): /r all
+[07:24:27 INF] User 709340765 viewed all reports
+[10:46:14 INF] Sent lunch reminder to user 709340765
+[10:46:14 INF] Sent lunch reminder to user 709340765 (local time: 12:46)
+[10:46:14 INF] Sent 1 lunch reminder(s)
+[10:47:58 INF] Received update of type: Message
+[10:47:58 INF] Received message from catalinplesu (709340765): /s
+[10:47:58 INF] Status command from user 709340765 (catalinplesu)
+[10:47:58 INF] Sent status to user 709340765: Working
+[11:05:17 INF] Received update of type: Message
+[11:05:17 INF] Received message from catalinplesu (709340765): /l
+[11:05:17 INF] User 709340765 executed Lunch command: SessionStarted
+[11:05:21 INF] Received update of type: Message
+[11:05:21 INF] Received message from catalinplesu (709340765): /s
+[11:05:21 INF] Status command from user 709340765 (catalinplesu)
+[11:05:22 INF] Sent status to user 709340765: Lunch
+[11:22:19 INF] Received update of type: Message
+[11:22:19 INF] Received message from catalinplesu (709340765): /l
+[11:22:19 INF] User 709340765 executed Lunch command: SessionEnded
+[11:22:25 INF] Received update of type: Message
+[11:22:25 INF] Received message from catalinplesu (709340765): /s
+[11:22:25 INF] Status command from user 709340765 (catalinplesu)
+[11:22:25 INF] Sent status to user 709340765: Idle
+[11:22:37 INF] Received update of type: Message
+[11:22:37 INF] Received message from catalinplesu (709340765): /list
+[11:22:37 INF] User 709340765 listed 3 sessions for today
+[11:31:18 INF] Received update of type: Message
+[11:31:18 INF] Received message from catalinplesu (709340765): /w
+[11:31:18 INF] User 709340765 executed Working command: SessionStarted
+[11:40:01 INF] Received update of type: Message
+[11:40:01 INF] Received message from catalinplesu (709340765): /s
+[11:40:01 INF] Status command from user 709340765 (catalinplesu)
+[11:40:01 INF] Sent status to user 709340765: Working
+[14:09:33 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.IO.IOException: Unable to read data from the transport connection: Connection reset by peer.
+ ---> System.Net.Sockets.SocketException (104): Connection reset by peer
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+   at System.Net.Sockets.NetworkStream.ReadAsync(Memory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Net.Sockets.SocketAsyncEngine.System.Threading.IThreadPoolWorkItem.Execute()
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Security.SslStream.ReadAsyncInternal[TIOAdapter](Memory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[14:12:04 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[14:13:44 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[14:15:25 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[14:28:48 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[14:37:10 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.IO.IOException: Unable to read data from the transport connection: Connection reset by peer.
+ ---> System.Net.Sockets.SocketException (104): Connection reset by peer
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.CreateException(SocketError error, Boolean forAsyncThrow)
+   at System.Net.Sockets.NetworkStream.ReadAsync(Memory`1 buffer, CancellationToken cancellationToken)
+   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)
+   at System.Threading.ExecutionContext.RunInternal(ExecutionContext executionContext, ContextCallback callback, Object state)
+   at System.Net.Sockets.SocketAsyncEngine.System.Threading.IThreadPoolWorkItem.Execute()
+   at System.Threading.ThreadPoolWorkQueue.Dispatch()
+   at System.Threading.PortableThreadPool.WorkerThread.WorkerThreadStart()
+   at System.Threading.Thread.StartCallback()
+--- End of stack trace from previous location ---
+
+   --- End of inner exception stack trace ---
+   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Security.SslStream.ReadAsyncInternal[TIOAdapter](Memory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[15:33:57 INF] Received update of type: Message
+[15:33:57 INF] Received message from catalinplesu (709340765): /s
+[15:33:57 INF] Status command from user 709340765 (catalinplesu)
+[15:33:58 INF] Sent status to user 709340765: Working
+[15:34:18 INF] Received update of type: Message
+[15:34:18 INF] Received message from catalinplesu (709340765): /li
+[15:34:18 INF] User 709340765 listed 4 sessions for today
+[16:09:06 INF] Received update of type: Message
+[16:09:06 INF] Received message from catalinplesu (709340765): /w
+[16:09:06 INF] User 709340765 executed Working command: SessionEnded
+[16:10:05 INF] Received update of type: Message
+[16:10:05 INF] Received message from catalinplesu (709340765): /s
+[16:10:05 INF] Status command from user 709340765 (catalinplesu)
+[16:10:05 INF] Sent status to user 709340765: Idle
+[16:19:53 INF] Received update of type: Message
+[16:19:53 INF] Received message from catalinplesu (709340765): /c
+[16:19:53 INF] User 709340765 executed Commuting command: SessionStarted
+[16:20:04 INF] Received update of type: Message
+[16:20:04 INF] Received message from catalinplesu (709340765): /s
+[16:20:04 INF] Status command from user 709340765 (catalinplesu)
+[16:20:04 INF] Sent status to user 709340765: Commuting
+[17:10:06 INF] Received update of type: CallbackQuery
+[17:10:06 INF] Received callback query from 709340765: status:stop:Commuting
+[17:10:07 INF] User 709340765 stopped Commuting via status button: SessionEnded
+[17:10:24 INF] Received update of type: Message
+[17:10:24 INF] Received message from catalinplesu (709340765): /r day
+[17:10:24 INF] User 709340765 viewed day report
+[17:10:38 INF] Received update of type: Message
+[17:10:38 INF] Received message from catalinplesu (709340765): /li
+[17:10:38 INF] User 709340765 listed 5 sessions for today
+[18:10:59 INF] Received update of type: Message
+[18:10:59 INF] Received message from catalinplesu (709340765): /h reports
+[18:10:59 INF] Help command from user 709340765 (catalinplesu)
+[18:11:10 INF] Received update of type: Message
+[18:11:10 INF] Received message from catalinplesu (709340765): /help report
+[18:11:10 INF] Help command from user 709340765 (catalinplesu)
+[18:11:32 INF] Received update of type: Message
+[18:11:32 INF] Received message from catalinplesu (709340765): /r commute
+[18:11:32 INF] User 709340765 viewed commute report
+[22:01:15 INF] Sent work hours complete notification to user 709340765 (target: 8.0h, actual: 8.55575199141667h)
+[22:01:15 INF] Sent work hours complete alert to user 709340765 (target: 8.0h, actual: 8.55575199141667h)
+[22:01:15 INF] Sent 1 work hours complete alert(s)
+[00:01:15 INF] Sent work hours complete notification to user 709340765 (target: 8.0h, actual: 8.55575199141667h)
+[00:01:15 INF] Sent work hours complete alert to user 709340765 (target: 8.0h, actual: 8.55575199141667h)
+[00:01:15 INF] Sent 1 work hours complete alert(s)
+[05:23:33 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Request timed out
+ ---> System.Threading.Tasks.TaskCanceledException: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.
+ ---> System.TimeoutException: A task was canceled.
+ ---> System.Threading.Tasks.TaskCanceledException: A task was canceled.
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   --- End of inner exception stack trace ---
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpClient.HandleFailure(Exception e, Boolean telemetryStarted, HttpResponseMessage response, CancellationTokenSource cts, CancellationToken cancellationToken, CancellationTokenSource pendingRequestsCts)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[05:56:36 INF] Received update of type: Message
+[05:56:36 INF] Received message from catalinplesu (709340765): /commute
+[05:56:36 INF] User 709340765 executed Commuting command: SessionStarted
+[07:00:37 INF] Received update of type: Message
+[07:00:37 INF] Received message from catalinplesu (709340765): /commute
+[07:00:39 INF] User 709340765 executed Commuting command: SessionEnded
+[07:00:39 INF] Received update of type: Message
+[07:00:39 INF] Received message from catalinplesu (709340765): /s
+[07:00:39 INF] Status command from user 709340765 (catalinplesu)
+[07:00:39 INF] Sent status to user 709340765: Idle
+[07:05:00 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Service Failure: HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpRequestException: An error occurred while sending the request.
+ ---> System.Net.Http.HttpIOException: The response ended prematurely. (ResponseEnded)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[07:07:10 INF] Received update of type: Message
+[07:07:10 INF] Received message from catalinplesu (709340765): /w
+[07:07:10 INF] User 709340765 executed Working command: SessionStarted
+[08:03:15 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Request timed out
+ ---> System.Threading.Tasks.TaskCanceledException: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.
+ ---> System.TimeoutException: A task was canceled.
+ ---> System.Threading.Tasks.TaskCanceledException: A task was canceled.
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   --- End of inner exception stack trace ---
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpClient.HandleFailure(Exception e, Boolean telemetryStarted, HttpResponseMessage response, CancellationTokenSource cts, CancellationToken cancellationToken, CancellationTokenSource pendingRequestsCts)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[10:30:29 INF] Received update of type: Message
+[10:30:29 INF] Received message from catalinplesu (709340765): /lunch
+[10:30:29 INF] User 709340765 executed Lunch command: SessionStarted
+[10:30:34 INF] Received update of type: Message
+[10:30:34 INF] Received message from catalinplesu (709340765): /s
+[10:30:34 INF] Status command from user 709340765 (catalinplesu)
+[10:30:34 INF] Sent status to user 709340765: Lunch
+[10:55:15 INF] Sent forgot-shutdown reminder to user 709340765 (state: Lunch, current: 0.412734768527778h, average: 0.283885327777778h)
+[10:55:15 INF] Sent forgot-shutdown reminder for session a8f5fd27-25e1-48af-a3b9-9ddf57768224 (user: 709340765, state: Lunch)
+[10:55:15 INF] Sent forgot-shutdown reminders for 1 session(s)
+[10:55:15 INF] Reminder sent: User 709340765, State Lunch, Duration 0.41 hours
+[11:40:16 INF] Received update of type: CallbackQuery
+[11:40:16 INF] Received callback query from 709340765: status:stop:Lunch
+[11:40:17 INF] User 709340765 stopped Lunch via status button: SessionEnded
+[11:40:22 INF] Received update of type: Message
+[11:40:22 INF] Received message from catalinplesu (709340765): /s
+[11:40:22 INF] Status command from user 709340765 (catalinplesu)
+[11:40:22 INF] Sent status to user 709340765: Idle
+[11:46:26 INF] Received update of type: Message
+[11:46:26 INF] Received message from catalinplesu (709340765): /w
+[11:46:26 INF] User 709340765 executed Working command: SessionStarted
+[11:49:15 INF] Sent lunch reminder to user 709340765
+[11:49:15 INF] Sent lunch reminder to user 709340765 (local time: 13:49)
+[11:49:15 INF] Sent 1 lunch reminder(s)
+[11:50:16 INF] Received update of type: Message
+[11:50:16 INF] Received message from catalinplesu (709340765): /list
+[11:50:17 INF] User 709340765 listed 4 sessions for today
+[14:26:36 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Request timed out
+ ---> System.Threading.Tasks.TaskCanceledException: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.
+ ---> System.TimeoutException: A task was canceled.
+ ---> System.Threading.Tasks.TaskCanceledException: A task was canceled.
+   at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   --- End of inner exception stack trace ---
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpClient.HandleFailure(Exception e, Boolean telemetryStarted, HttpResponseMessage response, CancellationTokenSource cts, CancellationToken cancellationToken, CancellationTokenSource pendingRequestsCts)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[15:28:38 INF] Received update of type: Message
+[15:28:38 INF] Received message from catalinplesu (709340765): /s
+[15:28:38 INF] Status command from user 709340765 (catalinplesu)
+[15:28:38 INF] Sent status to user 709340765: Working
+[16:05:44 INF] Received update of type: Message
+[16:05:44 INF] Received message from catalinplesu (709340765): /s
+[16:05:44 INF] Status command from user 709340765 (catalinplesu)
+[16:05:44 INF] Sent status to user 709340765: Working
+[16:28:21 INF] Received update of type: Message
+[16:28:21 INF] Received message from catalinplesu (709340765): /s
+[16:28:21 INF] Status command from user 709340765 (catalinplesu)
+[16:28:21 INF] Sent status to user 709340765: Working
+[16:55:27 INF] Received update of type: CallbackQuery
+[16:55:27 INF] Received callback query from 709340765: status:stop:Working
+[16:55:27 INF] User 709340765 stopped Working via status button: SessionEnded
+[16:55:32 INF] Received update of type: Message
+[16:55:32 INF] Received message from catalinplesu (709340765): /s
+[16:55:32 INF] Status command from user 709340765 (catalinplesu)
+[16:55:33 INF] Sent status to user 709340765: Idle
+[16:59:59 INF] Received update of type: Message
+[16:59:59 INF] Received message from catalinplesu (709340765): /c
+[16:59:59 INF] User 709340765 executed Commuting command: SessionStarted
+[17:44:13 INF] Received update of type: Message
+[17:44:13 INF] Received message from catalinplesu (709340765): /commute
+[17:44:14 INF] User 709340765 executed Commuting command: SessionEnded
+[18:16:28 INF] Received update of type: Message
+[18:16:28 INF] Received message from catalinplesu (709340765): /h reports
+[18:16:28 INF] Help command from user 709340765 (catalinplesu)
+[18:16:33 INF] Received update of type: Message
+[18:16:33 INF] Received message from catalinplesu (709340765): /h report
+[18:16:33 INF] Help command from user 709340765 (catalinplesu)
+[18:21:22 INF] Received update of type: Message
+[18:21:22 INF] Received message from catalinplesu (709340765): /r all
+[18:21:23 INF] User 709340765 viewed all reports
+[20:06:46 ERR] Error occurred while processing Telegram update
+Telegram.Bot.Exceptions.RequestException: Bot API Request timed out
+ ---> System.Threading.Tasks.TaskCanceledException: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.
+ ---> System.TimeoutException: The operation was canceled.
+ ---> System.Threading.Tasks.TaskCanceledException: The operation was canceled.
+ ---> System.IO.IOException: Unable to read data from the transport connection: Operation canceled.
+ ---> System.Net.Sockets.SocketException (125): Operation canceled
+   --- End of inner exception stack trace ---
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError error, CancellationToken cancellationToken)
+   at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.System.Threading.Tasks.Sources.IValueTaskSource<System.Int32>.GetResult(Int16 token)
+   at System.Net.Security.SslStream.EnsureFullTlsFrameAsync[TIOAdapter](CancellationToken cancellationToken, Int32 estimatedSize)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Security.SslStream.ReadAsyncInternal[TIOAdapter](Memory`1 buffer, CancellationToken cancellationToken)
+   at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpConnection.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage request, Boolean async, Boolean doRequestAuth, CancellationToken cancellationToken)
+   at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage request, Boolean async, CancellationToken cancellationToken)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   --- End of inner exception stack trace ---
+   --- End of inner exception stack trace ---
+   at System.Net.Http.HttpClient.HandleFailure(Exception e, Boolean telemetryStarted, HttpResponseMessage response, CancellationTokenSource cts, CancellationToken cancellationToken, CancellationTokenSource pendingRequestsCts)
+   at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage request, HttpCompletionOption completionOption, CancellationTokenSource cts, Boolean disposeCts, CancellationTokenSource pendingRequestsCts, CancellationToken originalCancellationToken)
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   --- End of inner exception stack trace ---
+   at Telegram.Bot.TelegramBotClient.SendRequest[TResponse](IRequest`1 request, CancellationToken cancellationToken)
+   at Telegram.Bot.TelegramBotClientExtensions.ReceiveAsync(ITelegramBotClient botClient, IUpdateHandler updateHandler, ReceiverOptions receiverOptions, CancellationToken cancellationToken)
+[00:01:16 INF] Sent work hours complete notification to user 709340765 (target: 8.0h, actual: 8.53886554180556h)
+[00:01:16 INF] Sent work hours complete alert to user 709340765 (target: 8.0h, actual: 8.53886554180556h)
+[00:01:16 INF] Sent 1 work hours complete alert(s)
+[05:51:31 INF] Received update of type: Message
+[05:51:31 INF] Received message from catalinplesu (709340765): /c
+[05:51:31 INF] User 709340765 executed Commuting command: SessionStarted
+[06:34:32 INF] Received update of type: Message
+[06:34:32 INF] Received message from catalinplesu (709340765): /commute
+[06:34:32 INF] User 709340765 executed Commuting command: SessionEnded
+[06:42:11 INF] Received update of type: Message
+[06:42:11 INF] Received message from catalinplesu (709340765): /w
+[06:42:11 INF] User 709340765 executed Working command: SessionStarted
+[10:46:16 INF] Sent lunch reminder to user 709340765
+[10:46:16 INF] Sent lunch reminder to user 709340765 (local time: 12:46)
+[10:46:16 INF] Sent 1 lunch reminder(s)
+[11:22:53 INF] Received update of type: Message
+[11:22:53 INF] Received message from catalinplesu (709340765): /lunch
+[11:22:54 INF] User 709340765 executed Lunch command: SessionStarted
+[11:39:39 INF] Received update of type: Message
+[11:39:39 INF] Received message from catalinplesu (709340765): /work
+[11:39:39 INF] User 709340765 executed Working command: SessionStarted
+[14:35:55 INF] Received update of type: Message
+[14:35:55 INF] Received message from catalinplesu (709340765): /s
+[14:35:55 INF] Status command from user 709340765 (catalinplesu)
+[14:35:55 INF] Sent status to user 709340765: Working
+[16:04:25 INF] Received update of type: CallbackQuery
+[16:04:25 INF] Received callback query from 709340765: status:stop:Working
+[16:04:25 INF] User 709340765 stopped Working via status button: SessionEnded
+[16:04:34 INF] Received update of type: Message
+[16:04:34 INF] Received message from catalinplesu (709340765): /s
+[16:04:34 INF] Status command from user 709340765 (catalinplesu)
+[16:04:34 INF] Sent status to user 709340765: Idle
+[16:14:44 INF] Received update of type: Message
+[16:14:44 INF] Received message from catalinplesu (709340765): /c
+[16:14:44 INF] User 709340765 executed Commuting command: SessionStarted
+[17:10:09 INF] Received update of type: Message
+[17:10:09 INF] Received message from catalinplesu (709340765): /commute
+[17:10:09 INF] User 709340765 executed Commuting command: SessionEnded
+[17:10:14 INF] Received update of type: Message
+[17:10:14 INF] Received message from catalinplesu (709340765): /edit
+[17:10:14 INF] User 709340765 opened edit interface for session 3b775c32-91f8-4dd4-9a86-464dc0f2d22f (Most recent entry)
+[17:10:31 INF] Received update of type: CallbackQuery
+[17:10:31 INF] Received callback query from 709340765: edit:3b775c32-91f8-4dd4-9a86-464dc0f2d22f:s:-5
+[17:10:31 INF] User 709340765 adjusted start of session 3b775c32-91f8-4dd4-9a86-464dc0f2d22f by -5 minutes
+[17:10:43 INF] Received update of type: Message
+[17:10:43 INF] Received message from catalinplesu (709340765): /s
+[17:10:43 INF] Status command from user 709340765 (catalinplesu)
+[17:10:43 INF] Sent status to user 709340765: Idle
+[19:03:51 INF] Received update of type: Message
+[19:03:51 INF] Received message from catalinplesu (709340765): /h report
+[19:03:51 INF] Help command from user 709340765 (catalinplesu)
+[19:03:56 INF] Received update of type: Message
+[19:03:56 INF] Received message from catalinplesu (709340765): /r day
+[19:03:56 INF] User 709340765 viewed day report
+[19:04:16 INF] Received update of type: Message
+[19:04:16 INF] Received message from catalinplesu (709340765): /l
+[19:04:16 INF] User 709340765 executed Lunch command: SessionStarted
+[19:04:20 INF] Received update of type: Message
+[19:04:20 INF] Received message from catalinplesu (709340765): /l
+[19:04:20 INF] User 709340765 executed Lunch command: SessionEnded
+[19:04:22 INF] Received update of type: Message
+[19:04:22 INF] Received message from catalinplesu (709340765): /list
+[19:04:22 INF] User 709340765 listed 6 sessions for today
+[19:04:42 INF] Received update of type: Message
+[19:04:42 INF] Received message from catalinplesu (709340765): /delete
+[19:04:43 INF] User 709340765 requested deletion confirmation for session 561b2995-cf66-4c00-b0f6-e7c8c7a405c2 (entry ID: most recent)
+[19:04:47 INF] Received update of type: CallbackQuery
+[19:04:47 INF] Received callback query from 709340765: delete:561b2995-cf66-4c00-b0f6-e7c8c7a405c2:confirm
+[19:04:48 INF] User 709340765 deleted session 561b2995-cf66-4c00-b0f6-e7c8c7a405c2
+[19:04:53 INF] Received update of type: Message
+[19:04:53 INF] Received message from catalinplesu (709340765): /list
+[19:04:53 INF] User 709340765 listed 5 sessions for today
+[19:05:41 INF] Received update of type: Message
+[19:05:41 INF] Received message from catalinplesu (709340765): /r day
+[19:05:41 INF] User 709340765 viewed day report
+[19:05:48 INF] Received update of type: Message
+[19:05:48 INF] Received message from catalinplesu (709340765): /h report
+[19:05:48 INF] Help command from user 709340765 (catalinplesu)
+[19:05:54 INF] Received update of type: Message
+[19:05:54 INF] Received message from catalinplesu (709340765): /r week
+[19:05:54 INF] User 709340765 viewed week report
+[00:01:17 INF] Sent work hours complete notification to user 709340765 (target: 8.0h, actual: 9.09133009327777h)
+[00:01:17 INF] Sent work hours complete alert to user 709340765 (target: 8.0h, actual: 9.09133009327777h)
+[00:01:17 INF] Sent 1 work hours complete alert(s)
+[05:40:46 INF] Received update of type: Message
+[05:40:46 INF] Received message from catalinplesu (709340765): /c
+[05:40:46 INF] User 709340765 executed Commuting command: SessionStarted
+[06:37:59 INF] Received update of type: Message
+[06:37:59 INF] Received message from catalinplesu (709340765): /c
+[06:37:59 INF] User 709340765 executed Commuting command: SessionEnded
+[06:49:18 INF] Received update of type: Message
+[06:49:18 INF] Received message from catalinplesu (709340765): /work
+[06:49:18 INF] User 709340765 executed Working command: SessionStarted
+[10:46:17 INF] Sent lunch reminder to user 709340765
+[10:46:17 INF] Sent lunch reminder to user 709340765 (local time: 12:46)
+[10:46:17 INF] Sent 1 lunch reminder(s)
+[11:07:03 INF] Received update of type: Message
+[11:07:03 INF] Received message from catalinplesu (709340765): /lunch
+[11:07:03 INF] User 709340765 executed Lunch command: SessionStarted
+[11:40:21 INF] Received update of type: Message
+[11:40:21 INF] Received message from catalinplesu (709340765): /work
+[11:40:21 INF] User 709340765 executed Working command: SessionStarted
+[15:38:02 INF] Received update of type: Message
+[15:38:02 INF] Received message from catalinplesu (709340765): /s
+[15:38:02 INF] Status command from user 709340765 (catalinplesu)
+[15:38:02 INF] Sent status to user 709340765: Working
+[15:48:32 INF] Received update of type: Message
+[15:48:32 INF] Received message from catalinplesu (709340765): /s
+[15:48:32 INF] Status command from user 709340765 (catalinplesu)
+[15:48:32 INF] Sent status to user 709340765: Working
+[15:48:39 INF] Received update of type: Message
+[15:48:39 INF] Received message from catalinplesu (709340765): /li
+[15:48:40 INF] User 709340765 listed 4 sessions for today
+[15:48:58 INF] Received update of type: Message
+[15:48:58 INF] Received message from catalinplesu (709340765): /r all
+[15:48:59 INF] User 709340765 viewed all reports
+[15:49:42 INF] Received update of type: Message
+[15:49:42 INF] Received message from catalinplesu (709340765): /s
+[15:49:42 INF] Status command from user 709340765 (catalinplesu)
+[15:49:42 INF] Sent status to user 709340765: Working
+[15:50:16 INF] Received update of type: CallbackQuery
+[15:50:16 INF] Received callback query from 709340765: status:stop:Working
+[15:50:16 INF] User 709340765 stopped Working via status button: SessionEnded
+[15:50:24 INF] Received update of type: Message
+[15:50:24 INF] Received message from catalinplesu (709340765): /r week
+[15:50:25 INF] User 709340765 viewed week report
+[15:55:09 INF] Received update of type: Message
+[15:55:09 INF] Received message from catalinplesu (709340765): /s
+[15:55:09 INF] Status command from user 709340765 (catalinplesu)
+[15:55:09 INF] Sent status to user 709340765: Idle
+[15:55:15 INF] Received update of type: Message
+[15:55:15 INF] Received message from catalinplesu (709340765): /c
+[15:55:15 INF] User 709340765 executed Commuting command: SessionStarted
+[17:07:17 INF] Sent forgot-shutdown reminder to user 709340765 (state: Commuting, current: 1.20043425h, average: 0.909154882623016h)
+[17:07:17 INF] Sent forgot-shutdown reminder for session 57268cc1-0e04-48be-892e-b62e9738b1e7 (user: 709340765, state: Commuting)
+[17:07:17 INF] Sent forgot-shutdown reminders for 1 session(s)
+[17:07:17 INF] Reminder sent: User 709340765, State Commuting, Duration 1.20 hours
+[17:08:11 INF] Received update of type: Message
+[17:08:11 INF] Received message from catalinplesu (709340765): /commute
+[17:08:12 INF] User 709340765 executed Commuting command: SessionEnded
+[17:34:33 INF] Received update of type: Message
+[17:34:33 INF] Received message from catalinplesu (709340765): /settings
+[17:34:33 INF] Settings command from user 709340765 (catalinplesu)
+[17:34:38 INF] Received update of type: Message
+[17:34:38 INF] Received message from catalinplesu (709340765): /help settings
+[17:34:38 INF] Help command from user 709340765 (catalinplesu)
+[17:36:10 INF] Received update of type: Message
+[17:36:10 INF] Received message from catalinplesu (709340765): /r
+[17:36:10 INF] User 709340765 viewed day report
+[17:36:18 INF] Received update of type: Message
+[17:36:18 INF] Received message from catalinplesu (709340765): /r week
+[17:36:18 INF] User 709340765 viewed week report
+[17:37:05 INF] Received update of type: Message
+[17:37:05 INF] Received message from catalinplesu (709340765): /r all
+[17:37:06 INF] User 709340765 viewed all reports
+[20:03:00 INF] Received update of type: Message
+[20:03:00 INF] Received message from catalinplesu (709340765): /register
+[20:03:05 INF] Received update of type: Message
+[20:03:05 INF] Received message from catalinplesu (709340765): /h
+[20:03:05 INF] Help command from user 709340765 (catalinplesu)
+[20:07:25 INF] Received update of type: Message
+[20:07:25 INF] Received message from catalinplesu (709340765): /generate
+[20:07:25 INF] Generate command from user 709340765 (catalinplesu)
+[20:07:25 INF] Admin 709340765 (catalinplesu) generated a new registration mnemonic
+[20:08:04 INF] Received update of type: Message
+[20:08:04 INF] Received message from Unknown (7075565903): /start
+[20:08:04 WRN] Ignoring command from non-registered user 7075565903 (Unknown): /start
+[20:08:16 INF] Received update of type: Message
+[20:08:16 INF] Received message from Unknown (7075565903): /s
+[20:08:16 WRN] Ignoring command from non-registered user 7075565903 (Unknown): /s
+[20:08:41 INF] Received update of type: Message
+[20:08:41 INF] Received message from catalinplesu (709340765): /help
+[20:08:41 INF] Help command from user 709340765 (catalinplesu)
+[20:40:46 INF] Received update of type: Message
+[20:40:46 INF] Received message from Unknown (7075565903): /register pull glad primary what together toward lobster camp client spoon bleak intact chalk flock member chapter try oxygen leader about wage cream input reason
+[20:40:46 INF] Mnemonic validated for user 7075565903 (no username), awaiting UTC offset
+[20:41:21 INF] Received update of type: Message
+[20:41:21 INF] Received message from Unknown (7075565903): /help
+[20:41:21 INF] Help command from user 7075565903 (Unknown)
+[20:41:47 INF] Received update of type: Message
+[20:41:47 INF] Received message from Unknown (7075565903): /s
+[20:43:28 INF] Received update of type: Message
+[20:43:28 INF] Received message from Unknown (7075565903): +2
+[20:43:28 INF] User registered: 7075565903 (no username), IsAdmin: False, UtcOffset: 120 minutes
+[20:43:38 INF] Received update of type: Message
+[20:43:38 INF] Received message from Unknown (7075565903): /s
+[20:43:38 INF] Status command from user 7075565903 (Unknown)
+[20:43:38 INF] Sent status to user 7075565903: Idle
+[00:01:18 INF] Sent work hours complete notification to user 709340765 (target: 8.0h, actual: 8.46123779661111h)
+[00:01:18 INF] Sent work hours complete alert to user 709340765 (target: 8.0h, actual: 8.46123779661111h)
+[00:01:18 INF] Sent 1 work hours complete alert(s)
+[05:52:14 INF] Received update of type: Message
+[05:52:14 INF] Received message from catalinplesu (709340765): /c
+[05:52:14 INF] User 709340765 executed Commuting command: SessionStarted
+[06:50:58 INF] Received update of type: Message
+[06:50:58 INF] Received message from Unknown (7075565903): /s
+[06:50:58 INF] Status command from user 7075565903 (Unknown)
+[06:50:58 INF] Sent status to user 7075565903: Idle
+[06:51:04 INF] Received update of type: Message
+[06:51:04 INF] Received message from Unknown (7075565903): /help
+[06:51:04 INF] Help command from user 7075565903 (Unknown)
+[06:51:18 INF] Received update of type: Message
+[06:51:18 INF] Received message from Unknown (7075565903): /w
+[06:51:18 INF] User 7075565903 executed Working command: SessionStarted
+[06:51:52 INF] Received update of type: Message
+[06:51:52 INF] Received message from Unknown (7075565903): /s
+[06:51:52 INF] Status command from user 7075565903 (Unknown)
+[06:51:52 INF] Sent status to user 7075565903: Working
+[07:01:20 INF] Received update of type: Message
+[07:01:20 INF] Received message from catalinplesu (709340765): /commute
+[07:01:20 INF] User 709340765 executed Commuting command: SessionEnded
+[07:06:03 INF] Received update of type: Message
+[07:06:03 INF] Received message from catalinplesu (709340765): /w
+[07:06:03 INF] User 709340765 executed Working command: SessionStarted
+[10:46:18 INF] Sent lunch reminder to user 709340765
+[10:46:18 INF] Sent lunch reminder to user 709340765 (local time: 12:46)
+[10:46:18 INF] Sent 1 lunch reminder(s)
+[11:06:40 INF] Received update of type: Message
+[11:06:40 INF] Received message from catalinplesu (709340765): /lunch
+[11:06:40 INF] User 709340765 executed Lunch command: SessionStarted
+[11:15:36 INF] Received update of type: Message
+[11:15:36 INF] Received message from catalinplesu (709340765): /lunch
+[11:15:36 INF] User 709340765 executed Lunch command: SessionEnded
+[11:17:35 INF] Received update of type: Message
+[11:17:35 INF] Received message from catalinplesu (709340765): /s
+[11:17:35 INF] Status command from user 709340765 (catalinplesu)
+[11:17:36 INF] Sent status to user 709340765: Idle
+[11:20:36 INF] Received update of type: Message
+[11:20:36 INF] Received message from catalinplesu (709340765): /work
+[11:20:36 INF] User 709340765 executed Working command: SessionStarted
+[13:45:17 INF] Received update of type: Message
+[13:45:17 INF] Received message from catalinplesu (709340765): /lunch
+[13:45:17 INF] User 709340765 executed Lunch command: SessionStarted
+[13:53:53 INF] Received update of type: Message
+[13:53:53 INF] Received message from catalinplesu (709340765): /work
+[13:53:54 INF] User 709340765 executed Working command: SessionStarted
+[13:53:57 INF] Received update of type: Message
+[13:53:57 INF] Received message from catalinplesu (709340765): /li
+[13:53:57 INF] User 709340765 listed 6 sessions for today
+[13:54:00 INF] Received update of type: Message
+[13:54:00 INF] Received message from catalinplesu (709340765): /s
+[13:54:00 INF] Status command from user 709340765 (catalinplesu)
+[13:54:01 INF] Sent status to user 709340765: Working
+[14:47:18 INF] Received update of type: Message
+[14:47:18 INF] Received message from catalinplesu (709340765): /s
+[14:47:18 INF] Status command from user 709340765 (catalinplesu)
+[14:47:18 INF] Sent status to user 709340765: Working
+[15:00:11 INF] Received update of type: CallbackQuery
+[15:00:11 INF] Received callback query from 709340765: status:stop:Working
+[15:00:11 INF] User 709340765 stopped Working via status button: SessionEnded
+[15:02:29 INF] Received update of type: Message
+[15:02:29 INF] Received message from catalinplesu (709340765): /s
+[15:02:29 INF] Status command from user 709340765 (catalinplesu)
+[15:02:29 INF] Sent status to user 709340765: Idle
+[15:08:08 INF] Received update of type: Message
+[15:08:08 INF] Received message from catalinplesu (709340765): /c
+[15:08:08 INF] User 709340765 executed Commuting command: SessionStarted
+[16:22:58 INF] Received update of type: Message
+[16:22:58 INF] Received message from catalinplesu (709340765): /s
+[16:22:58 INF] Status command from user 709340765 (catalinplesu)
+[16:22:58 INF] Sent status to user 709340765: Commuting
+[16:25:18 INF] Sent forgot-shutdown reminder to user 709340765 (state: Commuting, current: 1.28612805483333h, average: 0.970150835496914h)
+[16:25:18 INF] Sent forgot-shutdown reminder for session 546b33b7-e79c-469d-82c4-c28f514b2447 (user: 709340765, state: Commuting)
+[16:25:18 INF] Sent forgot-shutdown reminders for 1 session(s)
+[16:25:18 INF] Reminder sent: User 709340765, State Commuting, Duration 1.29 hours
+[16:25:40 INF] Received update of type: Message
+[16:25:40 INF] Received message from catalinplesu (709340765): /s
+[16:25:40 INF] Status command from user 709340765 (catalinplesu)
+[16:25:41 INF] Sent status to user 709340765: Commuting
+[16:25:54 INF] Received update of type: Message
+[16:25:54 INF] Received message from catalinplesu (709340765): /s
+[16:25:54 INF] Status command from user 709340765 (catalinplesu)
+[16:25:54 INF] Sent status to user 709340765: Commuting
+[16:41:41 INF] Received update of type: CallbackQuery
+[16:41:41 INF] Received callback query from 7075565903: status:stop:Working
+[16:41:41 INF] User 7075565903 stopped Working via status button: SessionEnded
+[16:41:48 INF] Received update of type: Message
+[16:41:48 INF] Received message from Unknown (7075565903): /s
+[16:41:48 INF] Status command from user 7075565903 (Unknown)
+[16:41:48 INF] Sent status to user 7075565903: Idle
+[18:52:16 INF] Received update of type: CallbackQuery
+[18:52:16 INF] Received callback query from 709340765: status:stop:Commuting
+[18:52:17 INF] User 709340765 stopped Commuting via status button: SessionEnded
+[18:52:18 INF] Received update of type: Message
+[18:52:18 INF] Received message from catalinplesu (709340765): /s
+[18:52:18 INF] Status command from user 709340765 (catalinplesu)
+[18:52:18 INF] Sent status to user 709340765: Idle
+[06:53:22 INF] Received update of type: Message
+[06:53:22 INF] Received message from catalinplesu (709340765): /s
+[06:53:22 INF] Status command from user 709340765 (catalinplesu)
+[06:53:22 INF] Sent status to user 709340765: Idle
+[06:53:29 INF] Received update of type: Message
+[06:53:29 INF] Received message from catalinplesu (709340765): /r week
+[06:53:29 INF] User 709340765 viewed week report
+[06:53:37 INF] Received update of type: Message
+[06:53:37 INF] Received message from catalinplesu (709340765): /r all
+[06:53:38 INF] User 709340765 viewed all reports

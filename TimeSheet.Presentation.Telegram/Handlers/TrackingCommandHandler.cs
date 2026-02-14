@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using TimeSheet.Core.Application.Interfaces;
 using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Application.Parsers;
@@ -15,6 +16,8 @@ public class TrackingCommandHandler(
     IServiceScopeFactory serviceScopeFactory,
     ICommandParameterParser parameterParser)
 {
+    // Callback data prefix for inline keyboard buttons
+    private const string CallbackPrefix = "track:";
 
     /// <summary>
     /// Handles the /commute command.
@@ -62,6 +65,135 @@ public class TrackingCommandHandler(
             TrackingState.Lunch,
             "on lunch break",
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Handles callback queries from predictive action buttons.
+    /// </summary>
+    public async Task HandleCallbackQueryAsync(
+        ITelegramBotClient botClient,
+        CallbackQuery callbackQuery,
+        CancellationToken cancellationToken)
+    {
+        var userId = callbackQuery.From.Id;
+        var data = callbackQuery.Data ?? string.Empty;
+
+        if (!data.StartsWith(CallbackPrefix))
+        {
+            // Not a tracking callback
+            return;
+        }
+
+        try
+        {
+            // Parse callback data: "track:{state}"
+            // Example: "track:work" means start/toggle work state
+            var parts = data.Split(':');
+            if (parts.Length != 2)
+            {
+                logger.LogWarning("Invalid callback data format: {Data}", data);
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    text: "Invalid button data",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            var stateStr = parts[1];
+            var targetState = stateStr.ToLowerInvariant() switch
+            {
+                "commute" => TrackingState.Commuting,
+                "work" => TrackingState.Working,
+                "lunch" => TrackingState.Lunch,
+                _ => (TrackingState?)null
+            };
+
+            if (targetState == null)
+            {
+                logger.LogWarning("Invalid state in callback data: {State}", stateStr);
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    text: "Invalid state",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            using var scope = serviceScopeFactory.CreateScope();
+            var timeTrackingService = scope.ServiceProvider.GetRequiredService<ITimeTrackingService>();
+            var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
+
+            // Get the user's UTC offset from settings
+            var user = await userSettingsService.GetUserAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                logger.LogWarning("User {UserId} not found in database", userId);
+                await botClient.AnswerCallbackQuery(
+                    callbackQueryId: callbackQuery.Id,
+                    text: "User not found",
+                    showAlert: true,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Execute the state transition (using current time, no parameter parsing needed)
+            var result = await timeTrackingService.StartStateAsync(
+                userId,
+                targetState.Value,
+                DateTime.UtcNow,
+                cancellationToken);
+
+            // Format the response based on result
+            var stateName = targetState.Value switch
+            {
+                TrackingState.Commuting => "commuting",
+                TrackingState.Working => "working",
+                TrackingState.Lunch => "on lunch break",
+                _ => targetState.Value.ToString().ToLowerInvariant()
+            };
+
+            var responseText = FormatResponse(result, stateName);
+            var keyboard = CreatePredictiveActionButtons(result, user.UtcOffsetMinutes);
+
+            // Update the message with the new status
+            if (callbackQuery.Message != null)
+            {
+                await botClient.EditMessageText(
+                    chatId: callbackQuery.Message.Chat.Id,
+                    messageId: callbackQuery.Message.MessageId,
+                    text: responseText,
+                    replyMarkup: keyboard,
+                    cancellationToken: cancellationToken);
+            }
+
+            // Answer the callback query with feedback
+            var feedbackText = result switch
+            {
+                TrackingResult.SessionStarted => $"Started {stateName}",
+                TrackingResult.SessionEnded => $"Stopped {stateName}",
+                _ => "Status updated"
+            };
+
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                text: feedbackText,
+                showAlert: false,
+                cancellationToken: cancellationToken);
+
+            logger.LogInformation(
+                "User {UserId} executed {State} via button: {ResultType}",
+                userId,
+                targetState.Value,
+                result.GetType().Name);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling tracking callback query for user {UserId}", userId);
+            await botClient.AnswerCallbackQuery(
+                callbackQueryId: callbackQuery.Id,
+                text: "An error occurred while processing your request",
+                showAlert: true,
+                cancellationToken: cancellationToken);
+        }
     }
 
     /// <summary>
@@ -114,9 +246,12 @@ public class TrackingCommandHandler(
 
             // Send response based on result
             var responseText = FormatResponse(result, stateName);
+            var keyboard = CreatePredictiveActionButtons(result, user.UtcOffsetMinutes);
+
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: responseText,
+                replyMarkup: keyboard,
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
@@ -148,7 +283,7 @@ public class TrackingCommandHandler(
     /// </summary>
     private static string FormatResponse(TrackingResult result, string stateName)
     {
-        var message = result switch
+        return result switch
         {
             TrackingResult.SessionStarted started when started.EndedSession != null =>
                 FormatSessionStartedWithPreviousEnded(started, stateName),
@@ -164,15 +299,6 @@ public class TrackingCommandHandler(
 
             _ => "Unknown result."
         };
-
-        // Add smart suggestions to guide the user through their workflow
-        var suggestion = GenerateNextCommandSuggestion(result);
-        if (!string.IsNullOrEmpty(suggestion))
-        {
-            message += $"\n\n{suggestion}";
-        }
-
-        return message;
     }
 
     /// <summary>
@@ -252,56 +378,106 @@ public class TrackingCommandHandler(
     }
 
     /// <summary>
-    /// Generates context-aware suggestions for the next command based on the current result.
+    /// Creates context-aware inline keyboard buttons for predicted next actions.
     /// </summary>
-    private static string GenerateNextCommandSuggestion(TrackingResult result)
+    private static InlineKeyboardMarkup? CreatePredictiveActionButtons(TrackingResult result, int utcOffsetMinutes)
     {
         return result switch
         {
-            // When commute starts, suggest either stopping at destination or starting work
+            // When commute starts, suggest stopping commute or starting work
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Commuting } =>
-                "Press /commute to stop when you reach your destination, or /work to start working",
+                new InlineKeyboardMarkup(new[]
+                {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Stop Commute", $"{CallbackPrefix}commute"),
+                        InlineKeyboardButton.WithCallbackData("Start Work", $"{CallbackPrefix}work")
+                    }
+                }),
 
-            // When work starts, suggest lunch or stopping work
+            // When work starts, suggest lunch or stopping work (context-aware based on time)
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Working } started =>
-                GenerateWorkStartedSuggestion(started.StartedSession.StartedAt),
+                CreateWorkStartedButtons(started.StartedSession.StartedAt, utcOffsetMinutes),
 
             // When lunch starts, suggest returning to work
             TrackingResult.SessionStarted { StartedSession.State: TrackingState.Lunch } =>
-                "Press /work when you're ready to continue working",
+                new InlineKeyboardMarkup(new[]
+                {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Back to Work", $"{CallbackPrefix}work")
+                    }
+                }),
 
             // When commute ends, suggest starting work
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Commuting } =>
-                "Press /work to start tracking your work time",
+                new InlineKeyboardMarkup(new[]
+                {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Start Work", $"{CallbackPrefix}work")
+                    }
+                }),
 
             // When work ends, suggest commute home
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Working } =>
-                "Press /commute if you're heading home",
+                new InlineKeyboardMarkup(new[]
+                {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Commute Home", $"{CallbackPrefix}commute")
+                    }
+                }),
 
             // When lunch ends, suggest work (though this shouldn't happen with toggle logic)
             TrackingResult.SessionEnded { EndedSession.State: TrackingState.Lunch } =>
-                "Press /work to continue your work session",
+                new InlineKeyboardMarkup(new[]
+                {
+                    new[]
+                    {
+                        InlineKeyboardButton.WithCallbackData("Start Work", $"{CallbackPrefix}work")
+                    }
+                }),
 
-            _ => string.Empty
+            _ => null
         };
     }
 
     /// <summary>
-    /// Generates a context-aware suggestion for when work is started.
-    /// Considers the time of day to suggest lunch or end of work.
+    /// Creates context-aware buttons when work is started.
+    /// Considers the time of day to prioritize lunch or end of work.
     /// </summary>
-    private static string GenerateWorkStartedSuggestion(DateTime workStartTime)
+    private static InlineKeyboardMarkup CreateWorkStartedButtons(DateTime workStartTime, int utcOffsetMinutes)
     {
-        // TODO: In Epic 5, use user's timezone. For now, use UTC time.
-        var hour = workStartTime.Hour;
+        // Convert to user's local time
+        var localTime = workStartTime.AddMinutes(utcOffsetMinutes);
+        var hour = localTime.Hour;
 
-        // If it's around lunchtime (11:00-14:00), suggest lunch
+        // If it's around lunchtime (11:00-14:00), prioritize lunch button
         if (hour >= 11 && hour < 14)
         {
-            return "Press /lunch when you take your break, or /work to stop working";
+            return new InlineKeyboardMarkup(new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Take Lunch", $"{CallbackPrefix}lunch"),
+                    InlineKeyboardButton.WithCallbackData("Stop Work", $"{CallbackPrefix}work")
+                }
+            });
         }
 
-        // Otherwise, suggest general options
-        return "Press /lunch for your break, /work to stop, or /commute when heading home";
+        // Otherwise, show general options
+        return new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Stop Work", $"{CallbackPrefix}work")
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Take Lunch", $"{CallbackPrefix}lunch"),
+                InlineKeyboardButton.WithCallbackData("Commute Home", $"{CallbackPrefix}commute")
+            }
+        });
     }
 }
