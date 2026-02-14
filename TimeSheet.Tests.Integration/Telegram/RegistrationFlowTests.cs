@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Tests.Integration.Base;
 using TimeSheet.Tests.Integration.Fixtures;
 using TimeSheet.Tests.Integration.Mocks;

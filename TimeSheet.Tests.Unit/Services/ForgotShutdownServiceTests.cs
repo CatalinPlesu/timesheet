@@ -2,7 +2,9 @@ namespace TimeSheet.Tests.Unit.Services;
 
 using Microsoft.Extensions.Logging;
 using Moq;
-using TimeSheet.Core.Application.Interfaces;
+using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Interfaces.Persistence;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Core.Application.Services;
 using TimeSheet.Core.Domain.Entities;
 using TimeSheet.Core.Domain.Enums;
