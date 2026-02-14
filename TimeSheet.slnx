@@ -2,6 +2,7 @@
   <Project Path="TimeSheet.Core.Application/TimeSheet.Core.Application.csproj" />
   <Project Path="TimeSheet.Core.Domain/TimeSheet.Core.Domain.csproj" />
   <Project Path="TimeSheet.Infrastructure.Persistence/TimeSheet.Infrastructure.Persistence.csproj" />
+  <Project Path="TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj" />
   <Project Path="TimeSheet.Presentation.Telegram/TimeSheet.Presentation.Telegram.csproj" />
   <Project Path="TimeSheet.Tests.Integration/TimeSheet.Tests.Integration.csproj" />
   <Project Path="TimeSheet.Tests.Unit/TimeSheet.Tests.Unit.csproj" />
