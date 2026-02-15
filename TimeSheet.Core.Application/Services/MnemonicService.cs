@@ -1,16 +1,23 @@
-using System.Collections.Concurrent;
 using NBitcoin;
+using TimeSheet.Core.Application.Interfaces.Persistence;
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Core.Domain.ValueObjects;
 
 namespace TimeSheet.Core.Application.Services;
 
 /// <summary>
-/// Implementation of IMnemonicService using NBitcoin for BIP39 mnemonic generation.
+/// Implementation of IMnemonicService using NBitcoin for BIP39 mnemonic generation
+/// and database persistence for mnemonic storage.
 /// </summary>
-public sealed class MnemonicService : IMnemonicService
+/// <param name="pendingMnemonicRepository">Repository for managing pending mnemonics.</param>
+/// <param name="unitOfWork">Unit of work for coordinating database transactions.</param>
+public sealed class MnemonicService(
+    IPendingMnemonicRepository pendingMnemonicRepository,
+    IUnitOfWork unitOfWork) : IMnemonicService
 {
-    private readonly ConcurrentDictionary<string, byte> _pendingMnemonics = new();
+    private static readonly TimeSpan MnemonicExpirationTime = TimeSpan.FromMinutes(15);
 
     /// <inheritdoc/>
     public RegistrationMnemonic GenerateMnemonic()
@@ -21,14 +28,19 @@ public sealed class MnemonicService : IMnemonicService
     }
 
     /// <inheritdoc/>
-    public void StorePendingMnemonic(RegistrationMnemonic mnemonic)
+    public async Task StorePendingMnemonicAsync(RegistrationMnemonic mnemonic, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mnemonic);
-        _pendingMnemonics.TryAdd(mnemonic.ToString(), 0);
+
+        var expiresAt = DateTimeOffset.UtcNow.Add(MnemonicExpirationTime);
+        var pendingMnemonic = new PendingMnemonic(mnemonic.ToString(), expiresAt);
+
+        await pendingMnemonicRepository.AddAsync(pendingMnemonic, cancellationToken);
+        await unitOfWork.CompleteAsync(cancellationToken);
     }
 
     /// <inheritdoc/>
-    public bool ValidateAndConsumeMnemonic(string mnemonicString)
+    public async Task<bool> ValidateAndConsumeMnemonicAsync(string mnemonicString, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(mnemonicString))
         {
@@ -50,12 +62,25 @@ public sealed class MnemonicService : IMnemonicService
 
         var normalizedMnemonic = parsedMnemonic.ToString();
 
-        // Atomically remove the mnemonic if it exists
-        return _pendingMnemonics.TryRemove(normalizedMnemonic, out _);
+        // Find the mnemonic in the database
+        var pendingMnemonic = await pendingMnemonicRepository.FindByMnemonicAsync(normalizedMnemonic, cancellationToken);
+
+        // Check if mnemonic exists and is valid (not consumed, not expired)
+        if (pendingMnemonic == null || !pendingMnemonic.IsValid())
+        {
+            return false;
+        }
+
+        // Mark as consumed and save
+        pendingMnemonic.MarkAsConsumed();
+        pendingMnemonicRepository.Update(pendingMnemonic);
+        await unitOfWork.CompleteAsync(cancellationToken);
+
+        return true;
     }
 
     /// <inheritdoc/>
-    public bool ValidateMnemonic(string mnemonicString)
+    public async Task<bool> ValidateMnemonicAsync(string mnemonicString, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(mnemonicString))
         {
@@ -76,12 +101,15 @@ public sealed class MnemonicService : IMnemonicService
 
         var normalizedMnemonic = parsedMnemonic.ToString();
 
-        // Check if the mnemonic exists in the pending list
-        return _pendingMnemonics.ContainsKey(normalizedMnemonic);
+        // Find the mnemonic in the database
+        var pendingMnemonic = await pendingMnemonicRepository.FindByMnemonicAsync(normalizedMnemonic, cancellationToken);
+
+        // Check if mnemonic exists and is valid (not consumed, not expired)
+        return pendingMnemonic != null && pendingMnemonic.IsValid();
     }
 
     /// <inheritdoc/>
-    public bool ConsumeMnemonic(string mnemonicString)
+    public async Task<bool> ConsumeMnemonicAsync(string mnemonicString, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(mnemonicString))
         {
@@ -102,7 +130,20 @@ public sealed class MnemonicService : IMnemonicService
 
         var normalizedMnemonic = parsedMnemonic.ToString();
 
-        // Atomically remove the mnemonic if it exists
-        return _pendingMnemonics.TryRemove(normalizedMnemonic, out _);
+        // Find the mnemonic in the database
+        var pendingMnemonic = await pendingMnemonicRepository.FindByMnemonicAsync(normalizedMnemonic, cancellationToken);
+
+        // Check if mnemonic exists and is valid
+        if (pendingMnemonic == null || !pendingMnemonic.IsValid())
+        {
+            return false;
+        }
+
+        // Mark as consumed and save
+        pendingMnemonic.MarkAsConsumed();
+        pendingMnemonicRepository.Update(pendingMnemonic);
+        await unitOfWork.CompleteAsync(cancellationToken);
+
+        return true;
     }
 }
