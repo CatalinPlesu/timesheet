@@ -25,6 +25,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<PendingMnemonic> PendingMnemonics => Set<PendingMnemonic>();
 
     /// <summary>
+    /// Gets or sets the DbSet for Holiday entities.
+    /// </summary>
+    public DbSet<Holiday> Holidays => Set<Holiday>();
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
     /// <param name="dbContextOptions">The DbContext options configured with SQLite provider.</param>

@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPendingMnemonicRepository, PendingMnemonicRepository>();
+        services.AddScoped<IHolidayRepository, HolidayRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
