@@ -31,7 +31,7 @@ class AuthenticatedFetch {
 function getBaseUrl(): string {
 	// In production, this would come from environment variables
 	// For now, default to localhost
-	return import.meta.env.VITE_API_URL || 'http://localhost:5191/';
+	return import.meta.env.VITE_API_URL || 'http://localhost:5191';
 }
 
 /**

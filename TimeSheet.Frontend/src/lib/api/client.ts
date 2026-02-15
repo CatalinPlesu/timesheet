@@ -14,7 +14,8 @@ export class Client {
 
     constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
         this.http = http ? http : window as any;
-        this.baseUrl = baseUrl ?? "http://localhost:5191/";
+        // MODIFIED: Removed trailing slash to prevent double-slash in URLs (//api/...)
+        this.baseUrl = baseUrl ?? "http://localhost:5191";
     }
 
     /**
