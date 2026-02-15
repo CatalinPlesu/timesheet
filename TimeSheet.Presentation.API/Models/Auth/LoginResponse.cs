@@ -21,4 +21,11 @@ public sealed class LoginResponse
     /// Gets or sets the refresh token (optional, for future implementation).
     /// </summary>
     public string? RefreshToken { get; set; }
+
+    /// <summary>
+    /// Gets or sets the user's UTC offset in minutes.
+    /// Used for displaying times in the user's local timezone.
+    /// Example: +60 for UTC+1, -300 for UTC-5.
+    /// </summary>
+    public required int UtcOffsetMinutes { get; set; }
 }

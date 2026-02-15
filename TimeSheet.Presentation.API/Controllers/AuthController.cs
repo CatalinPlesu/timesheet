@@ -121,7 +121,8 @@ public class AuthController : ControllerBase
         return Ok(new LoginResponse
         {
             AccessToken = token,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            UtcOffsetMinutes = user.UtcOffsetMinutes
         });
     }
 
@@ -176,7 +177,8 @@ public class AuthController : ControllerBase
             return Ok(new LoginResponse
             {
                 AccessToken = newToken,
-                ExpiresAt = expiresAt
+                ExpiresAt = expiresAt,
+                UtcOffsetMinutes = user.UtcOffsetMinutes
             });
         }
         catch (SecurityTokenException ex)

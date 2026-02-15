@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Presentation.API.Models.Settings;
 
 namespace TimeSheet.Presentation.API.Controllers;
@@ -13,6 +15,16 @@ namespace TimeSheet.Presentation.API.Controllers;
 [Authorize]
 public class SettingsController : ControllerBase
 {
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<SettingsController> _logger;
+
+    public SettingsController(
+        IUserRepository userRepository,
+        ILogger<SettingsController> logger)
+    {
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
     /// <summary>
     /// Gets all user settings for the authenticated user.
     /// </summary>
@@ -24,9 +36,43 @@ public class SettingsController : ControllerBase
     [ProducesResponseType(typeof(UserSettingsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public Task<ActionResult<UserSettingsDto>> GetSettings()
+    public async Task<ActionResult<UserSettingsDto>> GetSettings(CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Get settings endpoint will be implemented in a future task");
+        try
+        {
+            var userId = GetUserIdFromClaims();
+            _logger.LogInformation("Getting settings for user {UserId}", userId);
+
+            var user = await _userRepository.GetByTelegramUserIdAsync(userId, cancellationToken);
+
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found", userId);
+                return Unauthorized(new { error = "User not found" });
+            }
+
+            return Ok(new UserSettingsDto
+            {
+                UtcOffsetMinutes = user.UtcOffsetMinutes,
+                MaxWorkHours = user.MaxWorkHours,
+                MaxCommuteHours = user.MaxCommuteHours,
+                MaxLunchHours = user.MaxLunchHours,
+                LunchReminderHour = user.LunchReminderHour,
+                LunchReminderMinute = user.LunchReminderMinute,
+                TargetWorkHours = user.TargetWorkHours,
+                ForgotShutdownThresholdPercent = user.ForgotShutdownThresholdPercent
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
+        {
+            _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
+            return Unauthorized(new { error = "Invalid authentication token" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user settings");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving settings" });
+        }
     }
 
     /// <summary>
@@ -127,5 +173,21 @@ public class SettingsController : ControllerBase
     public Task<ActionResult<UserSettingsDto>> UpdateForgotThreshold([FromBody] UpdateForgotThresholdRequest request)
     {
         throw new NotImplementedException("Update forgot threshold endpoint will be implemented in a future task");
+    }
+
+    /// <summary>
+    /// Extracts the user ID from JWT claims.
+    /// </summary>
+    private long GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? User.FindFirst("telegram_user_id")?.Value;
+
+        if (userIdClaim == null || !long.TryParse(userIdClaim, out var userId))
+        {
+            throw new InvalidOperationException("User ID not found in JWT claims");
+        }
+
+        return userId;
     }
 }

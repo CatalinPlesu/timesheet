@@ -10,7 +10,10 @@
 
 ## Current Task
 
-None - ready for next task
+**Agent:** fix-utc-offset-duration
+**Task:** TimeSheet-zei.24 - Fix UTC offset in duration display
+**Priority:** P1
+**Status:** Starting
 
 ---
 
@@ -59,9 +62,20 @@ Login mnemonic input was using an ugly textarea instead of a password field.
 
 ---
 
+### Issue
+Duration shows 2-hour offset when starting activity.
+Example: Started at 8:49:59 AM but Duration shows 02:00:09
+
+### Recovery Info
+- Agent model: Sonnet
+- Need to: Get UTC offset from API user settings, apply to frontend time displays
+- Files: tracking page, API settings endpoint
+
+---
+
 ## Pending Tasks (P1)
 
-1. TimeSheet-zei.24 - Fix UTC offset in duration display
+None - all P1 tasks in progress or complete
 
 ## Pending Tasks (P2)
 
