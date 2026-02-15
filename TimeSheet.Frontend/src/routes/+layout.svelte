@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { cancelTokenRefresh } from '$lib/utils/tokenRefresh';
+	import { apiClient } from '$lib/api';
 
 	let { children } = $props();
 
@@ -14,7 +15,7 @@
 	const publicRoutes = ['/login', '/about'];
 
 	// Check authentication and redirect if needed
-	onMount(() => {
+	onMount(async () => {
 		// Register service worker for PWA support
 		if ('serviceWorker' in navigator) {
 			navigator.serviceWorker.register('/sw.js').then(
@@ -27,7 +28,7 @@
 						if (newWorker) {
 							newWorker.addEventListener('statechange', () => {
 								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-									// New service worker available, prompt user to refresh
+									// New version available, prompt user to refresh
 									console.log('New version available! Please refresh the page.');
 								}
 							});
@@ -38,6 +39,21 @@
 					console.error('Service Worker registration failed:', error);
 				}
 			);
+		}
+
+		// If authenticated but missing UTC offset, fetch it from the API
+		if ($auth.isAuthenticated && $auth.utcOffsetMinutes === null) {
+			try {
+				const settings = await apiClient.settings();
+				auth.updateToken(
+					$auth.token!,
+					$auth.refreshToken,
+					$auth.expiresAt!,
+					settings.utcOffsetMinutes
+				);
+			} catch (error) {
+				console.error('Failed to fetch user settings for UTC offset:', error);
+			}
 		}
 
 		const unsubscribe = auth.subscribe(state => {

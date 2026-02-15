@@ -20,12 +20,16 @@ function createAuthStore() {
 	const storedExpiresAt = typeof window !== 'undefined' ? localStorage.getItem(EXPIRES_AT_KEY) : null;
 	const storedUtcOffset = typeof window !== 'undefined' ? localStorage.getItem(UTC_OFFSET_KEY) : null;
 
+	// Parse UTC offset - handle NaN case by returning null
+	const parsedUtcOffset = storedUtcOffset !== null ? parseInt(storedUtcOffset, 10) : null;
+	const utcOffsetMinutes = parsedUtcOffset !== null && !isNaN(parsedUtcOffset) ? parsedUtcOffset : null;
+
 	const { subscribe, set, update } = writable<AuthState>({
 		token: storedToken,
 		refreshToken: storedRefreshToken,
 		expiresAt: storedExpiresAt ? new Date(storedExpiresAt) : null,
 		isAuthenticated: !!storedToken,
-		utcOffsetMinutes: storedUtcOffset ? parseInt(storedUtcOffset, 10) : null
+		utcOffsetMinutes
 	});
 
 	return {

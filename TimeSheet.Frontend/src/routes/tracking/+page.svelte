@@ -81,8 +81,8 @@
 
 	// Format start time in user's local timezone (using shared utility)
 	function formatStartTime(utcTime: Date | string): string {
-		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
-		return formatLocalTime(utcTime, utcOffsetMinutes);
+		// Use reactive reference to auth store so it updates when utcOffsetMinutes changes
+		return formatLocalTime(utcTime, $auth.utcOffsetMinutes ?? 0);
 	}
 
 	// Show toast notification
