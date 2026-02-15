@@ -11,6 +11,7 @@
 4. ✅ TimeSheet-zei.25 - Full color button highlighting for tracking page
 5. ✅ TimeSheet-zei.26 - Time offset text input parsing
 6. ✅ TimeSheet-zei.28 - Entry edit with time pickers
+7. ✅ TimeSheet-zei.29 - Analytics charts and overtime tracking
 
 ## Current Task
 
@@ -199,6 +200,54 @@ Entry edit modal had unclear adjustment buttons that didn't clearly show what th
 
 ---
 
+---
+
+### Issue: TimeSheet-zei.29 - Analytics charts and overtime tracking
+
+Analytics page was missing visual charts and overtime calculations.
+
+#### Changes Made
+- Added donut chart for time distribution visualization:
+  - Shows proportional breakdown of work/commute (to work)/commute (to home)/lunch
+  - Uses DaisyUI color scheme for consistency
+  - Interactive tooltips with formatted duration (Xh Ym)
+  - Positioned in right column alongside trend chart
+- Added comprehensive overtime tracking section:
+  - Displays target work hours per day (from user settings)
+  - Calculates total target hours for the period
+  - Shows actual hours worked
+  - Displays overtime/undertime with color coding (warning for overtime, info for undertime)
+  - Shows percentage completion of target hours
+  - Visual progress bar indicating progress toward target
+- Enhanced layout:
+  - Split charts into 2-column grid (trend chart + distribution chart)
+  - Trend chart takes 2/3 width, pie chart takes 1/3 width on large screens
+  - Responsive layout collapses to single column on mobile
+- Integrated user settings:
+  - Fetches target work hours from settings API
+  - Only displays overtime section when target is configured
+  - Calculates based on actual work days vs calendar days
+
+#### Technical Implementation
+- Added `pieChart` canvas and Chart.js instance
+- Created `updatePieChart()` function to render donut chart
+- Implemented `calculateOvertime()` function for overtime metrics
+- Added `formatDuration()` helper for consistent "Xh Ym" formatting
+- Fetches user settings in parallel with other analytics data
+- Uses Chart.js doughnut type with cutout for donut effect
+
+#### Files Modified
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/analytics/+page.svelte`
+
+#### Testing
+- Build: ✅ Success (`npm run build` completed without errors)
+- Charts: Line chart (trend) + donut chart (distribution) both render correctly
+- Overtime: Calculates correctly based on target hours and actual work
+- Responsive: Layout adapts to mobile/tablet/desktop screen sizes
+- Data handling: Gracefully handles missing target hours (hides overtime section)
+
+---
+
 ## Pending Tasks (P2)
 
-1. TimeSheet-zei.29 - Analytics charts and overtime
+None - all P2 tasks complete
