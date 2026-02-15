@@ -8,6 +8,7 @@
 	} from '$lib/api';
 	import { auth } from '$lib/stores/auth';
 	import { extractErrorMessage } from '$lib/utils/errorHandling';
+	import { formatLocalTime } from '$lib/utils/timeFormatter';
 
 	// State enum values (must match backend)
 	const TrackingState = {
@@ -78,21 +79,10 @@
 		return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 	}
 
-	// Format start time in user's local timezone
+	// Format start time in user's local timezone (using shared utility)
 	function formatStartTime(utcTime: Date | string): string {
-		const date = new Date(utcTime);
-		// Get user's UTC offset from auth store
 		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
-
-		// Apply offset to UTC time
-		const localTime = new Date(date.getTime() + utcOffsetMinutes * 60 * 1000);
-
-		// Format as HH:MM:SS
-		const hours = localTime.getUTCHours().toString().padStart(2, '0');
-		const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
-		const seconds = localTime.getUTCSeconds().toString().padStart(2, '0');
-
-		return `${hours}:${minutes}:${seconds}`;
+		return formatLocalTime(utcTime, utcOffsetMinutes);
 	}
 
 	// Show toast notification

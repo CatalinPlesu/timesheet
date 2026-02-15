@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { apiClient, type TrackingEntryDto, type EntryListResponse, EntryUpdateRequest } from '$lib/api';
 	import { extractErrorMessage } from '$lib/utils/errorHandling';
-	import { formatDuration } from '$lib/utils/timeFormatter';
+	import { formatDuration, formatLocalDateTime, utcToLocal } from '$lib/utils/timeFormatter';
+	import { auth } from '$lib/stores/auth';
 
 	// Icons (Heroicons - outline)
 	const PencilSquareIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -59,16 +60,10 @@
 		}
 	}
 
-	// Format date for display
+	// Format date for display (in user's local timezone)
 	function formatDate(date: Date | null | undefined): string {
-		if (!date) return 'N/A';
-		return new Date(date).toLocaleString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		return formatLocalDateTime(date, utcOffsetMinutes);
 	}
 
 	// Format duration for display (wrapper to handle 'Active' state)
@@ -98,21 +93,37 @@
 		}
 	}
 
-	// Convert Date to HH:MM format for time input
+	// Convert Date to HH:MM format for time input (in user's local timezone)
 	function dateToTimeString(date: Date | null | undefined): string {
 		if (!date) return '';
-		const d = new Date(date);
-		const hours = d.getHours().toString().padStart(2, '0');
-		const minutes = d.getMinutes().toString().padStart(2, '0');
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		const localDate = utcToLocal(date, utcOffsetMinutes);
+		const hours = localDate.getUTCHours().toString().padStart(2, '0');
+		const minutes = localDate.getUTCMinutes().toString().padStart(2, '0');
 		return `${hours}:${minutes}`;
 	}
 
-	// Convert time string (HH:MM) to Date by combining with a date
+	// Convert time string (HH:MM) to Date by combining with a date (converts from local to UTC)
 	function timeStringToDate(timeStr: string, baseDate: Date): Date {
 		const [hours, minutes] = timeStr.split(':').map(Number);
-		const result = new Date(baseDate);
-		result.setHours(hours, minutes, 0, 0);
-		return result;
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+
+		// Get the local date for the base date
+		const localBase = utcToLocal(baseDate, utcOffsetMinutes);
+
+		// Set the time in local timezone
+		const localDate = new Date(Date.UTC(
+			localBase.getUTCFullYear(),
+			localBase.getUTCMonth(),
+			localBase.getUTCDate(),
+			hours,
+			minutes,
+			0,
+			0
+		));
+
+		// Convert back to UTC
+		return new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
 	}
 
 	// Calculate adjustment minutes from edited times

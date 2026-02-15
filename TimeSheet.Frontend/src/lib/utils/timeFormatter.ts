@@ -52,3 +52,56 @@ export function formatDurationAsTime(hours: number | null | undefined): string {
 
 	return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
+
+/**
+ * Converts a UTC timestamp to local time using the user's UTC offset.
+ * @param utcTime UTC timestamp (Date object or ISO string)
+ * @param utcOffsetMinutes User's UTC offset in minutes (from auth store)
+ * @returns Date object in local timezone
+ */
+export function utcToLocal(utcTime: Date | string, utcOffsetMinutes: number): Date {
+	const date = new Date(utcTime);
+	// Apply offset to UTC time
+	return new Date(date.getTime() + utcOffsetMinutes * 60 * 1000);
+}
+
+/**
+ * Formats a timestamp in local time for display.
+ * @param utcTime UTC timestamp (Date object or ISO string)
+ * @param utcOffsetMinutes User's UTC offset in minutes (from auth store)
+ * @returns Formatted string like "Jan 15, 2026, 14:30"
+ */
+export function formatLocalDateTime(utcTime: Date | string | null | undefined, utcOffsetMinutes: number): string {
+	if (!utcTime) return 'N/A';
+
+	const localTime = utcToLocal(utcTime, utcOffsetMinutes);
+
+	// Use UTC methods on the adjusted time to avoid timezone conversion
+	return localTime.toLocaleString('en-US', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		timeZone: 'UTC'
+	});
+}
+
+/**
+ * Formats a timestamp in local time as HH:MM:SS.
+ * @param utcTime UTC timestamp (Date object or ISO string)
+ * @param utcOffsetMinutes User's UTC offset in minutes (from auth store)
+ * @returns Formatted string like "14:30:45"
+ */
+export function formatLocalTime(utcTime: Date | string | null | undefined, utcOffsetMinutes: number): string {
+	if (!utcTime) return 'N/A';
+
+	const localTime = utcToLocal(utcTime, utcOffsetMinutes);
+
+	// Format as HH:MM:SS using UTC methods (since we already applied the offset)
+	const hours = localTime.getUTCHours().toString().padStart(2, '0');
+	const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
+	const seconds = localTime.getUTCSeconds().toString().padStart(2, '0');
+
+	return `${hours}:${minutes}:${seconds}`;
+}
