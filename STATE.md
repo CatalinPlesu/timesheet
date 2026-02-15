@@ -10,6 +10,7 @@
 3. ✅ TimeSheet-zei.24 - UTC offset fixed in duration display
 4. ✅ TimeSheet-zei.25 - Full color button highlighting for tracking page
 5. ✅ TimeSheet-zei.26 - Time offset text input parsing
+6. ✅ TimeSheet-zei.28 - Entry edit with time pickers
 
 ## Current Task
 
@@ -163,7 +164,41 @@ Custom time input box on tracking page only accepted HH:MM format.
 
 ---
 
+### Issue: TimeSheet-zei.28 - Entry edit with time pickers
+
+Entry edit modal had unclear adjustment buttons that didn't clearly show what they adjusted.
+
+#### Changes Made
+- Replaced adjustment buttons (+/-30m, +/-5m, +/-1m) with HTML5 time pickers
+- Added time input for start time (read-only, displays current value)
+- Added time input for end time (editable for completed entries)
+- Implemented automatic calculation of adjustment minutes from time picker values
+- Added real-time duration preview showing:
+  - New duration in "Xh Ym" format
+  - Adjustment amount in minutes with color coding (green for +, red for -)
+  - Warning when no changes made
+- Disabled editing for active entries (entries without end time)
+- Kept original times visible in a separate section for reference
+- Improved UX with clear labels and helpful helper text
+
+#### Technical Implementation
+- Backend only supports end time adjustment via `adjustmentMinutes` parameter
+- Start time editing would require backend API changes (marked read-only for now)
+- Time pickers use HTML5 `<input type="time">` for mobile-friendly UX
+- Duration calculation handles edge cases (e.g., next day rollover if end < start)
+- Calculation: `newEndTime - originalEndTime = adjustmentMinutes`
+
+#### Files Modified
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/entries/+page.svelte`
+
+#### Testing
+- Build: ✅ Success (`npm run build` completed without errors)
+- Time picker UX: Mobile-friendly HTML5 time inputs
+- Duration preview: Real-time updates with color-coded adjustment display
+- Edge cases: Handles active entries (disables editing), validates adjustment != 0
+
+---
+
 ## Pending Tasks (P2)
 
-4. TimeSheet-zei.28 - Entry edit with time pickers
-5. TimeSheet-zei.29 - Analytics charts and overtime
+1. TimeSheet-zei.29 - Analytics charts and overtime
