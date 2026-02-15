@@ -46,8 +46,8 @@
 			const request = new LoginRequest({ mnemonic: normalizedMnemonic });
 			const response = await apiClient.login(request);
 
-			// Store tokens in auth store
-			auth.login(response.accessToken, response.refreshToken, response.expiresAt);
+			// Store tokens and UTC offset in auth store
+			auth.login(response.accessToken, response.refreshToken, response.expiresAt, response.utcOffsetMinutes);
 
 			// Schedule token refresh
 			scheduleTokenRefresh();

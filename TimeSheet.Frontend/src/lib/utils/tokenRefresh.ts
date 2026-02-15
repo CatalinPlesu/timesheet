@@ -48,7 +48,7 @@ export async function refreshToken(): Promise<boolean> {
 		const request = new RefreshTokenRequest({ refreshToken: authState.refreshToken });
 		const response = await apiClient.refresh(request);
 
-		auth.updateToken(response.accessToken, response.refreshToken, response.expiresAt);
+		auth.updateToken(response.accessToken, response.refreshToken, response.expiresAt, response.utcOffsetMinutes);
 		scheduleTokenRefresh();
 		return true;
 	} catch (error) {

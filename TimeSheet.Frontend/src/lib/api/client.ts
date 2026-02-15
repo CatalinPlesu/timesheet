@@ -14,8 +14,7 @@ export class Client {
 
     constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
         this.http = http ? http : window as any;
-        // MODIFIED: Removed trailing slash to prevent double-slash in URLs (//api/...)
-        this.baseUrl = baseUrl ?? "http://localhost:5191";
+        this.baseUrl = baseUrl ?? "http://localhost:5191/";
     }
 
     /**
@@ -712,7 +711,7 @@ export class Client {
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 204) {
             return response.text().then((_responseText) => {
-            return;
+            return null;
             });
         } else if (status === 401) {
             return response.text().then((_responseText) => {
@@ -1838,6 +1837,7 @@ export class LoginResponse implements ILoginResponse {
     accessToken!: string;
     expiresAt!: Date;
     refreshToken?: string | null;
+    utcOffsetMinutes!: number;
 
     [key: string]: any;
 
@@ -1859,6 +1859,7 @@ export class LoginResponse implements ILoginResponse {
             this.accessToken = _data["accessToken"] !== undefined ? _data["accessToken"] : null as any;
             this.expiresAt = _data["expiresAt"] ? new Date(_data["expiresAt"].toString()) : null as any;
             this.refreshToken = _data["refreshToken"] !== undefined ? _data["refreshToken"] : null as any;
+            this.utcOffsetMinutes = _data["utcOffsetMinutes"] !== undefined ? _data["utcOffsetMinutes"] : null as any;
         }
     }
 
@@ -1878,6 +1879,7 @@ export class LoginResponse implements ILoginResponse {
         data["accessToken"] = this.accessToken !== undefined ? this.accessToken : null as any;
         data["expiresAt"] = this.expiresAt ? this.expiresAt.toISOString() : null as any;
         data["refreshToken"] = this.refreshToken !== undefined ? this.refreshToken : null as any;
+        data["utcOffsetMinutes"] = this.utcOffsetMinutes !== undefined ? this.utcOffsetMinutes : null as any;
         return data;
     }
 }
@@ -1886,6 +1888,7 @@ export interface ILoginResponse {
     accessToken: string;
     expiresAt: Date;
     refreshToken?: string | null;
+    utcOffsetMinutes: number;
 
     [key: string]: any;
 }

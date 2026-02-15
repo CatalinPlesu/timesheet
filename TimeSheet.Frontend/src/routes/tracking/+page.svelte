@@ -63,6 +63,7 @@
 			return;
 		}
 
+		// Both times are in UTC, so we can directly compare them
 		const now = new Date();
 		const started = new Date(currentState.startedAt);
 		elapsedSeconds = Math.floor((now.getTime() - started.getTime()) / 1000);
@@ -74,6 +75,23 @@
 		const minutes = Math.floor((seconds % 3600) / 60);
 		const secs = seconds % 60;
 		return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	// Format start time in user's local timezone
+	function formatStartTime(utcTime: Date | string): string {
+		const date = new Date(utcTime);
+		// Get user's UTC offset from auth store
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+
+		// Apply offset to UTC time
+		const localTime = new Date(date.getTime() + utcOffsetMinutes * 60 * 1000);
+
+		// Format as HH:MM:SS
+		const hours = localTime.getUTCHours().toString().padStart(2, '0');
+		const minutes = localTime.getUTCMinutes().toString().padStart(2, '0');
+		const seconds = localTime.getUTCSeconds().toString().padStart(2, '0');
+
+		return `${hours}:${minutes}:${seconds}`;
 	}
 
 	// Show toast notification
@@ -322,7 +340,7 @@
 							</div>
 							<div class="stat-desc">
 								Started: {currentState.startedAt
-									? new Date(currentState.startedAt).toLocaleTimeString()
+									? formatStartTime(currentState.startedAt)
 									: 'N/A'}
 							</div>
 						</div>
