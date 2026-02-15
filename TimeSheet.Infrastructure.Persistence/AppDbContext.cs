@@ -20,6 +20,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
 
     /// <summary>
+    /// Gets or sets the DbSet for PendingMnemonic entities.
+    /// </summary>
+    public DbSet<PendingMnemonic> PendingMnemonics => Set<PendingMnemonic>();
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
     /// <param name="dbContextOptions">The DbContext options configured with SQLite provider.</param>
