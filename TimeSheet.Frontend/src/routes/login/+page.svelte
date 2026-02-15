@@ -31,16 +31,18 @@
 		}
 
 		// Check if it's roughly 24 words (simple validation)
-		const words = trimmedMnemonic.split(/\s+/);
+		const words = trimmedMnemonic.split(/\s+/).filter(w => w.length > 0);
 		if (words.length !== 24) {
-			errorMessage = 'Mnemonic must be exactly 24 words';
+			errorMessage = `Mnemonic must be exactly 24 words (found ${words.length} words)`;
 			return;
 		}
 
 		isLoading = true;
 
 		try {
-			const request = new LoginRequest({ mnemonic: trimmedMnemonic });
+			// Normalize the mnemonic (join the filtered words with single spaces)
+			const normalizedMnemonic = words.join(' ');
+			const request = new LoginRequest({ mnemonic: normalizedMnemonic });
 			const response = await apiClient.login(request);
 
 			// Store tokens in auth store
