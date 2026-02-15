@@ -8,6 +8,7 @@
 1. ✅ TimeSheet-zei.27 - API 500 error fixed (better JWT error handling)
 2. ✅ TimeSheet-zei.23 - Login page password input field
 3. ✅ TimeSheet-zei.24 - UTC offset fixed in duration display
+4. ✅ TimeSheet-zei.25 - Full color button highlighting for tracking page
 
 ## Current Task
 
@@ -107,13 +108,35 @@ Frontend:
 
 ---
 
+### Issue: TimeSheet-zei.25 - Full color button highlighting for tracking page
+
+Active tracking buttons only showed a tiny line indicator, not visible enough.
+
+#### Changes Made
+- Enhanced button styling to make active state more prominent:
+  - Active buttons now show full background color with shadow effect (`shadow-lg`)
+  - Inactive buttons use reduced opacity (70%) to de-emphasize them
+  - Added smooth transitions (`transition-all`) for state changes
+  - Hover on inactive buttons increases opacity to 100%
+- Active buttons use DaisyUI color classes: `btn-primary` (Commute), `btn-secondary` (Work), `btn-accent` (Lunch)
+- Inactive buttons use outline variants: `btn-outline btn-primary`, etc.
+
+#### Files Modified
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/tracking/+page.svelte`
+
+#### Testing
+- Build: ✅ Success (`npm run build` completed without errors)
+- Visual appearance: Clear distinction between active (full color + shadow) and inactive (outline + reduced opacity) states
+- Accessibility: Good contrast maintained
+
+---
+
 ## Pending Tasks (P1)
 
 None - all P1 tasks in progress or complete
 
 ## Pending Tasks (P2)
 
-3. TimeSheet-zei.25 - Full color button highlighting
 4. TimeSheet-zei.26 - Time offset text input parsing
 5. TimeSheet-zei.28 - Entry edit with time pickers
 6. TimeSheet-zei.29 - Analytics charts and overtime
