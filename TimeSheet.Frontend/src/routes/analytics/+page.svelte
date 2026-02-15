@@ -1,18 +1,21 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Chart, registerables } from 'chart.js';
-	import { apiClient, type ChartDataDto, type DailyAveragesDto, type CommutePatternsDto } from '$lib/api';
+	import { apiClient, type ChartDataDto, type DailyAveragesDto, type CommutePatternsDto, type UserSettingsDto } from '$lib/api';
 
 	// Register Chart.js components
 	Chart.register(...registerables);
 
 	// State
 	let chartCanvas: HTMLCanvasElement;
+	let pieChartCanvas: HTMLCanvasElement;
 	let chart: Chart | null = null;
+	let pieChart: Chart | null = null;
 	let chartData: ChartDataDto | null = null;
 	let dailyAverages: DailyAveragesDto | null = null;
 	let commuteToWorkPatterns: CommutePatternsDto[] = [];
 	let commuteToHomePatterns: CommutePatternsDto[] = [];
+	let userSettings: UserSettingsDto | null = null;
 
 	let loading = true;
 	let error = '';
@@ -33,20 +36,23 @@
 			const end = new Date(endDate);
 
 			// Load all data in parallel
-			const [chartResult, averagesResult, toWorkResult, toHomeResult] = await Promise.all([
+			const [chartResult, averagesResult, toWorkResult, toHomeResult, settingsResult] = await Promise.all([
 				apiClient.chartData(start, end, groupBy),
 				apiClient.dailyAverages(start, end),
 				apiClient.commutePatterns('ToWork', start, end),
-				apiClient.commutePatterns('ToHome', start, end)
+				apiClient.commutePatterns('ToHome', start, end),
+				apiClient.settings()
 			]);
 
 			chartData = chartResult;
 			dailyAverages = averagesResult;
 			commuteToWorkPatterns = toWorkResult;
 			commuteToHomePatterns = toHomeResult;
+			userSettings = settingsResult;
 
-			// Update chart
+			// Update charts
 			updateChart();
+			updatePieChart();
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load analytics data';
 			console.error('Analytics error:', err);
@@ -160,6 +166,96 @@
 		});
 	}
 
+	function updatePieChart() {
+		if (!pieChartCanvas || !dailyAverages) return;
+
+		// Destroy existing chart
+		if (pieChart) {
+			pieChart.destroy();
+		}
+
+		// Calculate total hours for pie chart
+		const totalWork = dailyAverages.averageWorkHours * dailyAverages.daysIncluded;
+		const totalCommuteToWork = dailyAverages.averageCommuteToWorkHours * dailyAverages.daysIncluded;
+		const totalCommuteToHome = dailyAverages.averageCommuteToHomeHours * dailyAverages.daysIncluded;
+		const totalLunch = dailyAverages.averageLunchHours * dailyAverages.daysIncluded;
+
+		// Create donut chart
+		pieChart = new Chart(pieChartCanvas, {
+			type: 'doughnut',
+			data: {
+				labels: ['Work', 'Commute (To Work)', 'Commute (To Home)', 'Lunch'],
+				datasets: [
+					{
+						data: [totalWork, totalCommuteToWork, totalCommuteToHome, totalLunch],
+						backgroundColor: [
+							'rgba(59, 130, 246, 0.8)', // blue-500
+							'rgba(16, 185, 129, 0.8)', // emerald-500
+							'rgba(5, 150, 105, 0.8)', // emerald-600
+							'rgba(245, 158, 11, 0.8)' // amber-500
+						],
+						borderColor: [
+							'rgba(59, 130, 246, 1)',
+							'rgba(16, 185, 129, 1)',
+							'rgba(5, 150, 105, 1)',
+							'rgba(245, 158, 11, 1)'
+						],
+						borderWidth: 2
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				plugins: {
+					legend: {
+						position: 'bottom',
+						labels: {
+							usePointStyle: true,
+							padding: 15
+						}
+					},
+					tooltip: {
+						callbacks: {
+							label: function (context) {
+								const label = context.label || '';
+								const value = context.parsed ?? 0;
+								const hours = Math.floor(value);
+								const minutes = Math.round((value - hours) * 60);
+								return `${label}: ${hours}h ${minutes}m`;
+							}
+						}
+					}
+				}
+			}
+		});
+	}
+
+	// Helper function to format duration
+	function formatDuration(hours: number): string {
+		const h = Math.floor(hours);
+		const m = Math.round((hours - h) * 60);
+		return m > 0 ? `${h}h ${m}m` : `${h}h`;
+	}
+
+	// Calculate overtime
+	function calculateOvertime(): { overtime: number; percentage: number; isOvertime: boolean } | null {
+		if (!dailyAverages || !userSettings?.targetWorkHours || dailyAverages.totalWorkDays === 0) {
+			return null;
+		}
+
+		const targetTotal = userSettings.targetWorkHours * dailyAverages.totalWorkDays;
+		const actualTotal = dailyAverages.averageWorkHours * dailyAverages.daysIncluded;
+		const overtime = actualTotal - targetTotal;
+		const percentage = (actualTotal / targetTotal) * 100;
+
+		return {
+			overtime,
+			percentage,
+			isOvertime: overtime > 0
+		};
+	}
+
 	onMount(() => {
 		loadData();
 	});
@@ -252,31 +348,139 @@
 		</div>
 	</div>
 
-	<!-- Chart -->
-	<div class="card bg-base-200 shadow-xl mb-6">
-		<div class="card-body">
-			<h2 class="card-title">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-				</svg>
-				Time Distribution
-			</h2>
+	<!-- Charts Row -->
+	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+		<!-- Trend Chart -->
+		<div class="card bg-base-200 shadow-xl lg:col-span-2">
+			<div class="card-body">
+				<h2 class="card-title">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+					</svg>
+					Time Trend
+				</h2>
 
-			<div class="h-96 w-full">
-				{#if loading}
-					<div class="flex items-center justify-center h-full">
-						<span class="loading loading-spinner loading-lg"></span>
-					</div>
-				{:else if chartData}
-					<canvas bind:this={chartCanvas}></canvas>
-				{:else}
-					<div class="flex items-center justify-center h-full text-base-content/50">
-						No data available for the selected period
-					</div>
-				{/if}
+				<div class="h-96 w-full">
+					{#if loading}
+						<div class="flex items-center justify-center h-full">
+							<span class="loading loading-spinner loading-lg"></span>
+						</div>
+					{:else if chartData}
+						<canvas bind:this={chartCanvas}></canvas>
+					{:else}
+						<div class="flex items-center justify-center h-full text-base-content/50">
+							No data available for the selected period
+						</div>
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<!-- Pie Chart -->
+		<div class="card bg-base-200 shadow-xl">
+			<div class="card-body">
+				<h2 class="card-title">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+					</svg>
+					Time Distribution
+				</h2>
+
+				<div class="h-96 w-full">
+					{#if loading}
+						<div class="flex items-center justify-center h-full">
+							<span class="loading loading-spinner loading-lg"></span>
+						</div>
+					{:else if dailyAverages && dailyAverages.daysIncluded > 0}
+						<canvas bind:this={pieChartCanvas}></canvas>
+					{:else}
+						<div class="flex items-center justify-center h-full text-base-content/50">
+							No data available
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 	</div>
+
+	<!-- Overtime Tracking -->
+	{#if !loading && dailyAverages && userSettings?.targetWorkHours}
+		{@const overtimeData = calculateOvertime()}
+		{#if overtimeData}
+			<div class="card bg-base-200 shadow-xl mb-6">
+				<div class="card-body">
+					<h2 class="card-title">
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+						</svg>
+						Overtime Tracking
+					</h2>
+
+					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+						<!-- Target Work Hours -->
+						<div class="stats shadow">
+							<div class="stat">
+								<div class="stat-title">Target per Day</div>
+								<div class="stat-value text-sm">{formatDuration(userSettings.targetWorkHours)}</div>
+								<div class="stat-desc">Expected work hours</div>
+							</div>
+						</div>
+
+						<!-- Total Target -->
+						<div class="stats shadow">
+							<div class="stat">
+								<div class="stat-title">Total Target</div>
+								<div class="stat-value text-sm">
+									{formatDuration(userSettings.targetWorkHours * dailyAverages.totalWorkDays)}
+								</div>
+								<div class="stat-desc">{dailyAverages.totalWorkDays} work days</div>
+							</div>
+						</div>
+
+						<!-- Actual Work Hours -->
+						<div class="stats shadow">
+							<div class="stat">
+								<div class="stat-title">Actual Hours</div>
+								<div class="stat-value text-sm">
+									{formatDuration(dailyAverages.averageWorkHours * dailyAverages.daysIncluded)}
+								</div>
+								<div class="stat-desc">{dailyAverages.daysIncluded} days tracked</div>
+							</div>
+						</div>
+
+						<!-- Overtime/Undertime -->
+						<div class="stats shadow">
+							<div class="stat">
+								<div class="stat-title">
+									{overtimeData.isOvertime ? 'Overtime' : 'Undertime'}
+								</div>
+								<div class="stat-value text-sm {overtimeData.isOvertime ? 'text-warning' : 'text-info'}">
+									{overtimeData.isOvertime ? '+' : ''}{formatDuration(Math.abs(overtimeData.overtime))}
+								</div>
+								<div class="stat-desc">
+									{overtimeData.percentage.toFixed(1)}% of target
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Progress Bar -->
+					<div class="mt-4">
+						<div class="flex justify-between text-sm mb-2">
+							<span>Progress toward target</span>
+							<span class="font-semibold">{overtimeData.percentage.toFixed(1)}%</span>
+						</div>
+						<progress
+							class="progress {overtimeData.isOvertime ? 'progress-warning' : 'progress-primary'} w-full"
+							value={overtimeData.percentage}
+							max="100"
+						></progress>
+					</div>
+				</div>
+			</div>
+		{/if}
+	{/if}
 
 	<!-- Daily Averages -->
 	{#if dailyAverages}
