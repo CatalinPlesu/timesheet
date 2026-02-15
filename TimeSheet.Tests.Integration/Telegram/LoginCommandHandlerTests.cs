@@ -206,4 +206,21 @@ public class LoginCommandHandlerTests(TelegramBotTestFixture fixture) : Telegram
         Assert.Equal(ResponseType.Message, responses[0].Type);
         Assert.Contains("Your login code", responses[0].Text);
     }
+
+    [Fact]
+    public async Task LoginCommand_IncludesFrontendUrl()
+    {
+        // Arrange - register a user
+        const long userId = 30009;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: false);
+
+        // Act
+        var responses = await SendTextAsync("/login", userId: userId);
+
+        // Assert - should contain frontend URL from configuration
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("Your login code", responses[0].Text);
+        Assert.Contains("localhost:5173", responses[0].Text);
+    }
 }
