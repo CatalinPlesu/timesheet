@@ -13,6 +13,7 @@
 6. ✅ TimeSheet-zei.28 - Entry edit with time pickers
 7. ✅ TimeSheet-zei.29 - Analytics charts and overtime tracking
 8. ✅ TimeSheet-zei.15 - Docker Compose configuration
+9. ✅ TimeSheet-zei.16 - Justfile updates (publish and dev recipes)
 
 ## Current Task
 
