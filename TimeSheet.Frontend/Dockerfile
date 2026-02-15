@@ -2,6 +2,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Accept API URL as build argument
+ARG VITE_API_URL=http://localhost:5000
+
 # Copy package files
 COPY package.json package-lock.json ./
 
@@ -11,7 +14,8 @@ RUN npm ci
 # Copy source files
 COPY . .
 
-# Build the application
+# Build the application with environment variable
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Runtime stage - serve with nginx

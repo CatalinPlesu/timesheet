@@ -58,13 +58,11 @@ services:
       context: ./TimeSheet.Frontend
       dockerfile: Dockerfile
       args:
-        - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:5000}
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
     container_name: timesheet-frontend
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT:-3000}:80"
-    environment:
-      - PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:5000}
     depends_on:
       - api
     networks:
