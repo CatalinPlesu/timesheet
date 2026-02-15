@@ -253,15 +253,15 @@
 
 	// Get button classes
 	function getButtonClasses(state: TrackingState): string {
-		const baseClasses = 'btn btn-lg flex-1 min-h-[80px] flex flex-col gap-2';
+		const baseClasses = 'btn btn-lg flex-1 min-h-[80px] flex flex-col gap-2 transition-all';
 		const active = isStateActive(state);
 
 		if (state === TrackingState.Commuting) {
-			return `${baseClasses} ${active ? 'btn-primary' : 'btn-outline btn-primary'}`;
+			return `${baseClasses} ${active ? 'btn-primary shadow-lg' : 'btn-outline btn-primary opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Working) {
-			return `${baseClasses} ${active ? 'btn-secondary' : 'btn-outline btn-secondary'}`;
+			return `${baseClasses} ${active ? 'btn-secondary shadow-lg' : 'btn-outline btn-secondary opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Lunch) {
-			return `${baseClasses} ${active ? 'btn-accent' : 'btn-outline btn-accent'}`;
+			return `${baseClasses} ${active ? 'btn-accent shadow-lg' : 'btn-outline btn-accent opacity-70 hover:opacity-100'}`;
 		}
 
 		return baseClasses;
