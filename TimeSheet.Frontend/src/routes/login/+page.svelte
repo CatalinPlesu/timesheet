@@ -112,7 +112,7 @@
 				</label>
 				<textarea
 					id="mnemonic"
-					class="textarea textarea-bordered h-32 font-mono text-sm"
+					class="textarea textarea-bordered w-full h-32 font-mono text-sm"
 					placeholder="word1 word2 word3 ... word24"
 					bind:value={mnemonic}
 					onkeydown={handleKeyDown}
