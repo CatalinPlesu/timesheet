@@ -533,4 +533,22 @@ public class UpdateHandlerTests(TelegramBotTestFixture fixture) : TelegramBotTes
         Assert.Equal(ResponseType.Message, responses[0].Type);
         Assert.Contains("Admin Commands", responses[0].Text);
     }
+
+    [Fact]
+    public async Task HelpCommand_IncludesLoginCommand()
+    {
+        // Arrange - register a regular user
+        const long userId = 30007;
+        await RegisterTestUserAsync(telegramUserId: userId, isAdmin: false);
+
+        // Act - request main help
+        var responses = await SendTextAsync("/help", userId: userId);
+
+        // Assert
+        Assert.Single(responses);
+        Assert.Equal(ResponseType.Message, responses[0].Type);
+        Assert.Contains("/login", responses[0].Text);
+        Assert.Contains("Web Login:", responses[0].Text);
+        Assert.Contains("localhost:5173", responses[0].Text);
+    }
 }

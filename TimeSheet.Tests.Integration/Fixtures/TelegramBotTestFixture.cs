@@ -37,7 +37,8 @@ public class TelegramBotTestFixture : IDisposable
                 ["Database:ConnectionString"] = "Data Source=:memory:",
                 ["Database:EnableSensitiveDataLogging"] = "true",
                 ["Database:EnableDetailedErrors"] = "true",
-                ["Bot:Token"] = "test-token-not-used"
+                ["Bot:Token"] = "test-token-not-used",
+                ["FrontendUrl"] = "http://localhost:5173"
             })
             .Build();
 
