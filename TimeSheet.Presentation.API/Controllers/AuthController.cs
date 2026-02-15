@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
         }
 
         // Validate the mnemonic exists in pending list
-        if (!_mnemonicService.ValidateMnemonic(request.Mnemonic))
+        if (!await _mnemonicService.ValidateMnemonicAsync(request.Mnemonic, cancellationToken))
         {
             _logger.LogWarning("Login attempt with invalid or unknown mnemonic");
             return Unauthorized(new { error = "Invalid or expired mnemonic" });
@@ -98,7 +98,7 @@ public class AuthController : ControllerBase
         }
 
         // Consume the mnemonic
-        if (!_mnemonicService.ConsumeMnemonic(request.Mnemonic))
+        if (!await _mnemonicService.ConsumeMnemonicAsync(request.Mnemonic, cancellationToken))
         {
             _logger.LogWarning("Failed to consume mnemonic - may have been used already");
             return Unauthorized(new { error = "Invalid or expired mnemonic" });

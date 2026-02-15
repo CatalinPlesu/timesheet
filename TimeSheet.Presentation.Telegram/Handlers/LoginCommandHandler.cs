@@ -65,7 +65,7 @@ public class LoginCommandHandler(
             var mnemonic = mnemonicService.GenerateMnemonic();
 
             // Store it as pending
-            mnemonicService.StorePendingMnemonic(mnemonic);
+            await mnemonicService.StorePendingMnemonicAsync(mnemonic, cancellationToken);
 
             // Send the login code to the user
             var loginMessage = $"""

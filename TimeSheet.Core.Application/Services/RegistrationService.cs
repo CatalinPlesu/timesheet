@@ -29,7 +29,7 @@ public sealed class RegistrationService(
         }
 
         // Validate and consume the mnemonic (single-use)
-        if (!mnemonicService.ValidateAndConsumeMnemonic(mnemonicPhrase))
+        if (!await mnemonicService.ValidateAndConsumeMnemonicAsync(mnemonicPhrase, cancellationToken))
         {
             return null; // Invalid or already-used mnemonic
         }

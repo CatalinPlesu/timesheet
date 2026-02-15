@@ -66,7 +66,7 @@ public class Worker(
         {
             // Generate a new mnemonic for the first user (admin)
             var mnemonic = mnemonicService.GenerateMnemonic();
-            mnemonicService.StorePendingMnemonic(mnemonic);
+            await mnemonicService.StorePendingMnemonicAsync(mnemonic, cancellationToken);
 
             // Log the registration command to console
             logger.LogWarning(

@@ -75,7 +75,7 @@ public class GenerateCommandHandler(
             var mnemonic = mnemonicService.GenerateMnemonic();
 
             // Store it as pending
-            mnemonicService.StorePendingMnemonic(mnemonic);
+            await mnemonicService.StorePendingMnemonicAsync(mnemonic, cancellationToken);
 
             // Get bot information to include the username
             var botInfo = await botClient.GetMe(cancellationToken);
