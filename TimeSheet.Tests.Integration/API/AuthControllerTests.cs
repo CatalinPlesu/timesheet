@@ -53,7 +53,7 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
         {
             var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
             var mnemonic = mnemonicService.GenerateMnemonic();
-            mnemonicService.StorePendingMnemonic(mnemonic);
+            await mnemonicService.StorePendingMnemonicAsync(mnemonic);
             mnemonicString = mnemonic.ToString();
         }
 
@@ -78,7 +78,7 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
         using (var scope = _fixture.Services.CreateScope())
         {
             var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
-            var isStillValid = mnemonicService.ValidateMnemonic(mnemonicString);
+            var isStillValid = await mnemonicService.ValidateMnemonicAsync(mnemonicString);
             Assert.False(isStillValid);
         }
     }
@@ -143,7 +143,7 @@ public class AuthControllerTests : IClassFixture<ApiTestFixture>
         {
             var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
             var mnemonic = mnemonicService.GenerateMnemonic();
-            mnemonicService.StorePendingMnemonic(mnemonic);
+            await mnemonicService.StorePendingMnemonicAsync(mnemonic);
             mnemonicString = mnemonic.ToString();
         }
 

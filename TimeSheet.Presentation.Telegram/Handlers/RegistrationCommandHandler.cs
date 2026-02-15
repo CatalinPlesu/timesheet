@@ -71,7 +71,7 @@ public class RegistrationCommandHandler(
             }
 
             // Validate the mnemonic (but don't consume it yet)
-            if (!mnemonicService.ValidateMnemonic(mnemonicPhrase))
+            if (!await mnemonicService.ValidateMnemonicAsync(mnemonicPhrase, cancellationToken))
             {
                 await botClient.SendMessage(
                     chatId: message.Chat.Id,
@@ -86,7 +86,7 @@ public class RegistrationCommandHandler(
             }
 
             // Consume the mnemonic now that it's validated
-            if (!mnemonicService.ConsumeMnemonic(mnemonicPhrase))
+            if (!await mnemonicService.ConsumeMnemonicAsync(mnemonicPhrase, cancellationToken))
             {
                 await botClient.SendMessage(
                     chatId: message.Chat.Id,

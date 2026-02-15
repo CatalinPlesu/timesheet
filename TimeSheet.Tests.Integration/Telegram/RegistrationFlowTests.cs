@@ -21,7 +21,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Act - send registration command
         var responses = await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -42,7 +42,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Step 1: Send registration command
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -66,7 +66,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Step 1: Send registration command
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -89,7 +89,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Step 1: Send registration command
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -112,7 +112,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Step 1: Send registration command
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -134,7 +134,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Step 1: Send registration command
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -160,7 +160,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Act - register
         await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -182,7 +182,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Act - try to register again
         var responses = await SendTextAsync($"/register {mnemonic}", userId: userId);
@@ -217,7 +217,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic = mnemonicService.GenerateMnemonic();
-        mnemonicService.StorePendingMnemonic(mnemonic);
+        await mnemonicService.StorePendingMnemonicAsync(mnemonic);
 
         // Act - user 1 registers with the mnemonic
         await SendTextAsync($"/register {mnemonic}", userId: userId1);
@@ -241,7 +241,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope1 = Fixture.CreateScope();
         var mnemonicService1 = scope1.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic1 = mnemonicService1.GenerateMnemonic();
-        mnemonicService1.StorePendingMnemonic(mnemonic1);
+        await mnemonicService1.StorePendingMnemonicAsync(mnemonic1);
         await SendTextAsync($"/register {mnemonic1}", userId: userId1);
         Fixture.MockBotClient.ClearResponses();
         var responses1 = await SendTextAsync("-12", userId: userId1);
@@ -252,7 +252,7 @@ public class RegistrationFlowTests(TelegramBotTestFixture fixture) : TelegramBot
         using var scope2 = Fixture.CreateScope();
         var mnemonicService2 = scope2.ServiceProvider.GetRequiredService<IMnemonicService>();
         var mnemonic2 = mnemonicService2.GenerateMnemonic();
-        mnemonicService2.StorePendingMnemonic(mnemonic2);
+        await mnemonicService2.StorePendingMnemonicAsync(mnemonic2);
         await SendTextAsync($"/register {mnemonic2}", userId: userId2);
         Fixture.MockBotClient.ClearResponses();
         var responses2 = await SendTextAsync("14", userId: userId2);

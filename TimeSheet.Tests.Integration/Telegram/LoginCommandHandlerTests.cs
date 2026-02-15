@@ -91,7 +91,7 @@ public class LoginCommandHandlerTests(TelegramBotTestFixture fixture) : Telegram
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
 
-        var isValid = mnemonicService.ValidateAndConsumeMnemonic(mnemonicPhrase);
+        var isValid = await mnemonicService.ValidateAndConsumeMnemonicAsync(mnemonicPhrase);
         Assert.True(isValid, "Generated mnemonic should be stored and valid");
     }
 
@@ -115,13 +115,13 @@ public class LoginCommandHandlerTests(TelegramBotTestFixture fixture) : Telegram
         // Validate and consume the mnemonic once
         using var scope1 = Fixture.CreateScope();
         var mnemonicService1 = scope1.ServiceProvider.GetRequiredService<IMnemonicService>();
-        var firstValidation = mnemonicService1.ValidateAndConsumeMnemonic(mnemonicPhrase);
+        var firstValidation = await mnemonicService1.ValidateAndConsumeMnemonicAsync(mnemonicPhrase);
         Assert.True(firstValidation, "First validation should succeed");
 
         // Try to validate again (should fail - already consumed)
         using var scope2 = Fixture.CreateScope();
         var mnemonicService2 = scope2.ServiceProvider.GetRequiredService<IMnemonicService>();
-        var secondValidation = mnemonicService2.ValidateAndConsumeMnemonic(mnemonicPhrase);
+        var secondValidation = await mnemonicService2.ValidateAndConsumeMnemonicAsync(mnemonicPhrase);
         Assert.False(secondValidation, "Second validation should fail - mnemonic already consumed");
     }
 
@@ -179,12 +179,12 @@ public class LoginCommandHandlerTests(TelegramBotTestFixture fixture) : Telegram
         using var scope = Fixture.CreateScope();
         var mnemonicService = scope.ServiceProvider.GetRequiredService<IMnemonicService>();
 
-        var isValid1 = mnemonicService.ValidateAndConsumeMnemonic(mnemonicPhrase1);
+        var isValid1 = await mnemonicService.ValidateAndConsumeMnemonicAsync(mnemonicPhrase1);
         Assert.True(isValid1, "First mnemonic should be stored and valid");
 
         // If they happen to be the same (deterministic test RNG), only one will validate
         // If they're different (production behavior), both should validate
-        var isValid2 = mnemonicService.ValidateAndConsumeMnemonic(mnemonicPhrase2);
+        var isValid2 = await mnemonicService.ValidateAndConsumeMnemonicAsync(mnemonicPhrase2);
         if (mnemonicPhrase1 != mnemonicPhrase2)
         {
             Assert.True(isValid2, "Second mnemonic should be stored and valid when different from first");
