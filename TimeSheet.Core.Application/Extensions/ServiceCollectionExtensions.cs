@@ -21,7 +21,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IForgotShutdownService, ForgotShutdownService>();
         services.AddScoped<IReportingService, ReportingService>();
         services.AddSingleton<IChartGenerationService, ChartGenerationService>();
-        services.AddSingleton<IMnemonicService, MnemonicService>();
+        services.AddScoped<IMnemonicService, MnemonicService>();
 
         // Parsers
         services.AddSingleton<ICommandParameterParser, CommandParameterParser>();
