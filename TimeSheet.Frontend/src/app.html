@@ -4,6 +4,14 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 
+		<!-- Theme initialization script - runs before page render to prevent flash -->
+		<script>
+			(function() {
+				const theme = localStorage.getItem('timesheet-theme') || 'light';
+				document.documentElement.setAttribute('data-theme', theme);
+			})();
+		</script>
+
 		<!-- PWA Manifest -->
 		<link rel="manifest" href="/manifest.webmanifest" />
 
