@@ -104,6 +104,8 @@ public class ApiTestFixture : WebApplicationFactory<Program>
             dbContext.Set<TimeSheet.Core.Domain.Entities.TrackingSession>());
         dbContext.Set<TimeSheet.Core.Domain.Entities.User>().RemoveRange(
             dbContext.Set<TimeSheet.Core.Domain.Entities.User>());
+        dbContext.Set<TimeSheet.Core.Domain.Entities.PendingMnemonic>().RemoveRange(
+            dbContext.Set<TimeSheet.Core.Domain.Entities.PendingMnemonic>());
 
         dbContext.SaveChanges();
     }
