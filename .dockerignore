@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+AGENTS.md
+CLAUDE.md
+OBSERVABILITY.md
+README.md
+STATE.md
+STATE.html
+
+# Build outputs
+**/bin/
+**/obj/
+**/publish/
+*.user
+*.suo
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# Logs
+logs/
+*.log
+logs.txt
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Frontend
+TimeSheet.Frontend/node_modules/
+TimeSheet.Frontend/.svelte-kit/
+TimeSheet.Frontend/build/
+TimeSheet.Frontend/package-lock.json
+
+# Test
+TimeSheet.Tests.Unit/
+TimeSheet.Tests.Integration/
+
+# Docker
+docker-compose.yml
+compose.yaml
+Dockerfile
+.dockerignore
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Beads
+.beads/
+
+# Misc
+timesheet.db
+justfile

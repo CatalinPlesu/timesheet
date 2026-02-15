@@ -95,6 +95,10 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add health check endpoint
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+    .AllowAnonymous();
+
 app.MapControllers();
 
 app.Run();
