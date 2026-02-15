@@ -14,6 +14,14 @@
 		<path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
 	</svg>`;
 
+	const ChevronLeftIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+		<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+	</svg>`;
+
+	const ChevronRightIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+		<path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+	</svg>`;
+
 	// State
 	let entries: TrackingEntryDto[] = $state([]);
 	let totalCount = $state(0);
@@ -24,9 +32,12 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
-	// Date range filters
+	// Date range filters (computed from currentPeriod)
 	let startDate = $state<Date | undefined>(undefined);
 	let endDate = $state<Date | undefined>(undefined);
+
+	// Current period navigation
+	let currentPeriod = $state<Date>(new Date()); // Defaults to today
 
 	// Edit modal state
 	let editModalOpen = $state(false);
@@ -43,8 +54,96 @@
 	let deleteError = $state<string | null>(null);
 	let deleteLoading = $state(false);
 
+	// Calculate date range based on groupBy and currentPeriod
+	function calculateDateRange() {
+		if (groupBy === 0) {
+			// No grouping - show all entries
+			startDate = undefined;
+			endDate = undefined;
+			return;
+		}
+
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+
+		if (groupBy === 1) {
+			// Day grouping - show single day
+			const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+			const dayStart = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate(),
+				0, 0, 0, 0
+			));
+			const dayEnd = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate(),
+				23, 59, 59, 999
+			));
+			// Convert back to UTC
+			startDate = new Date(dayStart.getTime() - utcOffsetMinutes * 60 * 1000);
+			endDate = new Date(dayEnd.getTime() - utcOffsetMinutes * 60 * 1000);
+		} else if (groupBy === 2) {
+			// Week grouping - show week (Monday to Sunday)
+			const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+			const dayOfWeek = localDate.getUTCDay(); // 0=Sunday, 1=Monday, etc.
+			const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust to make Monday = 0
+
+			const weekStart = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate() - daysToMonday,
+				0, 0, 0, 0
+			));
+			const weekEnd = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate() - daysToMonday + 6,
+				23, 59, 59, 999
+			));
+			// Convert back to UTC
+			startDate = new Date(weekStart.getTime() - utcOffsetMinutes * 60 * 1000);
+			endDate = new Date(weekEnd.getTime() - utcOffsetMinutes * 60 * 1000);
+		} else if (groupBy === 3) {
+			// Month grouping - show entire month
+			const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+			const monthStart = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				1,
+				0, 0, 0, 0
+			));
+			const monthEnd = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth() + 1,
+				0, // Last day of month
+				23, 59, 59, 999
+			));
+			// Convert back to UTC
+			startDate = new Date(monthStart.getTime() - utcOffsetMinutes * 60 * 1000);
+			endDate = new Date(monthEnd.getTime() - utcOffsetMinutes * 60 * 1000);
+		} else if (groupBy === 4) {
+			// Year grouping - show entire year
+			const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+			const yearStart = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				0, 1,
+				0, 0, 0, 0
+			));
+			const yearEnd = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				11, 31,
+				23, 59, 59, 999
+			));
+			// Convert back to UTC
+			startDate = new Date(yearStart.getTime() - utcOffsetMinutes * 60 * 1000);
+			endDate = new Date(yearEnd.getTime() - utcOffsetMinutes * 60 * 1000);
+		}
+	}
+
 	// Fetch entries from API
 	async function fetchEntries() {
+		calculateDateRange();
 		loading = true;
 		error = null;
 		try {
@@ -91,6 +190,146 @@
 			case 3: return 'badge-warning';
 			default: return 'badge-ghost';
 		}
+	}
+
+	// Navigate to previous period
+	function navigatePrevious() {
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+
+		if (groupBy === 1) {
+			// Previous day
+			localDate.setUTCDate(localDate.getUTCDate() - 1);
+		} else if (groupBy === 2) {
+			// Previous week
+			localDate.setUTCDate(localDate.getUTCDate() - 7);
+		} else if (groupBy === 3) {
+			// Previous month
+			localDate.setUTCMonth(localDate.getUTCMonth() - 1);
+		} else if (groupBy === 4) {
+			// Previous year
+			localDate.setUTCFullYear(localDate.getUTCFullYear() - 1);
+		}
+
+		// Convert back to UTC
+		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
+		fetchEntries();
+	}
+
+	// Navigate to next period
+	function navigateNext() {
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+
+		if (groupBy === 1) {
+			// Next day
+			localDate.setUTCDate(localDate.getUTCDate() + 1);
+		} else if (groupBy === 2) {
+			// Next week
+			localDate.setUTCDate(localDate.getUTCDate() + 7);
+		} else if (groupBy === 3) {
+			// Next month
+			localDate.setUTCMonth(localDate.getUTCMonth() + 1);
+		} else if (groupBy === 4) {
+			// Next year
+			localDate.setUTCFullYear(localDate.getUTCFullYear() + 1);
+		}
+
+		// Convert back to UTC
+		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
+		fetchEntries();
+	}
+
+	// Jump to today
+	function jumpToToday() {
+		currentPeriod = new Date();
+		fetchEntries();
+	}
+
+	// Get current period label for display
+	function getCurrentPeriodLabel(): string {
+		if (groupBy === 0) return 'All Entries';
+
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		const localDate = utcToLocal(currentPeriod, utcOffsetMinutes);
+
+		if (groupBy === 1) {
+			// Day: "January 15, 2026"
+			return localDate.toLocaleDateString('en-US', {
+				timeZone: 'UTC',
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric'
+			});
+		} else if (groupBy === 2) {
+			// Week: "Week of Jan 15 - Jan 21, 2026"
+			const dayOfWeek = localDate.getUTCDay();
+			const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+
+			const weekStart = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate() - daysToMonday
+			));
+			const weekEnd = new Date(Date.UTC(
+				localDate.getUTCFullYear(),
+				localDate.getUTCMonth(),
+				localDate.getUTCDate() - daysToMonday + 6
+			));
+
+			const startStr = weekStart.toLocaleDateString('en-US', {
+				timeZone: 'UTC',
+				month: 'short',
+				day: 'numeric'
+			});
+			const endStr = weekEnd.toLocaleDateString('en-US', {
+				timeZone: 'UTC',
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric'
+			});
+
+			return `Week of ${startStr} - ${endStr}`;
+		} else if (groupBy === 3) {
+			// Month: "January 2026"
+			return localDate.toLocaleDateString('en-US', {
+				timeZone: 'UTC',
+				year: 'numeric',
+				month: 'long'
+			});
+		} else if (groupBy === 4) {
+			// Year: "2026"
+			return localDate.getUTCFullYear().toString();
+		}
+
+		return '';
+	}
+
+	// Format date for input (YYYY-MM-DD in local timezone)
+	function formatDateForInput(date: Date): string {
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+		const localDate = utcToLocal(date, utcOffsetMinutes);
+		const year = localDate.getUTCFullYear();
+		const month = (localDate.getUTCMonth() + 1).toString().padStart(2, '0');
+		const day = localDate.getUTCDate().toString().padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
+	// Handle date picker change
+	function handleDatePickerChange(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const dateStr = input.value; // YYYY-MM-DD format
+		if (!dateStr) return;
+
+		const [year, month, day] = dateStr.split('-').map(Number);
+		const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+
+		// Create date in local timezone
+		const localDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+
+		// Convert to UTC
+		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
+		fetchEntries();
 	}
 
 	// Convert Date to HH:MM format for time input (in user's local timezone)
@@ -287,42 +526,102 @@
 				</svg>
 				Filters
 			</h2>
-			<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+			<div class="flex flex-col gap-4">
 				<!-- Group By Select -->
-				<div class="form-control w-full sm:w-56">
-					<label class="label" for="groupBy">
-						<span class="label-text font-semibold">Group By</span>
-					</label>
-					<select
-						id="groupBy"
-						class="select select-bordered w-full"
-						bind:value={groupBy}
-						onchange={() => fetchEntries()}
+				<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+					<div class="form-control w-full sm:w-56">
+						<label class="label" for="groupBy">
+							<span class="label-text font-semibold">Group By</span>
+						</label>
+						<select
+							id="groupBy"
+							class="select select-bordered w-full"
+							bind:value={groupBy}
+							onchange={() => fetchEntries()}
+						>
+							<option value={0}>None</option>
+							<option value={1}>Day</option>
+							<option value={2}>Week</option>
+							<option value={3}>Month</option>
+							<option value={4}>Year</option>
+						</select>
+					</div>
+
+					<!-- Refresh Button -->
+					<button
+						class="btn btn-primary w-full sm:w-auto"
+						onclick={() => fetchEntries()}
+						disabled={loading}
 					>
-						<option value={0}>None</option>
-						<option value={1}>Day</option>
-						<option value={2}>Week</option>
-						<option value={3}>Month</option>
-						<option value={4}>Year</option>
-					</select>
+						{#if loading}
+							<span class="loading loading-spinner loading-sm"></span>
+							Loading...
+						{:else}
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+							</svg>
+							Refresh
+						{/if}
+					</button>
 				</div>
 
-				<!-- Refresh Button -->
-				<button
-					class="btn btn-primary w-full sm:w-auto"
-					onclick={() => fetchEntries()}
-					disabled={loading}
-				>
-					{#if loading}
-						<span class="loading loading-spinner loading-sm"></span>
-						Loading...
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-						</svg>
-						Refresh
-					{/if}
-				</button>
+				<!-- Period Navigation (only shown when groupBy is active) -->
+				{#if groupBy > 0}
+					<div class="divider my-2"></div>
+					<div class="flex flex-col gap-4">
+						<!-- Current Period Display -->
+						<div class="flex items-center justify-between">
+							<h3 class="text-lg font-semibold">
+								{getCurrentPeriodLabel()}
+							</h3>
+							<button
+								class="btn btn-sm btn-ghost"
+								onclick={jumpToToday}
+								disabled={loading}
+								title="Jump to today"
+							>
+								Today
+							</button>
+						</div>
+
+						<!-- Navigation Controls -->
+						<div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+							<!-- Previous/Next Buttons -->
+							<div class="join w-full sm:w-auto">
+								<button
+									class="btn btn-outline join-item flex-1"
+									onclick={navigatePrevious}
+									disabled={loading}
+									aria-label="Previous period"
+								>
+									{@html ChevronLeftIcon}
+									<span class="hidden sm:inline">Previous</span>
+								</button>
+								<button
+									class="btn btn-outline join-item flex-1"
+									onclick={navigateNext}
+									disabled={loading}
+									aria-label="Next period"
+								>
+									<span class="hidden sm:inline">Next</span>
+									{@html ChevronRightIcon}
+								</button>
+							</div>
+
+							<!-- Date Picker -->
+							<div class="form-control w-full sm:flex-1">
+								<input
+									type="date"
+									class="input input-bordered w-full"
+									value={formatDateForInput(currentPeriod)}
+									onchange={handleDatePickerChange}
+									disabled={loading}
+									aria-label="Jump to date"
+								/>
+							</div>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 	</div>
