@@ -16,10 +16,11 @@
 9. ✅ TimeSheet-zei.16 - Justfile updates (publish and dev recipes)
 10. ✅ TimeSheet-zei.20 - RFC 7807 ProblemDetails for API error responses
 11. ✅ TimeSheet-zei.22 - Web UI design and polish improvements
+12. ✅ TimeSheet-zei.14 - PWA manifest and add-to-home-screen support
 
 ## Current Task
 
-None - awaiting next assignment
+None - Epic 8 (REST API + Svelte frontend) COMPLETE!
 
 ---
 
@@ -475,3 +476,101 @@ The web UI needed design improvements to look more professional and polished acr
 ## Pending Tasks (P2)
 
 None - all P2 tasks complete
+
+---
+
+### Issue: TimeSheet-zei.14 - PWA manifest and add-to-home-screen support
+
+Created complete PWA support for TimeSheet frontend, enabling "Add to Home Screen" on mobile devices.
+
+#### Implementation Details
+
+**PWA Manifest (`manifest.webmanifest`):**
+- App metadata: name, short_name, description
+- Theme color: `#f59e0b` (DaisyUI amber primary)
+- Background color: `#ffffff` (white)
+- Display mode: `standalone` (full-screen app experience)
+- Start URL: `/` with scope `/`
+- Orientation: `portrait-primary`
+- App icons at 8 sizes: 72x72, 96x96, 128x128, 144x144, 152x152, 192x192, 384x384, 512x512
+- Categories: `productivity`, `utilities`
+- App shortcuts for quick access to tracking/entries/analytics pages
+
+**App Icons:**
+- Created SVG source icon with clock design (orange background, white clock hands)
+- Generated PNG icons at all required sizes using ImageMagick
+- Placed in `/static/icons/` directory
+- Icons use brand color (#f59e0b) and simple clock visual
+
+**Service Worker (`sw.js`):**
+- Network-first caching strategy for optimal performance
+- Caches essential routes: /, /tracking, /entries, /analytics, /login, /about
+- Automatic cache versioning and cleanup on activation
+- Skips caching for API requests (allows natural error handling)
+- Offline fallback for cached content
+- Message handling for skip waiting behavior
+- Update detection for new service worker versions
+
+**HTML Integration:**
+- Added manifest link in `app.html` head section
+- Theme color meta tag for browser chrome customization
+- iOS-specific meta tags for web app capability
+- Multiple apple-touch-icon links for various iOS device sizes
+- App description meta tag for app stores
+
+**Service Worker Registration:**
+- Registered in `+layout.svelte` on mount
+- Update detection with console logging
+- Error handling for registration failures
+- Works across all browsers supporting service workers
+
+#### Files Created
+
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/static/manifest.webmanifest` - PWA manifest
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/static/sw.js` - Service worker
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/static/icons/icon.svg` - Source icon
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/static/icons/icon-*.png` - 8 PNG icons
+
+#### Files Modified
+
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/app.html` - Added manifest link and iOS meta tags
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/+layout.svelte` - Service worker registration
+
+#### Testing
+
+- Build: ✅ Success (`npm run build` completed without errors)
+- Manifest: ✅ Valid JSON, served at `/manifest.webmanifest`
+- Service Worker: ✅ Registered successfully, cache strategy working
+- Icons: ✅ All 8 sizes generated and copied to build directory
+- PWA Features: ✅ Ready for "Add to Home Screen" on iOS Safari and Android Chrome
+- Offline Support: ✅ Cached routes accessible offline
+
+#### Browser Support
+
+- Chrome/Edge (Desktop & Mobile): Full PWA support
+- Safari iOS 11.3+: Add to Home Screen support
+- Firefox Android: PWA support
+- Samsung Internet: PWA support
+
+#### Epic 8 Status
+
+**EPIC COMPLETE!** All 29 tasks in TimeSheet-zei (REST API + Svelte frontend) are now closed:
+- ✅ API project with OpenAPI/Scalar
+- ✅ JWT authentication endpoints
+- ✅ Tracking state endpoints
+- ✅ Entries CRUD endpoints
+- ✅ Analytics endpoints
+- ✅ Telegram /login command
+- ✅ Frontend project (SvelteKit + DaisyUI + Heroicons)
+- ✅ NSwag API client generation
+- ✅ Authentication flow UI
+- ✅ Main tracking page
+- ✅ Audit table view
+- ✅ Edit/Delete entry UI
+- ✅ Charts/Analytics page
+- ✅ **PWA manifest and add-to-home-screen support** (FINAL TASK)
+- ✅ Docker Compose configuration
+- ✅ Justfile updates
+- ✅ Plus 13 bug fixes and improvements
+
+TimeSheet now has a complete, production-ready web interface!
