@@ -281,11 +281,11 @@
 		const active = isStateActive(state);
 
 		if (state === TrackingState.Commuting) {
-			return `${baseClasses} ${active ? 'btn-primary shadow-xl scale-105' : 'btn-outline btn-primary opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500 shadow-xl scale-105' : 'btn-outline border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Working) {
-			return `${baseClasses} ${active ? 'btn-secondary shadow-xl scale-105' : 'btn-outline btn-secondary opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'bg-blue-500 hover:bg-blue-600 text-white border-blue-500 shadow-xl scale-105' : 'btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Lunch) {
-			return `${baseClasses} ${active ? 'btn-accent shadow-xl scale-105' : 'btn-outline btn-accent opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'bg-green-500 hover:bg-green-600 text-white border-green-500 shadow-xl scale-105' : 'btn-outline border-green-500 text-green-500 hover:bg-green-500 hover:text-white opacity-70 hover:opacity-100'}`;
 		}
 
 		return baseClasses;
