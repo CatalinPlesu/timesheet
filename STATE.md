@@ -12,6 +12,7 @@
 5. ✅ TimeSheet-zei.26 - Time offset text input parsing
 6. ✅ TimeSheet-zei.28 - Entry edit with time pickers
 7. ✅ TimeSheet-zei.29 - Analytics charts and overtime tracking
+8. ✅ TimeSheet-zei.15 - Docker Compose configuration
 
 ## Current Task
 
@@ -245,6 +246,87 @@ Analytics page was missing visual charts and overtime calculations.
 - Overtime: Calculates correctly based on target hours and actual work
 - Responsive: Layout adapts to mobile/tablet/desktop screen sizes
 - Data handling: Gracefully handles missing target hours (hides overtime section)
+
+---
+
+### Issue: TimeSheet-zei.15 - Docker Compose configuration
+
+Created comprehensive Docker Compose setup with 3 main services (bot, API, frontend) plus Seq for logging.
+
+#### Implementation Details
+
+**Dockerfiles created:**
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.Telegram/Dockerfile` - Multi-stage build for Telegram bot
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Dockerfile` - Multi-stage build for REST API with health endpoint
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/Dockerfile` - Node build + nginx serve for SvelteKit frontend
+
+**Configuration files:**
+- `/home/catalin/exp/TimeSheet/docker-compose.yml` - Main compose file with 4 services (bot, API, frontend, Seq)
+- `/home/catalin/exp/TimeSheet/.env.example` - Template for environment variables
+- `/home/catalin/exp/TimeSheet/.dockerignore` - Optimized build context exclusions
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/.dockerignore` - Frontend-specific exclusions
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/nginx.conf` - Nginx config for SvelteKit routing
+
+**Key Features:**
+- Shared SQLite volume (`./data:/app/data`) for database persistence
+- Environment variable support for all configuration (JWT secrets, bot token, ports, etc.)
+- Health checks for API and frontend services
+- Multi-stage builds for optimized image sizes
+- Restart policies for production use
+- Dedicated network for inter-service communication
+- CORS configuration for frontend-API communication
+- Static adapter for frontend (build-time API URL injection)
+
+#### Bug Fixed
+
+Discovered and removed problematic `bin\Debug` directories (with literal backslashes) that were causing Docker builds to fail with:
+```
+error MSB3552: Resource file "**/*.resx" cannot be found
+```
+
+These directories were remnants from Windows builds or MSBuild artifacts that confused the Docker build system.
+
+#### Files Modified
+
+**Frontend adapter change:**
+- Installed `@sveltejs/adapter-static` for Docker deployment
+- Updated `svelte.config.js` to use static adapter with fallback
+- Configured build-time `VITE_API_URL` injection
+
+**API health endpoint:**
+- Added `/health` endpoint to `TimeSheet.Presentation.API/Program.cs` for Docker health checks
+
+#### Testing
+
+- Bot Dockerfile: ✅ Builds successfully
+- API Dockerfile: ✅ Builds successfully
+- Frontend Dockerfile: ✅ Builds successfully
+- docker-compose config: ✅ Valid configuration
+- Tests: ✅ All existing tests pass (3 pre-existing failures unrelated)
+- API startup: ✅ Runs without crashing
+
+#### Usage
+
+**Development:**
+```bash
+# Create .env from template
+cp .env.example .env
+# Edit .env with your values
+
+# Build and run all services
+docker-compose up --build
+
+# Access:
+# - Frontend: http://localhost:3000
+# - API: http://localhost:5000
+# - Seq logs: http://localhost:5341
+```
+
+**Production:**
+- Update .env with production values (secure JWT secret, real bot token)
+- Set VITE_API_URL to production API URL
+- Set CORS allowed origins appropriately
+- Use external SQLite volume or mounted directory for persistence
 
 ---
 
