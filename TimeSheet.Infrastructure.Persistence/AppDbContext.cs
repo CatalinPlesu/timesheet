@@ -48,5 +48,31 @@ public sealed class AppDbContext : DbContext
 
         // Apply entity configurations from assemblies
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // CRITICAL: Configure all DateTime properties to be stored and retrieved as UTC
+        // SQLite stores DateTime as TEXT without timezone info.
+        // By default, EF Core reads them back as DateTimeKind.Unspecified, which can cause
+        // the system to incorrectly interpret them as local time.
+        // This converter ensures all DateTime values are explicitly marked as UTC.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(
+                        new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+                            v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(), // Ensure UTC when writing to DB
+                            v => DateTime.SpecifyKind(v, DateTimeKind.Utc))); // Mark as UTC when reading from DB
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(
+                        new Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+                            v => v.HasValue ? (v.Value.Kind == DateTimeKind.Utc ? v.Value : v.Value.ToUniversalTime()) : (DateTime?)null,
+                            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : (DateTime?)null));
+                }
+            }
+        }
     }
 }

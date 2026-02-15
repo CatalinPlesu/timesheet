@@ -34,7 +34,14 @@ public static class ServiceCollectionExtensions
         {
             var dbOptions = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
 
-            options.UseSqlite(dbOptions.ConnectionString);
+            // Configure SQLite with UTC DateTimeKind
+            // By default, SQLite stores DateTime as TEXT without timezone info,
+            // and EF Core reads them back as DateTimeKind.Unspecified.
+            // This configuration ensures all DateTime values are treated as UTC.
+            options.UseSqlite(dbOptions.ConnectionString, sqliteOptions =>
+            {
+                sqliteOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            });
 
             if (dbOptions.EnableSensitiveDataLogging)
             {
