@@ -79,12 +79,18 @@ public class TrackingController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
         {
             _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
-            return Unauthorized(new { error = "Invalid authentication token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid authentication token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current tracking state");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving current state" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while retrieving current state");
         }
     }
 
@@ -108,13 +114,19 @@ public class TrackingController : ControllerBase
     {
         if (request == null)
         {
-            return BadRequest(new { error = "Request body is required" });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Request body is required");
         }
 
         // Validate that the state is not Idle (Idle is only returned, never set)
         if (request.State == TrackingState.Idle)
         {
-            return BadRequest(new { error = "Cannot explicitly set Idle state. Use toggle to stop current state." });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Cannot explicitly set Idle state. Use toggle to stop current state.");
         }
 
         try
@@ -131,12 +143,18 @@ public class TrackingController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
         {
             _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
-            return Unauthorized(new { error = "Invalid authentication token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid authentication token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error toggling tracking state");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while toggling state" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while toggling state");
         }
     }
 
@@ -161,13 +179,19 @@ public class TrackingController : ControllerBase
     {
         if (request == null)
         {
-            return BadRequest(new { error = "Request body is required" });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Request body is required");
         }
 
         // Validate that the state is not Idle
         if (request.State == TrackingState.Idle)
         {
-            return BadRequest(new { error = "Cannot explicitly set Idle state. Use toggle to stop current state." });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Cannot explicitly set Idle state. Use toggle to stop current state.");
         }
 
         try
@@ -189,12 +213,18 @@ public class TrackingController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
         {
             _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
-            return Unauthorized(new { error = "Invalid authentication token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid authentication token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error toggling tracking state with offset");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while toggling state" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while toggling state");
         }
     }
 

@@ -23,6 +23,19 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configure ProblemDetails for RFC 7807 error responses
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        // Add timestamp to all problem details
+        context.ProblemDetails.Extensions["timestamp"] = DateTime.UtcNow;
+
+        // Add trace ID for debugging
+        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+    };
+});
+
 // Add controllers
 builder.Services.AddControllers();
 
@@ -89,6 +102,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Add exception handling middleware
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 app.UseCors();
 

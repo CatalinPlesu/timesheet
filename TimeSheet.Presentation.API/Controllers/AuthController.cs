@@ -48,14 +48,20 @@ public class AuthController : ControllerBase
     {
         if (request == null || string.IsNullOrWhiteSpace(request.Mnemonic))
         {
-            return BadRequest(new { error = "Mnemonic is required" });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Mnemonic is required");
         }
 
         // Validate the mnemonic exists in pending list
         if (!await _mnemonicService.ValidateMnemonicAsync(request.Mnemonic, cancellationToken))
         {
             _logger.LogWarning("Login attempt with invalid or unknown mnemonic");
-            return Unauthorized(new { error = "Invalid or expired mnemonic" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid or expired mnemonic");
         }
 
         // Parse mnemonic to get user info (mnemonics are linked to users during /login command in Telegram)
@@ -94,14 +100,20 @@ public class AuthController : ControllerBase
         if (user == null)
         {
             _logger.LogWarning("Login attempt but no users exist in system");
-            return Unauthorized(new { error = "No users registered in system" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "No users registered in system");
         }
 
         // Consume the mnemonic
         if (!await _mnemonicService.ConsumeMnemonicAsync(request.Mnemonic, cancellationToken))
         {
             _logger.LogWarning("Failed to consume mnemonic - may have been used already");
-            return Unauthorized(new { error = "Invalid or expired mnemonic" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid or expired mnemonic");
         }
 
         // Generate JWT token
@@ -142,7 +154,10 @@ public class AuthController : ControllerBase
     {
         if (request == null || string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            return BadRequest(new { error = "Refresh token is required" });
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid Request",
+                detail: "Refresh token is required");
         }
 
         try
@@ -157,7 +172,10 @@ public class AuthController : ControllerBase
             if (user == null)
             {
                 _logger.LogWarning("Refresh token attempt for non-existent user {UserId}", userId);
-                return Unauthorized(new { error = "User not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Authentication Failed",
+                    detail: "User not found");
             }
 
             // Generate new token with same claims
@@ -184,12 +202,18 @@ public class AuthController : ControllerBase
         catch (SecurityTokenException ex)
         {
             _logger.LogWarning(ex, "Invalid refresh token attempt");
-            return Unauthorized(new { error = "Invalid or expired token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid or expired token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during token refresh");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred during token refresh" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred during token refresh");
         }
     }
 }

@@ -60,7 +60,10 @@ public class AnalyticsController : ControllerBase
 
             if (start >= end)
             {
-                return BadRequest(new { error = "Start date must be before end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before end date");
             }
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, start, end, cancellationToken);
@@ -142,7 +145,10 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating daily averages");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while calculating daily averages" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while calculating daily averages");
         }
     }
 
@@ -176,7 +182,10 @@ public class AnalyticsController : ControllerBase
             // Parse direction
             if (!Enum.TryParse<CommuteDirection>(direction, true, out var commuteDirection))
             {
-                return BadRequest(new { error = "Invalid direction. Use 'ToWork' or 'ToHome'" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Invalid direction. Use 'ToWork' or 'ToHome'");
             }
 
             // Default to last 90 days if not specified
@@ -185,7 +194,10 @@ public class AnalyticsController : ControllerBase
 
             if (start >= end)
             {
-                return BadRequest(new { error = "Start date must be before end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before end date");
             }
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, start, end, cancellationToken);
@@ -248,7 +260,10 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating commute patterns");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while calculating commute patterns" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while calculating commute patterns");
         }
     }
 
@@ -279,7 +294,10 @@ public class AnalyticsController : ControllerBase
 
             if (startDate >= endDate)
             {
-                return BadRequest(new { error = "Start date must be before end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before end date");
             }
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, startDate, endDate, cancellationToken);
@@ -339,7 +357,10 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating period aggregate");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while calculating period aggregate" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while calculating period aggregate");
         }
     }
 
@@ -370,7 +391,10 @@ public class AnalyticsController : ControllerBase
 
             if (startDate >= endDate)
             {
-                return BadRequest(new { error = "Start date must be before end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before end date");
             }
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, startDate, endDate, cancellationToken);
@@ -454,7 +478,10 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating daily breakdown");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while calculating daily breakdown" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while calculating daily breakdown");
         }
     }
 
@@ -487,14 +514,20 @@ public class AnalyticsController : ControllerBase
 
             if (startDate >= endDate)
             {
-                return BadRequest(new { error = "Start date must be before end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before end date");
             }
 
             // Validate groupBy parameter
             var validGroupings = new[] { "Day", "Week", "Month", "Year" };
             if (!validGroupings.Contains(groupBy, StringComparer.OrdinalIgnoreCase))
             {
-                return BadRequest(new { error = "Invalid groupBy parameter. Use 'Day', 'Week', 'Month', or 'Year'" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Invalid groupBy parameter. Use 'Day', 'Week', 'Month', or 'Year'");
             }
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, startDate, endDate, cancellationToken);
@@ -569,7 +602,10 @@ public class AnalyticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating chart data");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while generating chart data" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while generating chart data");
         }
     }
 

@@ -48,7 +48,10 @@ public class SettingsController : ControllerBase
             if (user == null)
             {
                 _logger.LogWarning("User {UserId} not found", userId);
-                return Unauthorized(new { error = "User not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Authentication Failed",
+                    detail: "User not found");
             }
 
             return Ok(new UserSettingsDto
@@ -66,12 +69,18 @@ public class SettingsController : ControllerBase
         catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
         {
             _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
-            return Unauthorized(new { error = "Invalid authentication token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid authentication token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting user settings");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving settings" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while retrieving settings");
         }
     }
 

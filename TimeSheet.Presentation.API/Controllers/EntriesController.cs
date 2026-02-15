@@ -53,18 +53,27 @@ public class EntriesController : ControllerBase
             // Validate pagination parameters
             if (request.Page < 1)
             {
-                return BadRequest(new { error = "Page number must be at least 1" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Page number must be at least 1");
             }
 
             if (request.PageSize < 1 || request.PageSize > 500)
             {
-                return BadRequest(new { error = "Page size must be between 1 and 500" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Page size must be between 1 and 500");
             }
 
             // Validate date range
             if (request.StartDate.HasValue && request.EndDate.HasValue && request.StartDate.Value > request.EndDate.Value)
             {
-                return BadRequest(new { error = "Start date must be before or equal to end date" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Start date must be before or equal to end date");
             }
 
             // Set default date range if not provided (last 30 days)
@@ -120,12 +129,18 @@ public class EntriesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid user token");
-            return Unauthorized(new { error = "Invalid user token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid user token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving entries");
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving entries" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while retrieving entries");
         }
     }
 
@@ -156,7 +171,10 @@ public class EntriesController : ControllerBase
             if (session == null)
             {
                 _logger.LogWarning("User {UserId} attempted to access non-existent entry {EntryId}", userId, id);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Verify the session belongs to the authenticated user
@@ -165,7 +183,10 @@ public class EntriesController : ControllerBase
                 _logger.LogWarning(
                     "User {UserId} attempted to access entry {EntryId} belonging to user {OwnerId}",
                     userId, id, session.UserId);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Map to DTO
@@ -189,12 +210,18 @@ public class EntriesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid user token");
-            return Unauthorized(new { error = "Invalid user token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid user token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving entry {EntryId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while retrieving the entry" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while retrieving the entry");
         }
     }
 
@@ -226,7 +253,10 @@ public class EntriesController : ControllerBase
             // Validate request
             if (request.AdjustmentMinutes == 0)
             {
-                return BadRequest(new { error = "Adjustment cannot be zero" });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: "Adjustment cannot be zero");
             }
 
             // Get the session by ID
@@ -235,7 +265,10 @@ public class EntriesController : ControllerBase
             if (session == null)
             {
                 _logger.LogWarning("User {UserId} attempted to update non-existent entry {EntryId}", userId, id);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Verify the session belongs to the authenticated user
@@ -244,7 +277,10 @@ public class EntriesController : ControllerBase
                 _logger.LogWarning(
                     "User {UserId} attempted to update entry {EntryId} belonging to user {OwnerId}",
                     userId, id, session.UserId);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Apply the adjustment
@@ -255,7 +291,10 @@ public class EntriesController : ControllerBase
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning(ex, "User {UserId} attempted to adjust active entry {EntryId}", userId, id);
-                return BadRequest(new { error = ex.Message });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Operation",
+                    detail: ex.Message);
             }
             catch (ArgumentException ex)
             {
@@ -263,7 +302,10 @@ public class EntriesController : ControllerBase
                     ex,
                     "User {UserId} attempted invalid adjustment of {Minutes} minutes on entry {EntryId}",
                     userId, request.AdjustmentMinutes, id);
-                return BadRequest(new { error = ex.Message });
+                return Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Invalid Request",
+                    detail: ex.Message);
             }
 
             // Update the session in the repository
@@ -292,12 +334,18 @@ public class EntriesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid user token");
-            return Unauthorized(new { error = "Invalid user token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid user token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating entry {EntryId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while updating the entry" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while updating the entry");
         }
     }
 
@@ -328,7 +376,10 @@ public class EntriesController : ControllerBase
             if (session == null)
             {
                 _logger.LogWarning("User {UserId} attempted to delete non-existent entry {EntryId}", userId, id);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Verify the session belongs to the authenticated user
@@ -337,7 +388,10 @@ public class EntriesController : ControllerBase
                 _logger.LogWarning(
                     "User {UserId} attempted to delete entry {EntryId} belonging to user {OwnerId}",
                     userId, id, session.UserId);
-                return NotFound(new { error = "Entry not found" });
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
             }
 
             // Delete the session
@@ -350,12 +404,18 @@ public class EntriesController : ControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Invalid user token");
-            return Unauthorized(new { error = "Invalid user token" });
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid user token");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting entry {EntryId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "An error occurred while deleting the entry" });
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while deleting the entry");
         }
     }
 }
