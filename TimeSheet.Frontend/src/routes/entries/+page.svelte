@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { apiClient, type TrackingEntryDto, type EntryListResponse, EntryUpdateRequest } from '$lib/api';
+	import { extractErrorMessage } from '$lib/utils/errorHandling';
 
 	// Icons (Heroicons - outline)
 	const PencilSquareIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -50,7 +51,7 @@
 			totalCount = response.totalCount;
 			totalPages = response.totalPages;
 		} catch (err: any) {
-			error = err.message || 'Failed to load entries';
+			error = extractErrorMessage(err, 'Failed to load entries');
 			console.error('Failed to fetch entries:', err);
 		} finally {
 			loading = false;
@@ -179,7 +180,7 @@
 			// Refresh to confirm
 			await fetchEntries();
 		} catch (err: any) {
-			editError = err.message || 'Failed to update entry';
+			editError = extractErrorMessage(err, 'Failed to update entry');
 			console.error('Failed to update entry:', err);
 		} finally {
 			editLoading = false;
@@ -218,7 +219,7 @@
 			// Refresh to confirm
 			await fetchEntries();
 		} catch (err: any) {
-			deleteError = err.message || 'Failed to delete entry';
+			deleteError = extractErrorMessage(err, 'Failed to delete entry');
 			console.error('Failed to delete entry:', err);
 		} finally {
 			deleteLoading = false;

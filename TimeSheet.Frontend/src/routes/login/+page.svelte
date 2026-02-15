@@ -3,6 +3,7 @@
 	import { auth } from '$lib/stores/auth';
 	import { apiClient, LoginRequest } from '$lib/api';
 	import { scheduleTokenRefresh } from '$lib/utils/tokenRefresh';
+	import { extractErrorMessage } from '$lib/utils/errorHandling';
 	import { onMount } from 'svelte';
 
 	let mnemonic = $state('');
@@ -56,20 +57,7 @@
 			await goto('/tracking');
 		} catch (error: any) {
 			console.error('Login failed:', error);
-
-			// Parse error message
-			if (error.response) {
-				try {
-					const errorData = JSON.parse(error.response);
-					errorMessage = errorData.detail || errorData.title || 'Invalid mnemonic phrase';
-				} catch {
-					errorMessage = 'Invalid mnemonic phrase';
-				}
-			} else if (error.message) {
-				errorMessage = error.message;
-			} else {
-				errorMessage = 'Login failed. Please check your mnemonic and try again.';
-			}
+			errorMessage = extractErrorMessage(error, 'Invalid mnemonic phrase');
 		} finally {
 			isLoading = false;
 		}

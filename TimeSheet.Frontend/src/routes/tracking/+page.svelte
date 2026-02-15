@@ -7,6 +7,7 @@
 		TrackingStateWithOffsetRequest
 	} from '$lib/api';
 	import { auth } from '$lib/stores/auth';
+	import { extractErrorMessage } from '$lib/utils/errorHandling';
 
 	// State enum values (must match backend)
 	const TrackingState = {
@@ -49,7 +50,7 @@
 			currentState = await apiClient.current();
 			updateElapsedTime();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load current state';
+			error = extractErrorMessage(err, 'Failed to load current state');
 			console.error('Failed to load current state:', err);
 		} finally {
 			loading = false;
@@ -116,7 +117,7 @@
 			showToast(response.message || 'State updated successfully');
 			await loadCurrentState();
 		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'Failed to toggle state';
+			const errorMessage = extractErrorMessage(err, 'Failed to toggle state');
 			error = errorMessage;
 			showToast(errorMessage, 'error');
 			console.error('Failed to toggle state:', err);

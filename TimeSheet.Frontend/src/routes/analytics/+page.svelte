@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { Chart, registerables } from 'chart.js';
 	import { apiClient, type ChartDataDto, type DailyAveragesDto, type CommutePatternsDto, type UserSettingsDto } from '$lib/api';
+	import { extractErrorMessage } from '$lib/utils/errorHandling';
 
 	// Register Chart.js components
 	Chart.register(...registerables);
@@ -54,7 +55,7 @@
 			updateChart();
 			updatePieChart();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load analytics data';
+			error = extractErrorMessage(err, 'Failed to load analytics data');
 			console.error('Analytics error:', err);
 		} finally {
 			loading = false;
