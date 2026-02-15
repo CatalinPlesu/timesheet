@@ -76,6 +76,11 @@ public class TrackingController : ControllerBase
                 CommuteDirection = activeSession.CommuteDirection
             });
         }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
+        {
+            _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
+            return Unauthorized(new { error = "Invalid authentication token" });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting current tracking state");
@@ -122,6 +127,11 @@ public class TrackingController : ControllerBase
             var result = await _timeTrackingService.StartStateAsync(userId, request.State, timestamp, cancellationToken);
 
             return Ok(MapToResponse(result, request.State));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
+        {
+            _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
+            return Unauthorized(new { error = "Invalid authentication token" });
         }
         catch (Exception ex)
         {
@@ -175,6 +185,11 @@ public class TrackingController : ControllerBase
             var result = await _timeTrackingService.StartStateAsync(userId, request.State, timestamp, cancellationToken);
 
             return Ok(MapToResponse(result, request.State));
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("User ID not found"))
+        {
+            _logger.LogWarning(ex, "Invalid JWT token - user ID not found in claims");
+            return Unauthorized(new { error = "Invalid authentication token" });
         }
         catch (Exception ex)
         {

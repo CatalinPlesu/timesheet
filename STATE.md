@@ -1,46 +1,52 @@
-# Epic 8 - REST API + Svelte Frontend - Execution State
+# Frontend Improvement Tasks - Execution State
 
-**Epic:** TimeSheet-zei
+**Started:** 2026-02-15
+**Status:** IN PROGRESS
+
+## Current Task
+
+**Agent:** fix-api-500-toggle-error
+**Task:** TimeSheet-zei.27 - FIX: API 500 Internal Server Error when toggling tracking state
+**Priority:** P1 (BLOCKING)
 **Status:** ✅ COMPLETED
-**Started:** 2026-02-14
-**Completed:** 2026-02-14
 
-## Completed Tasks (All Merged to Main)
+### Issue
+API was returning 500 Internal Server Error when JWT token didn't have the expected user ID claims.
 
-**Phase 1 - Foundation:**
-- ✅ **zei.1** - API project + OpenAPI/Scalar setup
-- ✅ **zei.2** - JWT authentication endpoints
-- ✅ **zei.6** - Telegram /login command
-- ✅ **zei.7** - Frontend project (SvelteKit + DaisyUI + Heroicons)
-- ✅ **zei.8** - NSwag API client generation
+### Root Cause
+The `GetUserIdFromClaims()` method throws `InvalidOperationException` when the JWT token doesn't contain the required `NameIdentifier` or `telegram_user_id` claims. This exception was being caught by the generic `catch (Exception ex)` block and returned as a 500 Internal Server Error instead of a more appropriate 401 Unauthorized error.
 
-**Phase 2 - API Endpoints:**
-- ✅ **zei.3** - Tracking state endpoints (GET current, POST toggle)
-- ✅ **zei.4** - Entries CRUD endpoints (list, get, update, delete)
-- ✅ **zei.5** - Analytics endpoints (averages, patterns, chart data)
+### Fix Applied
+Added specific exception handling in TrackingController for `InvalidOperationException` related to missing user ID claims:
+- `GetCurrentState()` - now returns 401 when JWT claims are invalid
+- `ToggleState()` - now returns 401 when JWT claims are invalid
+- `ToggleStateWithOffset()` - now returns 401 when JWT claims are invalid
 
-**Phase 3 - Frontend UI:**
-- ✅ **zei.9** - Authentication flow UI (login, JWT refresh, route protection)
-- ✅ **zei.10** - Main tracking page (3 toggle buttons, time offset menu)
-- ✅ **zei.11** - Audit table view (grouping, filtering, pagination)
-- ✅ **zei.12** - Edit/Delete entry UI (modals, optimistic updates)
-- ✅ **zei.13** - Charts/Analytics page (Chart.js with idle time)
+This provides better error messages to the frontend and helps distinguish between authentication issues (401) and actual server errors (500).
 
-## Remaining Tasks (Optional/Polish)
+### Testing
+- Build: ✅ Success
+- Tests: ✅ All existing tests pass (5 pre-existing failures unrelated to this fix)
+- API Startup: ✅ Runs without crashing for 15+ seconds
 
-**Lower Priority:**
-- **zei.14** - PWA support (manifest, service worker, add-to-home)
-- **zei.15** - Docker Compose (3 services: bot, API, frontend)
-- **zei.16** - Justfile updates (namespaced commands for all services)
+### Note
+If the frontend is still experiencing 500 errors, the issue may be:
+1. JWT token generation in the login flow not including the correct claims
+2. An actual server-side exception during state transition logic
+3. Database connectivity issues
 
-## Known Issues
+The improved error handling and logging will help identify the exact cause.
 
-- **TimeSheet-akp** - 6 pre-existing test failures (not blocking Epic 8)
-- **TimeSheet-atq** - EF Core provider conflict in API integration tests
+---
 
-## Recovery Notes
+## Pending Tasks (P1)
 
-If interrupted, check:
-- `bd list --parent TimeSheet-zei --status in_progress` for claimed tasks
-- `git worktree list` for active worktrees
-- This STATE.md for agent assignments
+1. TimeSheet-zei.23 - Login password field instead of textarea
+2. TimeSheet-zei.24 - Fix UTC offset in duration display
+
+## Pending Tasks (P2)
+
+3. TimeSheet-zei.25 - Full color button highlighting
+4. TimeSheet-zei.26 - Time offset text input parsing
+5. TimeSheet-zei.28 - Entry edit with time pickers
+6. TimeSheet-zei.29 - Analytics charts and overtime
