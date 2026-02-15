@@ -14,6 +14,7 @@
 7. ✅ TimeSheet-zei.29 - Analytics charts and overtime tracking
 8. ✅ TimeSheet-zei.15 - Docker Compose configuration
 9. ✅ TimeSheet-zei.16 - Justfile updates (publish and dev recipes)
+10. ✅ TimeSheet-zei.20 - RFC 7807 ProblemDetails for API error responses
 
 ## Current Task
 
@@ -328,6 +329,72 @@ docker-compose up --build
 - Set VITE_API_URL to production API URL
 - Set CORS allowed origins appropriately
 - Use external SQLite volume or mounted directory for persistence
+
+---
+
+---
+
+### Issue: TimeSheet-zei.20 - RFC 7807 ProblemDetails for API error responses
+
+API was returning custom error objects like `{"error": "message"}` instead of the industry-standard RFC 7807 ProblemDetails format.
+
+#### Backend Changes
+- Configured ProblemDetails middleware in `Program.cs` with `AddProblemDetails()`
+- Added custom extensions to all problem responses: `timestamp` and `traceId`
+- Added exception handling middleware: `UseExceptionHandler()` and `UseStatusCodePages()`
+- Updated all controllers to use `Problem()` helper instead of custom error objects:
+  - `AuthController`: 8 error responses converted
+  - `TrackingController`: 10 error responses converted
+  - `EntriesController`: 20 error responses converted
+  - `AnalyticsController`: 12 error responses converted
+  - `SettingsController`: 3 error responses converted
+- Replaced patterns like `BadRequest(new { error = "..." })` with `Problem(statusCode, title, detail)`
+- Used proper status codes (400, 401, 404, 500) with descriptive titles and details
+
+#### Frontend Changes
+- Regenerated NSwag client to pick up ProblemDetails schema
+- Created `extractErrorMessage()` helper in `/lib/utils/errorHandling.ts`
+- Helper function extracts `detail` or `title` from ProblemDetails responses
+- Updated all error handling in frontend pages:
+  - `login/+page.svelte`: Simplified error parsing with helper
+  - `tracking/+page.svelte`: All 3 catch blocks updated
+  - `entries/+page.svelte`: All 3 catch blocks updated
+  - `analytics/+page.svelte`: Updated error handling
+- Removed manual JSON parsing logic in favor of structured ApiException handling
+
+#### ProblemDetails Format
+RFC 7807 standard fields:
+- `type`: URI identifying the problem type (optional)
+- `title`: Short human-readable summary
+- `status`: HTTP status code
+- `detail`: Detailed explanation specific to this occurrence
+- `instance`: URI identifying the specific occurrence (optional)
+- Custom extensions: `timestamp` (UTC), `traceId` (correlation)
+
+#### Files Modified
+
+Backend:
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Program.cs`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Controllers/AuthController.cs`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Controllers/TrackingController.cs`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Controllers/EntriesController.cs`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Controllers/AnalyticsController.cs`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Presentation.API/Controllers/SettingsController.cs`
+
+Frontend:
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/lib/api/client.ts` (regenerated)
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/lib/utils/errorHandling.ts` (new)
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/login/+page.svelte`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/tracking/+page.svelte`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/entries/+page.svelte`
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/analytics/+page.svelte`
+
+#### Testing
+- Build: ✅ Backend builds successfully
+- Tests: ✅ All 225 unit tests pass
+- API Startup: ✅ Runs without crashing for 15+ seconds
+- Frontend Build: ✅ Success (`npm run build` completed)
+- Error handling: ✅ Frontend correctly extracts and displays ProblemDetails messages
 
 ---
 
