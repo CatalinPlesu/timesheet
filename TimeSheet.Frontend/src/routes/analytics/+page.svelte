@@ -11,8 +11,10 @@
 	// State
 	let chartCanvas: HTMLCanvasElement;
 	let pieChartCanvas: HTMLCanvasElement;
+	let workHoursChartCanvas: HTMLCanvasElement;
 	let chart: Chart | null = null;
 	let pieChart: Chart | null = null;
+	let workHoursChart: Chart | null = null;
 	let chartData: ChartDataDto | null = null;
 	let dailyAverages: DailyAveragesDto | null = null;
 	let commuteToWorkPatterns: CommutePatternsDto[] = [];
@@ -21,6 +23,7 @@
 
 	let loading = true;
 	let error = '';
+	let workHoursViewMode: 'week' | 'month' = 'week';
 
 	// Form state for date range and grouping
 	let startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
@@ -55,6 +58,7 @@
 			// Update charts
 			updateChart();
 			updatePieChart();
+			updateWorkHoursChart();
 		} catch (err) {
 			error = extractErrorMessage(err, 'Failed to load analytics data');
 			console.error('Analytics error:', err);
@@ -232,6 +236,153 @@
 	}
 
 
+	// Update work hours chart (WakaTime-style)
+	function updateWorkHoursChart() {
+		if (!workHoursChartCanvas || !chartData || !userSettings?.targetWorkHours) return;
+
+		// Destroy existing chart
+		if (workHoursChart) {
+			workHoursChart.destroy();
+		}
+
+		const targetHours = userSettings.targetWorkHours;
+		const labels = chartData.labels;
+		const workHours = chartData.workHours;
+
+		// Calculate bar colors based on target
+		const backgroundColors = workHours.map(hours =>
+			hours > targetHours ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)' // red-500 : green-500
+		);
+		const borderColors = workHours.map(hours =>
+			hours > targetHours ? 'rgba(239, 68, 68, 1)' : 'rgba(34, 197, 94, 1)'
+		);
+
+		// Create new chart with bars and target line
+		workHoursChart = new Chart(workHoursChartCanvas, {
+			type: 'bar',
+			data: {
+				labels,
+				datasets: [
+					{
+						type: 'bar',
+						label: 'Work Hours',
+						data: workHours,
+						backgroundColor: backgroundColors,
+						borderColor: borderColors,
+						borderWidth: 2,
+						borderRadius: 4
+					},
+					{
+						type: 'line',
+						label: 'Target',
+						data: new Array(labels.length).fill(targetHours),
+						borderColor: 'rgba(59, 130, 246, 1)', // blue-500
+						borderWidth: 2,
+						borderDash: [5, 5],
+						pointRadius: 0,
+						fill: false
+					}
+				]
+			},
+			options: {
+				responsive: true,
+				maintainAspectRatio: false,
+				interaction: {
+					mode: 'index',
+					intersect: false
+				},
+				plugins: {
+					legend: {
+						position: 'top',
+						labels: {
+							usePointStyle: true,
+							padding: 15,
+							filter: function(item) {
+								// Show legend for target line and one entry for work hours
+								return item.text === 'Target' || item.datasetIndex === 0;
+							},
+							generateLabels: function(chart) {
+								const original = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+								// Customize the work hours label to show green/red meaning
+								return original.map(item => {
+									if (item.text === 'Work Hours') {
+										item.text = 'Work Hours (Green: at/below target, Red: above target)';
+									}
+									return item;
+								});
+							}
+						}
+					},
+					tooltip: {
+						callbacks: {
+							label: function (context) {
+								let label = context.dataset.label || '';
+								if (label) {
+									label += ': ';
+								}
+								const value = context.parsed.y ?? 0;
+								label += formatDuration(value);
+
+								// Add difference from target for work hours
+								if (context.datasetIndex === 0 && targetHours) {
+									const diff = value - targetHours;
+									if (diff !== 0) {
+										label += ` (${diff > 0 ? '+' : ''}${formatDuration(Math.abs(diff))})`;
+									}
+								}
+
+								return label;
+							}
+						}
+					}
+				},
+				scales: {
+					x: {
+						grid: {
+							display: false
+						}
+					},
+					y: {
+						beginAtZero: true,
+						title: {
+							display: true,
+							text: 'Duration'
+						},
+						ticks: {
+							callback: function (value) {
+								return formatDuration(value as number);
+							}
+						}
+					}
+				}
+			}
+		});
+	}
+
+	// Calculate work hours period totals
+	function calculateWorkHoursPeriodTotals(): { totalHours: number; totalOvertime: number; avgPerDay: number; daysAboveTarget: number; daysBelowTarget: number } | null {
+		if (!chartData || !userSettings?.targetWorkHours) {
+			return null;
+		}
+
+		const targetHours = userSettings.targetWorkHours;
+		const workHours = chartData.workHours;
+		const totalHours = workHours.reduce((sum, hours) => sum + hours, 0);
+		const avgPerDay = workHours.length > 0 ? totalHours / workHours.length : 0;
+		const totalTarget = targetHours * workHours.length;
+		const totalOvertime = totalHours - totalTarget;
+		const daysAboveTarget = workHours.filter(hours => hours > targetHours).length;
+		const daysBelowTarget = workHours.filter(hours => hours <= targetHours).length;
+
+		return {
+			totalHours,
+			totalOvertime,
+			avgPerDay,
+			daysAboveTarget,
+			daysBelowTarget
+		};
+	}
+
 	// Calculate overtime
 	function calculateOvertime(): { overtime: number; percentage: number; isOvertime: boolean } | null {
 		if (!dailyAverages || !userSettings?.targetWorkHours || dailyAverages.totalWorkDays === 0) {
@@ -250,8 +401,39 @@
 		};
 	}
 
+	// Load work hours data for specific period (week or month)
+	async function loadWorkHoursData() {
+		loading = true;
+		error = '';
+
+		try {
+			let start: Date;
+			const end = new Date();
+
+			if (workHoursViewMode === 'week') {
+				// Get last 7 days
+				start = new Date();
+				start.setDate(start.getDate() - 6);
+			} else {
+				// Get current month
+				start = new Date(end.getFullYear(), end.getMonth(), 1);
+			}
+
+			const result = await apiClient.chartData(start, end, 'Day');
+			chartData = result;
+			updateWorkHoursChart();
+		} catch (err) {
+			error = extractErrorMessage(err, 'Failed to load work hours data');
+			console.error('Work hours error:', err);
+		} finally {
+			loading = false;
+		}
+	}
+
 	onMount(() => {
 		loadData();
+		// Load work hours data separately for the dedicated chart
+		loadWorkHoursData();
 	});
 </script>
 
@@ -344,6 +526,109 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Work Hours Graph (WakaTime-style) -->
+	{#if !loading && chartData && userSettings?.targetWorkHours}
+		{@const periodTotals = calculateWorkHoursPeriodTotals()}
+		{#if periodTotals}
+			<div class="card bg-base-200 shadow-xl mb-6">
+				<div class="card-body p-6">
+					<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+						<h2 class="card-title text-xl mb-4 md:mb-0">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+							</svg>
+							Working Hours
+						</h2>
+
+						<!-- View toggle -->
+						<div class="btn-group">
+							<button
+								class="btn btn-sm {workHoursViewMode === 'week' ? 'btn-primary' : 'btn-ghost'}"
+								onclick={() => { workHoursViewMode = 'week'; loadWorkHoursData(); }}
+							>
+								Week
+							</button>
+							<button
+								class="btn btn-sm {workHoursViewMode === 'month' ? 'btn-primary' : 'btn-ghost'}"
+								onclick={() => { workHoursViewMode = 'month'; loadWorkHoursData(); }}
+							>
+								Month
+							</button>
+						</div>
+					</div>
+
+					<!-- Chart -->
+					<div class="h-96 w-full mb-4">
+						{#if loading}
+							<div class="flex items-center justify-center h-full">
+								<span class="loading loading-spinner loading-lg"></span>
+							</div>
+						{:else if chartData}
+							<canvas bind:this={workHoursChartCanvas}></canvas>
+						{:else}
+							<div class="flex flex-col items-center justify-center h-full text-base-content/50">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-4 opacity-50">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+								</svg>
+								<p>No data available for the selected period</p>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Summary Stats -->
+					<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+						<!-- Total Hours -->
+						<div class="stats shadow">
+							<div class="stat p-4">
+								<div class="stat-title text-xs">Total Hours</div>
+								<div class="stat-value text-lg">{formatDuration(periodTotals.totalHours)}</div>
+								<div class="stat-desc text-xs">{workHoursViewMode === 'week' ? 'This week' : 'This month'}</div>
+							</div>
+						</div>
+
+						<!-- Average per Day -->
+						<div class="stats shadow">
+							<div class="stat p-4">
+								<div class="stat-title text-xs">Avg per Day</div>
+								<div class="stat-value text-lg">{formatDuration(periodTotals.avgPerDay)}</div>
+								<div class="stat-desc text-xs">Daily average</div>
+							</div>
+						</div>
+
+						<!-- Overtime -->
+						<div class="stats shadow">
+							<div class="stat p-4">
+								<div class="stat-title text-xs">{periodTotals.totalOvertime >= 0 ? 'Overtime' : 'Undertime'}</div>
+								<div class="stat-value text-lg {periodTotals.totalOvertime >= 0 ? 'text-error' : 'text-success'}">
+									{periodTotals.totalOvertime >= 0 ? '+' : ''}{formatDuration(periodTotals.totalOvertime)}
+								</div>
+								<div class="stat-desc text-xs">vs target</div>
+							</div>
+						</div>
+
+						<!-- Days Above Target -->
+						<div class="stats shadow">
+							<div class="stat p-4">
+								<div class="stat-title text-xs">Above Target</div>
+								<div class="stat-value text-lg text-error">{periodTotals.daysAboveTarget}</div>
+								<div class="stat-desc text-xs">days</div>
+							</div>
+						</div>
+
+						<!-- Days Below Target -->
+						<div class="stats shadow">
+							<div class="stat p-4">
+								<div class="stat-title text-xs">At/Below Target</div>
+								<div class="stat-value text-lg text-success">{periodTotals.daysBelowTarget}</div>
+								<div class="stat-desc text-xs">days</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
+	{/if}
 
 	<!-- Charts Row -->
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
