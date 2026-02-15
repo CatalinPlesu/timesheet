@@ -9,6 +9,7 @@
 2. ✅ TimeSheet-zei.23 - Login page password input field
 3. ✅ TimeSheet-zei.24 - UTC offset fixed in duration display
 4. ✅ TimeSheet-zei.25 - Full color button highlighting for tracking page
+5. ✅ TimeSheet-zei.26 - Time offset text input parsing
 
 ## Current Task
 
@@ -135,8 +136,34 @@ Active tracking buttons only showed a tiny line indicator, not visible enough.
 
 None - all P1 tasks in progress or complete
 
+---
+
+### Issue: TimeSheet-zei.26 - Time offset text input parsing
+
+Custom time input box on tracking page only accepted HH:MM format.
+
+#### Changes Made
+- Created `parseTimeOffset()` function to handle multiple input formats:
+  - Relative minutes: `+30m`, `-30m`, `30m` (with or without sign)
+  - Relative hours: `+2h`, `-2h`, `2h` (converted to minutes)
+  - Absolute time: `HH:MM` (24-hour format, calculates offset from current time in user's timezone)
+- Enhanced `handleCustomTime()` to use the new parser
+- Returns `null` for invalid formats and shows user-friendly error messages
+- Updated UI labels and placeholders to reflect new formats: "Examples: +30m, -2h, 14:30"
+- Input is cleared after successful submission
+
+#### Files Modified
+- `/home/catalin/exp/TimeSheet/TimeSheet.Frontend/src/routes/tracking/+page.svelte`
+
+#### Testing
+- Build: ✅ Success (`npm run build` completed without errors)
+- Parsing logic: Supports all required formats (+30m, -2h, HH:MM)
+- Error handling: Shows helpful error messages for invalid input
+- UX: Clear instructions with example formats
+
+---
+
 ## Pending Tasks (P2)
 
-4. TimeSheet-zei.26 - Time offset text input parsing
-5. TimeSheet-zei.28 - Entry edit with time pickers
-6. TimeSheet-zei.29 - Analytics charts and overtime
+4. TimeSheet-zei.28 - Entry edit with time pickers
+5. TimeSheet-zei.29 - Analytics charts and overtime
