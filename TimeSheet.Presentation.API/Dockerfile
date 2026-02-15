@@ -2,27 +2,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy solution file
-COPY TimeSheet.slnx .
-
-# Copy project files
-COPY TimeSheet.Core.Domain/*.csproj ./TimeSheet.Core.Domain/
-COPY TimeSheet.Core.Application/*.csproj ./TimeSheet.Core.Application/
-COPY TimeSheet.Infrastructure.Persistence/*.csproj ./TimeSheet.Infrastructure.Persistence/
-COPY TimeSheet.Presentation.API/*.csproj ./TimeSheet.Presentation.API/
-
-# Restore dependencies
-RUN dotnet restore TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj
-
 # Copy all source files
-COPY TimeSheet.Core.Domain/. ./TimeSheet.Core.Domain/
-COPY TimeSheet.Core.Application/. ./TimeSheet.Core.Application/
-COPY TimeSheet.Infrastructure.Persistence/. ./TimeSheet.Infrastructure.Persistence/
-COPY TimeSheet.Presentation.API/. ./TimeSheet.Presentation.API/
+COPY . .
 
 # Build and publish
 WORKDIR /src/TimeSheet.Presentation.API
-RUN dotnet publish -c Release -o /app/publish --no-restore
+RUN dotnet publish TimeSheet.Presentation.API.csproj -c Release -o /app/publish
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
