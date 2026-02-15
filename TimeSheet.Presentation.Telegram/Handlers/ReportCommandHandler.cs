@@ -610,7 +610,7 @@ public class ReportCommandHandler(
     }
 
     /// <summary>
-    /// Formats hours as a compact string for table display (e.g., "7.5h" or "30m").
+    /// Formats hours as a compact string for table display (e.g., "7h30m" or "30m").
     /// </summary>
     private static string FormatHoursCompact(decimal hours)
     {
@@ -625,8 +625,7 @@ public class ReportCommandHandler(
 
         if (h > 0 && m > 0)
         {
-            // Format as "7.5h" style
-            return $"{hours:0.0}h";
+            return $"{h}h{m}m";
         }
         else if (h > 0)
         {
@@ -655,8 +654,7 @@ public class ReportCommandHandler(
         string result;
         if (h > 0 && m > 0)
         {
-            // Format as "7.5h" style
-            result = $"{hours:0.0}h";
+            result = $"{h}h{m}m";
         }
         else if (h > 0)
         {
