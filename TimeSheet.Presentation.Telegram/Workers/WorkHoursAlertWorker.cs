@@ -53,6 +53,7 @@ public sealed class WorkHoursAlertWorker(
         using var scope = serviceScopeFactory.CreateScope();
         var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
         var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+        var holidayRepository = scope.ServiceProvider.GetRequiredService<IHolidayRepository>();
         var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
 
         // Get all users with target work hours configured
@@ -83,6 +84,14 @@ public sealed class WorkHoursAlertWorker(
                 // Skip weekend notifications
                 if (userLocalTime.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     continue;
+
+                // Skip holiday notifications
+                var isHoliday = await holidayRepository.IsHolidayAsync(user.Id, userLocalDate, cancellationToken);
+                if (isHoliday)
+                {
+                    logger.LogDebug("Skipping work hours alert for user {UserId} - today ({Date}) is a holiday", user.TelegramUserId, userLocalDate);
+                    continue;
+                }
 
                 // Check if we've already alerted this user today (using user's local date)
                 if (_alertsSentToday.TryGetValue(user.TelegramUserId, out var lastAlertDate) &&
