@@ -329,6 +329,51 @@ lint *args:
     SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
     if [ -n "$SLN" ]; then dotnet format "$SLN" --verify-no-changes {{args}}; else echo "✗ No solution file found."; exit 1; fi
 
+# Publish Telegram bot to namespaced output directory
+publish-bot:
+    @echo "→ Publishing Telegram bot to publish/bot/"; \
+    dotnet publish TimeSheet.Presentation.Telegram/TimeSheet.Presentation.Telegram.csproj \
+      -c Release \
+      -o publish/bot/ \
+      --os linux --arch x64
+
+# Publish REST API to namespaced output directory
+publish-api:
+    @echo "→ Publishing REST API to publish/api/"; \
+    dotnet publish TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj \
+      -c Release \
+      -o publish/api/ \
+      --os linux --arch x64
+
+# Build frontend for production to namespaced output directory
+build-frontend:
+    @echo "→ Building frontend to publish/frontend/"; \
+    cd TimeSheet.Frontend && npm run build; \
+    mkdir -p ../publish/frontend; \
+    cp -r build/* ../publish/frontend/
+
+# Run API with hot reload (dotnet watch)
+dev-api:
+    @echo "→ Starting API in watch mode…"; \
+    dotnet watch --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj run
+
+# Run SvelteKit dev server
+dev-frontend:
+    @echo "→ Starting SvelteKit dev server…"; \
+    cd TimeSheet.Frontend && npm run dev
+
+# Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
+dev:
+    @echo "Run 'just dev-api' in one terminal and 'just dev-frontend' in another"
+
+# Start Docker Compose services
+docker-up:
+    @docker compose up -d
+
+# Stop Docker Compose services
+docker-down:
+    @docker compose down
+
 # Build and push container image to ghcr.io
 publish-container:
     dotnet publish TimeSheet.Presentation.Telegram \
