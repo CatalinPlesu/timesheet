@@ -14,6 +14,31 @@
 
 	// Check authentication and redirect if needed
 	onMount(() => {
+		// Register service worker for PWA support
+		if ('serviceWorker' in navigator) {
+			navigator.serviceWorker.register('/sw.js').then(
+				(registration) => {
+					console.log('Service Worker registered with scope:', registration.scope);
+
+					// Handle updates
+					registration.addEventListener('updatefound', () => {
+						const newWorker = registration.installing;
+						if (newWorker) {
+							newWorker.addEventListener('statechange', () => {
+								if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+									// New service worker available, prompt user to refresh
+									console.log('New version available! Please refresh the page.');
+								}
+							});
+						}
+					});
+				},
+				(error) => {
+					console.error('Service Worker registration failed:', error);
+				}
+			);
+		}
+
 		const unsubscribe = auth.subscribe(state => {
 			const currentPath = window.location.pathname;
 			const isPublicRoute = publicRoutes.some(route => currentPath === route);
