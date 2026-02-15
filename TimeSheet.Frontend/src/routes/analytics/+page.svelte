@@ -3,6 +3,7 @@
 	import { Chart, registerables } from 'chart.js';
 	import { apiClient, type ChartDataDto, type DailyAveragesDto, type CommutePatternsDto, type UserSettingsDto } from '$lib/api';
 	import { extractErrorMessage } from '$lib/utils/errorHandling';
+	import { formatDuration } from '$lib/utils/timeFormatter';
 
 	// Register Chart.js components
 	Chart.register(...registerables);
@@ -138,7 +139,7 @@
 									label += ': ';
 								}
 								const value = context.parsed.y ?? 0;
-								label += value.toFixed(2) + ' hours';
+								label += formatDuration(value);
 								return label;
 							}
 						}
@@ -154,11 +155,11 @@
 						beginAtZero: true,
 						title: {
 							display: true,
-							text: 'Hours'
+							text: 'Duration'
 						},
 						ticks: {
 							callback: function (value) {
-								return value + 'h';
+								return formatDuration(value as number);
 							}
 						}
 					}
@@ -221,9 +222,7 @@
 							label: function (context) {
 								const label = context.label || '';
 								const value = context.parsed ?? 0;
-								const hours = Math.floor(value);
-								const minutes = Math.round((value - hours) * 60);
-								return `${label}: ${hours}h ${minutes}m`;
+								return `${label}: ${formatDuration(value)}`;
 							}
 						}
 					}
@@ -232,12 +231,6 @@
 		});
 	}
 
-	// Helper function to format duration
-	function formatDuration(hours: number): string {
-		const h = Math.floor(hours);
-		const m = Math.round((hours - h) * 60);
-		return m > 0 ? `${h}h ${m}m` : `${h}h`;
-	}
 
 	// Calculate overtime
 	function calculateOvertime(): { overtime: number; percentage: number; isOvertime: boolean } | null {
@@ -504,7 +497,7 @@
 						</svg>
 					</div>
 					<div class="stat-title">Avg Work Hours</div>
-					<div class="stat-value text-primary">{dailyAverages.averageWorkHours.toFixed(1)}h</div>
+					<div class="stat-value text-primary">{formatDuration(dailyAverages.averageWorkHours)}</div>
 					<div class="stat-desc">{dailyAverages.totalWorkDays} work days</div>
 				</div>
 			</div>
@@ -518,11 +511,11 @@
 					</div>
 					<div class="stat-title">Avg Commute (Total)</div>
 					<div class="stat-value text-success">
-						{(dailyAverages.averageCommuteToWorkHours + dailyAverages.averageCommuteToHomeHours).toFixed(1)}h
+						{formatDuration(dailyAverages.averageCommuteToWorkHours + dailyAverages.averageCommuteToHomeHours)}
 					</div>
 					<div class="stat-desc">
-						To work: {dailyAverages.averageCommuteToWorkHours.toFixed(1)}h /
-						To home: {dailyAverages.averageCommuteToHomeHours.toFixed(1)}h
+						To work: {formatDuration(dailyAverages.averageCommuteToWorkHours)} /
+						To home: {formatDuration(dailyAverages.averageCommuteToHomeHours)}
 					</div>
 				</div>
 			</div>
@@ -535,7 +528,7 @@
 						</svg>
 					</div>
 					<div class="stat-title">Avg Lunch</div>
-					<div class="stat-value text-warning">{dailyAverages.averageLunchHours.toFixed(1)}h</div>
+					<div class="stat-value text-warning">{formatDuration(dailyAverages.averageLunchHours)}</div>
 					<div class="stat-desc">Per work day</div>
 				</div>
 			</div>
@@ -548,7 +541,7 @@
 						</svg>
 					</div>
 					<div class="stat-title">Total Duration</div>
-					<div class="stat-value text-info">{dailyAverages.averageTotalDurationHours.toFixed(1)}h</div>
+					<div class="stat-value text-info">{formatDuration(dailyAverages.averageTotalDurationHours)}</div>
 					<div class="stat-desc">Avg per day (incl. all activities)</div>
 				</div>
 			</div>
@@ -583,7 +576,7 @@
 								{#each commuteToWorkPatterns as pattern}
 									<tr>
 										<td class="font-medium">{dayNames[pattern.dayOfWeek]}</td>
-										<td>{pattern.averageDurationHours.toFixed(2)}h</td>
+										<td>{formatDuration(pattern.averageDurationHours)}</td>
 										<td>
 											{#if pattern.optimalStartHour !== null && pattern.optimalStartHour !== undefined}
 												{pattern.optimalStartHour}:00
@@ -593,7 +586,7 @@
 										</td>
 										<td>
 											{#if pattern.shortestDurationHours !== null && pattern.shortestDurationHours !== undefined}
-												{pattern.shortestDurationHours.toFixed(2)}h
+												{formatDuration(pattern.shortestDurationHours)}
 											{:else}
 												-
 											{/if}
@@ -632,7 +625,7 @@
 								{#each commuteToHomePatterns as pattern}
 									<tr>
 										<td class="font-medium">{dayNames[pattern.dayOfWeek]}</td>
-										<td>{pattern.averageDurationHours.toFixed(2)}h</td>
+										<td>{formatDuration(pattern.averageDurationHours)}</td>
 										<td>
 											{#if pattern.optimalStartHour !== null && pattern.optimalStartHour !== undefined}
 												{pattern.optimalStartHour}:00
@@ -642,7 +635,7 @@
 										</td>
 										<td>
 											{#if pattern.shortestDurationHours !== null && pattern.shortestDurationHours !== undefined}
-												{pattern.shortestDurationHours.toFixed(2)}h
+												{formatDuration(pattern.shortestDurationHours)}
 											{:else}
 												-
 											{/if}

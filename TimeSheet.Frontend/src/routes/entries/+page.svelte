@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { apiClient, type TrackingEntryDto, type EntryListResponse, EntryUpdateRequest } from '$lib/api';
 	import { extractErrorMessage } from '$lib/utils/errorHandling';
+	import { formatDuration } from '$lib/utils/timeFormatter';
 
 	// Icons (Heroicons - outline)
 	const PencilSquareIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -70,12 +71,10 @@
 		});
 	}
 
-	// Format duration
-	function formatDuration(hours: number | null | undefined): string {
+	// Format duration for display (wrapper to handle 'Active' state)
+	function formatDurationDisplay(hours: number | null | undefined): string {
 		if (hours === null || hours === undefined) return 'Active';
-		const h = Math.floor(hours);
-		const m = Math.round((hours - h) * 60);
-		return `${h}h ${m}m`;
+		return formatDuration(hours);
 	}
 
 	// Get state name
@@ -365,7 +364,7 @@
 									</td>
 									<td>{formatDate(entry.startedAt)}</td>
 									<td>{formatDate(entry.endedAt)}</td>
-									<td>{formatDuration(entry.durationHours)}</td>
+									<td>{formatDurationDisplay(entry.durationHours)}</td>
 									<td>
 										{#if entry.isActive}
 											<span class="badge badge-success">Active</span>
@@ -459,7 +458,7 @@
 						<div class="label">
 							<span class="label-text">Original Duration</span>
 						</div>
-						<div class="text-base-content">{formatDuration(editEntry.durationHours)}</div>
+						<div class="text-base-content">{formatDurationDisplay(editEntry.durationHours)}</div>
 					</div>
 				</div>
 
@@ -599,7 +598,7 @@
 				</div>
 				<div class="flex justify-between">
 					<span class="font-semibold">Duration:</span>
-					<span>{formatDuration(deleteEntry.durationHours)}</span>
+					<span>{formatDurationDisplay(deleteEntry.durationHours)}</span>
 				</div>
 			</div>
 
