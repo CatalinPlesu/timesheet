@@ -154,39 +154,72 @@
 		}
 	}
 
+	// Parse time offset input (supports multiple formats)
+	function parseTimeOffset(input: string): number | null {
+		const trimmed = input.trim();
+
+		// Format 1: Relative minutes (+30m, -30m, 30m)
+		const minutesMatch = trimmed.match(/^([+-]?\d+)m$/i);
+		if (minutesMatch) {
+			return parseInt(minutesMatch[1]);
+		}
+
+		// Format 2: Relative hours (+2h, -2h, 2h)
+		const hoursMatch = trimmed.match(/^([+-]?\d+)h$/i);
+		if (hoursMatch) {
+			return parseInt(hoursMatch[1]) * 60;
+		}
+
+		// Format 3: Absolute time (HH:MM)
+		const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+		if (timeMatch) {
+			const hours = parseInt(timeMatch[1]);
+			const minutes = parseInt(timeMatch[2]);
+
+			if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+				return null; // Invalid time
+			}
+
+			// Calculate offset from now (in user's local timezone)
+			const now = new Date();
+			const utcOffsetMinutes = $auth.utcOffsetMinutes ?? 0;
+
+			// Get current time in user's timezone
+			const nowLocal = new Date(now.getTime() + utcOffsetMinutes * 60 * 1000);
+			const currentHours = nowLocal.getUTCHours();
+			const currentMinutes = nowLocal.getUTCMinutes();
+
+			// Calculate target time in minutes since midnight
+			const targetMinutes = hours * 60 + minutes;
+			const currentTotalMinutes = currentHours * 60 + currentMinutes;
+
+			// Calculate offset (negative because we're going back in time)
+			let offsetMinutes = targetMinutes - currentTotalMinutes;
+
+			// If target is in the future, assume it was yesterday
+			if (offsetMinutes > 0) {
+				offsetMinutes -= 24 * 60; // Go back 24 hours
+			}
+
+			return offsetMinutes;
+		}
+
+		return null; // Unrecognized format
+	}
+
 	// Handle custom time input
 	function handleCustomTime(state: TrackingState) {
 		if (!customTime) return;
 
-		// Parse HH:MM format
-		const match = customTime.match(/^(\d{1,2}):(\d{2})$/);
-		if (!match) {
-			showToast('Invalid time format. Use HH:MM', 'error');
+		const offsetMinutes = parseTimeOffset(customTime);
+
+		if (offsetMinutes === null) {
+			showToast(
+				'Invalid format. Use: +30m, -30m, +2h, -2h, or HH:MM (e.g., 14:30)',
+				'error'
+			);
 			return;
 		}
-
-		const hours = parseInt(match[1]);
-		const minutes = parseInt(match[2]);
-
-		if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-			showToast('Invalid time. Hours: 0-23, Minutes: 0-59', 'error');
-			return;
-		}
-
-		// Calculate offset from now
-		const now = new Date();
-		const targetTime = new Date();
-		targetTime.setHours(hours, minutes, 0, 0);
-
-		// If target time is in the future today, it means past (yesterday or earlier today)
-		let offsetMs = now.getTime() - targetTime.getTime();
-
-		// Handle case where time is for today but in the past
-		if (offsetMs < 0) {
-			offsetMs += 24 * 60 * 60 * 1000; // Add 24 hours
-		}
-
-		const offsetMinutes = -Math.floor(offsetMs / (60 * 1000));
 
 		toggleStateWithOffset(state, offsetMinutes);
 	}
@@ -518,12 +551,12 @@
 
 				<div class="form-control">
 					<label class="label">
-						<span class="label-text">Custom Time (HH:MM)</span>
+						<span class="label-text">Custom Time or Offset</span>
 					</label>
 					<div class="join">
 						<input
 							type="text"
-							placeholder="14:30"
+							placeholder="+30m, -2h, or 14:30"
 							class="input input-bordered join-item flex-1"
 							bind:value={customTime}
 							onkeydown={(e) => {
@@ -541,7 +574,7 @@
 						</button>
 					</div>
 					<label class="label">
-						<span class="label-text-alt">Enter time in 24-hour format</span>
+						<span class="label-text-alt">Examples: +30m, -2h, 14:30</span>
 					</label>
 				</div>
 
