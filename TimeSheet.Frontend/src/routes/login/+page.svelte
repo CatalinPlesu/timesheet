@@ -70,17 +70,19 @@
 	}
 </script>
 
-<div class="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-	<div class="card w-full max-w-md bg-base-200 shadow-xl">
-		<div class="card-body">
+<div class="flex items-center justify-center min-h-[calc(100vh-8rem)] px-4">
+	<div class="card w-full max-w-lg bg-base-200 shadow-xl">
+		<div class="card-body p-8">
 			<!-- Header -->
-			<div class="flex items-center justify-center mb-4">
-				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-primary">
-					<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-				</svg>
+			<div class="flex items-center justify-center mb-6">
+				<div class="p-4 bg-primary/10 rounded-full">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 text-primary">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+					</svg>
+				</div>
 			</div>
-			<h2 class="card-title text-2xl justify-center mb-2">Welcome to TimeSheet</h2>
-			<p class="text-center text-sm text-base-content/70 mb-6">
+			<h2 class="text-3xl font-bold text-center mb-2">Welcome to TimeSheet</h2>
+			<p class="text-center text-base text-base-content/70 mb-8">
 				Enter your 24-word mnemonic from Telegram
 			</p>
 
@@ -95,15 +97,15 @@
 			{/if}
 
 			<!-- Login Form -->
-			<div class="form-control">
+			<div class="form-control mb-6">
 				<label class="label" for="mnemonic">
-					<span class="label-text">Mnemonic Phrase</span>
+					<span class="label-text font-semibold">Mnemonic Phrase</span>
 				</label>
 				<div class="relative">
 					<input
 						id="mnemonic"
 						type={showPassword ? 'text' : 'password'}
-						class="input input-bordered w-full font-mono text-sm pr-12"
+						class="input input-bordered input-lg w-full font-mono text-sm pr-14"
 						placeholder="word1 word2 word3 ... word24"
 						bind:value={mnemonic}
 						onkeydown={handleKeyDown}
@@ -114,6 +116,7 @@
 						class="absolute right-3 top-1/2 -translate-y-1/2 btn btn-ghost btn-sm btn-circle"
 						onclick={() => showPassword = !showPassword}
 						tabindex="-1"
+						aria-label={showPassword ? 'Hide mnemonic' : 'Show mnemonic'}
 					>
 						{#if showPassword}
 							<!-- Eye Slash Icon (hide) -->
@@ -129,36 +132,34 @@
 						{/if}
 					</button>
 				</div>
-				<div class="label">
+				<label class="label">
 					<span class="label-text-alt text-base-content/60">
 						Paste the 24-word phrase from the Telegram /login command
 					</span>
-				</div>
+				</label>
 			</div>
 
 			<!-- Submit Button -->
-			<div class="card-actions justify-end mt-4">
-				<button
-					class="btn btn-primary w-full"
-					onclick={handleLogin}
-					disabled={isLoading}
-				>
-					{#if isLoading}
-						<span class="loading loading-spinner"></span>
-						Authenticating...
-					{:else}
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-						</svg>
-						Sign In
-					{/if}
-				</button>
-			</div>
+			<button
+				class="btn btn-primary btn-lg w-full mb-6"
+				onclick={handleLogin}
+				disabled={isLoading}
+			>
+				{#if isLoading}
+					<span class="loading loading-spinner loading-md"></span>
+					Authenticating...
+				{:else}
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+					</svg>
+					Sign In
+				{/if}
+			</button>
 
 			<!-- Help Text -->
-			<div class="divider text-xs">Need help?</div>
-			<p class="text-center text-xs text-base-content/60">
-				Get your login mnemonic by typing <code class="kbd kbd-sm">/login</code> in the Telegram bot
+			<div class="divider text-xs text-base-content/50">Need help?</div>
+			<p class="text-center text-sm text-base-content/60">
+				Get your login mnemonic by typing <code class="kbd kbd-sm mx-1">/login</code> in the Telegram bot
 			</p>
 		</div>
 	</div>

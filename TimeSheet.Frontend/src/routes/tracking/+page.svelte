@@ -287,15 +287,15 @@
 
 	// Get button classes
 	function getButtonClasses(state: TrackingState): string {
-		const baseClasses = 'btn btn-lg flex-1 min-h-[80px] flex flex-col gap-2 transition-all';
+		const baseClasses = 'btn btn-lg flex-1 min-h-[96px] flex flex-col gap-2 transition-all';
 		const active = isStateActive(state);
 
 		if (state === TrackingState.Commuting) {
-			return `${baseClasses} ${active ? 'btn-primary shadow-lg' : 'btn-outline btn-primary opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'btn-primary shadow-xl scale-105' : 'btn-outline btn-primary opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Working) {
-			return `${baseClasses} ${active ? 'btn-secondary shadow-lg' : 'btn-outline btn-secondary opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'btn-secondary shadow-xl scale-105' : 'btn-outline btn-secondary opacity-70 hover:opacity-100'}`;
 		} else if (state === TrackingState.Lunch) {
-			return `${baseClasses} ${active ? 'btn-accent shadow-lg' : 'btn-outline btn-accent opacity-70 hover:opacity-100'}`;
+			return `${baseClasses} ${active ? 'btn-accent shadow-xl scale-105' : 'btn-outline btn-accent opacity-70 hover:opacity-100'}`;
 		}
 
 		return baseClasses;
@@ -324,13 +324,21 @@
 	});
 </script>
 
-<div class="max-w-4xl mx-auto">
-	<h1 class="text-3xl font-bold mb-6">Tracking Controls</h1>
+<div class="max-w-4xl mx-auto px-4">
+	<div class="mb-8">
+		<h1 class="text-4xl font-bold mb-2">Tracking Controls</h1>
+		<p class="text-base-content/70">Monitor and control your work time tracking</p>
+	</div>
 
 	<!-- Current Status Card -->
 	<div class="card bg-base-200 shadow-xl mb-6">
-		<div class="card-body">
-			<h2 class="card-title">Current Status</h2>
+		<div class="card-body p-6">
+			<h2 class="card-title text-xl mb-4">
+				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+				</svg>
+				Current Status
+			</h2>
 
 			{#if loading && !currentState}
 				<div class="flex items-center gap-2">
@@ -386,9 +394,14 @@
 
 	<!-- Toggle Buttons -->
 	<div class="card bg-base-200 shadow-xl mb-6">
-		<div class="card-body">
-			<h2 class="card-title mb-4">Quick Actions</h2>
-			<p class="text-sm text-base-content/70 mb-4">
+		<div class="card-body p-6">
+			<h2 class="card-title text-xl mb-2">
+				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+				</svg>
+				Quick Actions
+			</h2>
+			<p class="text-sm text-base-content/70 mb-6">
 				Click to toggle state. Long-press or right-click for time offset options.
 			</p>
 

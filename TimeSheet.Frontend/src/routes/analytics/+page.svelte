@@ -262,8 +262,11 @@
 	});
 </script>
 
-<div class="max-w-7xl mx-auto">
-	<h1 class="text-3xl font-bold mb-6">Charts & Analytics</h1>
+<div class="max-w-7xl mx-auto px-4">
+	<div class="mb-8">
+		<h1 class="text-4xl font-bold mb-2">Charts & Analytics</h1>
+		<p class="text-base-content/70">Visualize your work patterns and track productivity</p>
+	</div>
 
 	{#if error}
 		<div class="alert alert-error mb-6">
@@ -276,18 +279,18 @@
 
 	<!-- Filters -->
 	<div class="card bg-base-200 shadow-xl mb-6">
-		<div class="card-body">
-			<h2 class="card-title">
+		<div class="card-body p-6">
+			<h2 class="card-title text-xl mb-4">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 					<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
 				</svg>
 				Filters
 			</h2>
 
-			<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 				<div class="form-control">
 					<label class="label" for="start-date">
-						<span class="label-text">Start Date</span>
+						<span class="label-text font-semibold">Start Date</span>
 					</label>
 					<input
 						id="start-date"
@@ -299,7 +302,7 @@
 
 				<div class="form-control">
 					<label class="label" for="end-date">
-						<span class="label-text">End Date</span>
+						<span class="label-text font-semibold">End Date</span>
 					</label>
 					<input
 						id="end-date"
@@ -311,7 +314,7 @@
 
 				<div class="form-control">
 					<label class="label" for="group-by">
-						<span class="label-text">Group By</span>
+						<span class="label-text font-semibold">Group By</span>
 					</label>
 					<select
 						id="group-by"
@@ -327,7 +330,7 @@
 
 				<div class="form-control">
 					<div class="label">
-						<span class="label-text">&nbsp;</span>
+						<span class="label-text font-semibold">&nbsp;</span>
 					</div>
 					<button
 						class="btn btn-primary w-full"
@@ -335,7 +338,7 @@
 						disabled={loading}
 					>
 						{#if loading}
-							<span class="loading loading-spinner"></span>
+							<span class="loading loading-spinner loading-sm"></span>
 							Loading...
 						{:else}
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -353,8 +356,8 @@
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 		<!-- Trend Chart -->
 		<div class="card bg-base-200 shadow-xl lg:col-span-2">
-			<div class="card-body">
-				<h2 class="card-title">
+			<div class="card-body p-6">
+				<h2 class="card-title text-xl mb-4">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
 					</svg>
@@ -369,8 +372,11 @@
 					{:else if chartData}
 						<canvas bind:this={chartCanvas}></canvas>
 					{:else}
-						<div class="flex items-center justify-center h-full text-base-content/50">
-							No data available for the selected period
+						<div class="flex flex-col items-center justify-center h-full text-base-content/50">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-4 opacity-50">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+							</svg>
+							<p>No data available for the selected period</p>
 						</div>
 					{/if}
 				</div>
@@ -379,8 +385,8 @@
 
 		<!-- Pie Chart -->
 		<div class="card bg-base-200 shadow-xl">
-			<div class="card-body">
-				<h2 class="card-title">
+			<div class="card-body p-6">
+				<h2 class="card-title text-xl mb-4">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
 						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
@@ -396,8 +402,12 @@
 					{:else if dailyAverages && dailyAverages.daysIncluded > 0}
 						<canvas bind:this={pieChartCanvas}></canvas>
 					{:else}
-						<div class="flex items-center justify-center h-full text-base-content/50">
-							No data available
+						<div class="flex flex-col items-center justify-center h-full text-base-content/50">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mb-4 opacity-50">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+								<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+							</svg>
+							<p>No data available</p>
 						</div>
 					{/if}
 				</div>
@@ -410,8 +420,8 @@
 		{@const overtimeData = calculateOvertime()}
 		{#if overtimeData}
 			<div class="card bg-base-200 shadow-xl mb-6">
-				<div class="card-body">
-					<h2 class="card-title">
+				<div class="card-body p-6">
+					<h2 class="card-title text-xl mb-4">
 						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
 						</svg>
@@ -550,16 +560,16 @@
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 			<!-- Commute to Work -->
 			<div class="card bg-base-200 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title">
+				<div class="card-body p-6">
+					<h2 class="card-title text-xl mb-4">
 						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
 						</svg>
 						Commute to Work Patterns
 					</h2>
 
-					<div class="overflow-x-auto">
-						<table class="table table-zebra">
+					<div class="overflow-x-auto -mx-6">
+						<table class="table table-zebra table-sm">
 							<thead>
 								<tr>
 									<th>Day</th>
@@ -599,16 +609,16 @@
 
 			<!-- Commute to Home -->
 			<div class="card bg-base-200 shadow-xl">
-				<div class="card-body">
-					<h2 class="card-title">
+				<div class="card-body p-6">
+					<h2 class="card-title text-xl mb-4">
 						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
 						</svg>
 						Commute to Home Patterns
 					</h2>
 
-					<div class="overflow-x-auto">
-						<table class="table table-zebra">
+					<div class="overflow-x-auto -mx-6">
+						<table class="table table-zebra table-sm">
 							<thead>
 								<tr>
 									<th>Day</th>

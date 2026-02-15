@@ -262,21 +262,30 @@
 
 <svelte:window onkeydown={handleEscapeKey} />
 
-<div class="max-w-7xl mx-auto">
-	<h1 class="text-3xl font-bold mb-6">Audit Table</h1>
+<div class="max-w-7xl mx-auto px-4">
+	<div class="mb-8">
+		<h1 class="text-4xl font-bold mb-2">Audit Table</h1>
+		<p class="text-base-content/70">Review and manage your time tracking entries</p>
+	</div>
 
 	<!-- Filters and Controls -->
 	<div class="card bg-base-200 shadow-xl mb-6">
-		<div class="card-body">
+		<div class="card-body p-6">
+			<h2 class="card-title text-xl mb-4">
+				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+				</svg>
+				Filters
+			</h2>
 			<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
 				<!-- Group By Select -->
-				<div class="form-control w-full sm:w-48">
+				<div class="form-control w-full sm:w-56">
 					<label class="label" for="groupBy">
-						<span class="label-text">Group By</span>
+						<span class="label-text font-semibold">Group By</span>
 					</label>
 					<select
 						id="groupBy"
-						class="select select-bordered"
+						class="select select-bordered w-full"
 						bind:value={groupBy}
 						onchange={() => fetchEntries()}
 					>
@@ -290,11 +299,19 @@
 
 				<!-- Refresh Button -->
 				<button
-					class="btn btn-primary"
+					class="btn btn-primary w-full sm:w-auto"
 					onclick={() => fetchEntries()}
 					disabled={loading}
 				>
-					{loading ? 'Loading...' : 'Refresh'}
+					{#if loading}
+						<span class="loading loading-spinner loading-sm"></span>
+						Loading...
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+							<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+						</svg>
+						Refresh
+					{/if}
 				</button>
 			</div>
 		</div>
@@ -309,8 +326,13 @@
 
 	<!-- Entries Table -->
 	<div class="card bg-base-200 shadow-xl">
-		<div class="card-body">
-			<h2 class="card-title">Time Entries</h2>
+		<div class="card-body p-6">
+			<h2 class="card-title text-xl mb-4">
+				<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 0c0-.621.504-1.125 1.125-1.125m0 0h7.5" />
+				</svg>
+				Time Entries
+			</h2>
 
 			{#if loading}
 				<div class="flex justify-center items-center py-12">
@@ -321,16 +343,16 @@
 					<p>No entries found</p>
 				</div>
 			{:else}
-				<div class="overflow-x-auto">
+				<div class="overflow-x-auto -mx-6">
 					<table class="table table-zebra">
 						<thead>
 							<tr>
-								<th>Type</th>
-								<th>Start Time</th>
-								<th>End Time</th>
-								<th>Duration</th>
-								<th>Status</th>
-								<th class="text-right">Actions</th>
+								<th class="bg-base-300">Type</th>
+								<th class="bg-base-300">Start Time</th>
+								<th class="bg-base-300">End Time</th>
+								<th class="bg-base-300">Duration</th>
+								<th class="bg-base-300">Status</th>
+								<th class="text-right bg-base-300">Actions</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -378,12 +400,12 @@
 				</div>
 
 				<!-- Pagination Info -->
-				<div class="flex justify-between items-center mt-4">
+				<div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 pt-4 border-t border-base-300">
 					<div class="text-sm text-base-content/70">
-						Showing {entries.length} of {totalCount} entries
+						Showing <span class="font-semibold">{entries.length}</span> of <span class="font-semibold">{totalCount}</span> entries
 					</div>
 					<div class="text-sm text-base-content/70">
-						Page {page} of {totalPages}
+						Page <span class="font-semibold">{page}</span> of <span class="font-semibold">{totalPages}</span>
 					</div>
 				</div>
 			{/if}
