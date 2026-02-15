@@ -31,6 +31,8 @@
 	let adjustmentMinutes = $state(0);
 	let editError = $state<string | null>(null);
 	let editLoading = $state(false);
+	let editStartTime = $state('');
+	let editEndTime = $state('');
 
 	// Delete modal state
 	let deleteModalOpen = $state(false);
@@ -96,11 +98,42 @@
 		}
 	}
 
+	// Convert Date to HH:MM format for time input
+	function dateToTimeString(date: Date | null | undefined): string {
+		if (!date) return '';
+		const d = new Date(date);
+		const hours = d.getHours().toString().padStart(2, '0');
+		const minutes = d.getMinutes().toString().padStart(2, '0');
+		return `${hours}:${minutes}`;
+	}
+
+	// Convert time string (HH:MM) to Date by combining with a date
+	function timeStringToDate(timeStr: string, baseDate: Date): Date {
+		const [hours, minutes] = timeStr.split(':').map(Number);
+		const result = new Date(baseDate);
+		result.setHours(hours, minutes, 0, 0);
+		return result;
+	}
+
+	// Calculate adjustment minutes from edited times
+	function calculateAdjustment(): number {
+		if (!editEntry || !editEndTime) return 0;
+
+		const originalEnd = editEntry.endedAt ? new Date(editEntry.endedAt) : null;
+		if (!originalEnd) return 0;
+
+		const newEnd = timeStringToDate(editEndTime, originalEnd);
+		const diffMs = newEnd.getTime() - originalEnd.getTime();
+		return Math.round(diffMs / 60000); // Convert to minutes
+	}
+
 	// Open edit modal
 	function openEditModal(entry: TrackingEntryDto) {
 		editEntry = entry;
 		adjustmentMinutes = 0;
 		editError = null;
+		editStartTime = dateToTimeString(entry.startedAt);
+		editEndTime = dateToTimeString(entry.endedAt);
 		editModalOpen = true;
 	}
 
@@ -110,17 +143,27 @@
 		editEntry = null;
 		adjustmentMinutes = 0;
 		editError = null;
+		editStartTime = '';
+		editEndTime = '';
 	}
 
 	// Handle edit save
 	async function saveEdit() {
 		if (!editEntry) return;
 
+		// Calculate adjustment from time pickers
+		const adjustment = calculateAdjustment();
+
+		if (adjustment === 0) {
+			editError = 'Please change the end time to make an adjustment';
+			return;
+		}
+
 		editLoading = true;
 		editError = null;
 		try {
 			const request = new EntryUpdateRequest({
-				adjustmentMinutes: adjustmentMinutes
+				adjustmentMinutes: adjustment
 			});
 
 			const updated = await apiClient.entriesPUT(editEntry.id, request);
@@ -182,39 +225,24 @@
 		}
 	}
 
-	// Quick adjustment buttons
-	function adjustBy(minutes: number) {
-		adjustmentMinutes += minutes;
-	}
+	// Calculate preview duration from time pickers
+	function getPreviewDuration(): string {
+		if (!editEntry || !editStartTime || !editEndTime) return '';
 
-	// Calculate adjusted times for preview
-	function getAdjustedTimes(entry: TrackingEntryDto, adjustment: number) {
-		if (!entry) return { start: '', end: '', duration: '' };
+		const startDate = new Date(editEntry.startedAt);
+		const start = timeStringToDate(editStartTime, startDate);
 
-		const startTime = new Date(entry.startedAt);
-		const adjustedStart = new Date(startTime.getTime() + adjustment * 60000);
+		const endDate = editEntry.endedAt ? new Date(editEntry.endedAt) : startDate;
+		const end = timeStringToDate(editEndTime, endDate);
 
-		let adjustedEnd = '';
-		let duration = '';
-
-		if (entry.endedAt) {
-			const endTime = new Date(entry.endedAt);
-			const adjustedEndTime = new Date(endTime.getTime() + adjustment * 60000);
-			adjustedEnd = formatDate(adjustedEndTime);
-
-			const durationMs = adjustedEndTime.getTime() - adjustedStart.getTime();
-			const durationHours = durationMs / (1000 * 60 * 60);
-			duration = formatDuration(durationHours);
-		} else {
-			adjustedEnd = 'Active';
-			duration = 'Active';
+		// If end is before start, assume it's the next day
+		if (end <= start) {
+			end.setDate(end.getDate() + 1);
 		}
 
-		return {
-			start: formatDate(adjustedStart),
-			end: adjustedEnd,
-			duration: duration
-		};
+		const durationMs = end.getTime() - start.getTime();
+		const durationHours = durationMs / (1000 * 60 * 60);
+		return formatDuration(durationHours);
 	}
 
 	// Handle keyboard events for modals
@@ -391,7 +419,7 @@
 
 				<div class="divider">Original Times</div>
 
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-base-300 p-4 rounded-lg">
 					<div>
 						<div class="label">
 							<span class="label-text">Start Time</span>
@@ -404,66 +432,85 @@
 						</div>
 						<div class="text-base-content">{formatDate(editEntry.endedAt)}</div>
 					</div>
-				</div>
-
-				<div>
-					<div class="label">
-						<span class="label-text">Duration</span>
+					<div class="sm:col-span-2">
+						<div class="label">
+							<span class="label-text">Original Duration</span>
+						</div>
+						<div class="text-base-content">{formatDuration(editEntry.durationHours)}</div>
 					</div>
-					<div class="text-base-content">{formatDuration(editEntry.durationHours)}</div>
 				</div>
 
-				<div class="divider">Adjustment</div>
+				<div class="divider">Edit Times</div>
 
-				<!-- Adjustment Controls -->
-				<div class="form-control">
-					<label class="label" for="adjustment-input">
-						<span class="label-text">Adjust by (minutes)</span>
-					</label>
-					<div class="flex gap-2 flex-wrap">
-						<button class="btn btn-sm" onclick={() => adjustBy(-30)}>-30m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(-15)}>-15m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(-5)}>-5m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(-1)}>-1m</button>
+				<!-- Time Pickers -->
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+					<div class="form-control">
+						<label class="label" for="edit-start-time">
+							<span class="label-text font-semibold">Start Time</span>
+						</label>
 						<input
-							id="adjustment-input"
-							type="number"
-							class="input input-sm input-bordered w-24 text-center"
-							bind:value={adjustmentMinutes}
-							aria-label="Adjustment minutes"
+							id="edit-start-time"
+							type="time"
+							class="input input-bordered"
+							bind:value={editStartTime}
+							disabled
+							aria-label="Start time (read-only)"
 						/>
-						<button class="btn btn-sm" onclick={() => adjustBy(1)}>+1m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(5)}>+5m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(15)}>+15m</button>
-						<button class="btn btn-sm" onclick={() => adjustBy(30)}>+30m</button>
+						<label class="label">
+							<span class="label-text-alt text-base-content/60">Start time cannot be changed</span>
+						</label>
 					</div>
-					<div class="label">
-						<span class="label-text-alt">Current adjustment: {adjustmentMinutes} minutes</span>
-					</div>
+					{#if editEntry.endedAt}
+						<div class="form-control">
+							<label class="label" for="edit-end-time">
+								<span class="label-text font-semibold">End Time</span>
+							</label>
+							<input
+								id="edit-end-time"
+								type="time"
+								class="input input-bordered"
+								bind:value={editEndTime}
+								aria-label="End time"
+							/>
+							<label class="label">
+								<span class="label-text-alt">Adjust the end time to change duration</span>
+							</label>
+						</div>
+					{:else}
+						<div class="form-control">
+							<label class="label">
+								<span class="label-text font-semibold">End Time</span>
+							</label>
+							<div class="text-base-content/60">Entry is still active</div>
+							<label class="label">
+								<span class="label-text-alt">Cannot edit active entries</span>
+							</label>
+						</div>
+					{/if}
 				</div>
 
-				{#if adjustmentMinutes !== 0}
-					<div class="divider">Preview</div>
-
-					{@const adjusted = getAdjustedTimes(editEntry, adjustmentMinutes)}
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-base-300 p-4 rounded-lg">
-						<div>
-							<div class="label">
-								<span class="label-text font-semibold">New Start Time</span>
+				<!-- Duration Preview -->
+				{#if editEntry.endedAt && editEndTime}
+					{@const previewDuration = getPreviewDuration()}
+					{@const adjustment = calculateAdjustment()}
+					<div class="alert {adjustment !== 0 ? 'alert-info' : 'alert-warning'}">
+						<div class="flex flex-col gap-2 w-full">
+							<div class="flex justify-between items-center">
+								<span class="font-semibold">New Duration:</span>
+								<span class="text-lg">{previewDuration}</span>
 							</div>
-							<div class="text-base-content">{adjusted.start}</div>
-						</div>
-						<div>
-							<div class="label">
-								<span class="label-text font-semibold">New End Time</span>
-							</div>
-							<div class="text-base-content">{adjusted.end}</div>
-						</div>
-						<div class="sm:col-span-2">
-							<div class="label">
-								<span class="label-text font-semibold">New Duration</span>
-							</div>
-							<div class="text-base-content">{adjusted.duration}</div>
+							{#if adjustment !== 0}
+								<div class="flex justify-between items-center text-sm">
+									<span>Adjustment:</span>
+									<span class="{adjustment > 0 ? 'text-success' : 'text-error'}">
+										{adjustment > 0 ? '+' : ''}{adjustment} minutes
+									</span>
+								</div>
+							{:else}
+								<div class="text-sm text-center">
+									No changes made
+								</div>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -488,7 +535,7 @@
 				<button
 					class="btn btn-primary"
 					onclick={saveEdit}
-					disabled={editLoading || adjustmentMinutes === 0}
+					disabled={editLoading || !editEntry?.endedAt || calculateAdjustment() === 0}
 				>
 					{editLoading ? 'Saving...' : 'Save Changes'}
 				</button>
