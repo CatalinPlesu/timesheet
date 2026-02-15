@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -14,27 +15,30 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 /// </summary>
 public class HelpCommandHandler(
     ILogger<HelpCommandHandler> logger,
-    IServiceScopeFactory serviceScopeFactory)
+    IServiceScopeFactory serviceScopeFactory,
+    IConfiguration configuration)
 {
-    private const string MainHelpMessage = """
+    private string MainHelpMessage => $"""
         *TimeSheet Bot*
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
         *View & Edit:* `/li` `/e` `/d` — list, edit, delete
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
+        *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
         *Other:* `/a` `/h` — about, help
 
         For details: `/help tracking`, `/help report`, `/help settings`
         """;
 
-    private const string MainHelpMessageAdmin = """
+    private string MainHelpMessageAdmin => $"""
         *TimeSheet Bot*
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
         *View & Edit:* `/li` `/e` `/d` — list, edit, delete
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
+        *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
         *Admin:* `/g` — generate registration mnemonic
         *Other:* `/a` `/h` — about, help
 

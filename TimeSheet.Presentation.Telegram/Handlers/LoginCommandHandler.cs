@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -11,7 +12,8 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 /// </summary>
 public class LoginCommandHandler(
     ILogger<LoginCommandHandler> logger,
-    IServiceScopeFactory serviceScopeFactory)
+    IServiceScopeFactory serviceScopeFactory,
+    IConfiguration configuration)
 {
     /// <summary>
     /// Handles the /login command.
@@ -68,12 +70,14 @@ public class LoginCommandHandler(
             await mnemonicService.StorePendingMnemonicAsync(mnemonic, cancellationToken);
 
             // Send the login code to the user
+            var frontendUrl = configuration["FrontendUrl"] ?? "the web interface";
             var loginMessage = $"""
                 🔑 Your login code:
 
                 `{mnemonic}`
 
-                This code is valid for one use only. Use it to log into the web interface.
+                This code is valid for one use only. Use it to log into the web interface at:
+                {frontendUrl}
                 """;
 
             await botClient.SendMessage(
