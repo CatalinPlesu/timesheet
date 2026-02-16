@@ -134,29 +134,8 @@
 			</li>
 			{#if showMoreThemes}
 				<div class="divider my-1"></div>
-				<li class="menu-title">Light Themes</li>
-				<div class="max-h-64 overflow-y-auto px-2 space-y-1">
-					{#each (['cupcake', 'bumblebee', 'emerald', 'corporate', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord'] as const) as themeOption}
-						<button
-							onclick={() => selectTheme(themeOption)}
-							class="btn btn-sm {currentTheme === themeOption ? 'btn-primary' : 'btn-ghost'} justify-start w-full"
-							type="button"
-						>
-							<div class="flex items-center gap-2 w-full">
-								<div class="flex gap-1">
-									<div class="w-2 h-2 rounded-full bg-primary"></div>
-									<div class="w-2 h-2 rounded-full bg-secondary"></div>
-									<div class="w-2 h-2 rounded-full bg-accent"></div>
-								</div>
-								<div class="flex-1 text-left text-xs">{getThemeDisplayName(themeOption)}</div>
-							</div>
-						</button>
-					{/each}
-				</div>
-				<div class="divider my-1"></div>
-				<li class="menu-title">Dark Themes</li>
-				<div class="max-h-64 overflow-y-auto px-2 space-y-1">
-					{#each (['synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'black', 'luxury', 'dracula', 'business', 'night', 'coffee', 'dim', 'sunset'] as const) as themeOption}
+				<div class="max-h-64 overflow-y-auto overflow-x-hidden px-2 space-y-1">
+					{#each (['cupcake', 'bumblebee', 'emerald', 'corporate', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'black', 'luxury', 'dracula', 'business', 'night', 'coffee', 'dim', 'sunset'] as const) as themeOption}
 						<button
 							onclick={() => selectTheme(themeOption)}
 							class="btn btn-sm {currentTheme === themeOption ? 'btn-primary' : 'btn-ghost'} justify-start w-full"
