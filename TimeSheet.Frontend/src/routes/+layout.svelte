@@ -86,7 +86,7 @@
 	<title>TimeSheet</title>
 </svelte:head>
 
-<div class="min-h-screen bg-base-100">
+<div class="min-h-screen bg-base-100 flex flex-col">
 	<!-- Navigation -->
 	<div class="navbar bg-base-200 shadow-lg sticky top-0 z-50">
 		<div class="flex-1">
@@ -141,7 +141,7 @@
 	</div>
 
 	<!-- Main Content -->
-	<main class="container mx-auto py-8">
+	<main class="container mx-auto py-8 flex-1">
 		{@render children()}
 	</main>
 
