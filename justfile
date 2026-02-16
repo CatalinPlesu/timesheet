@@ -421,11 +421,12 @@ toggle:
       fi; \
       if [ -n "$FRONTEND_PID" ]; then \
         if ps -p "$FRONTEND_PID" > /dev/null 2>&1; then \
-          pkill -TERM -P "$FRONTEND_PID" 2>/dev/null || true; \
-          sleep 0.5; \
-          pkill -9 -P "$FRONTEND_PID" 2>/dev/null || true; \
-          kill -TERM "$FRONTEND_PID" 2>/dev/null || true; \
-          sleep 0.5; \
+          CHILDREN=$(pgrep -P "$FRONTEND_PID" 2>/dev/null || true); \
+          for child in $CHILDREN; do \
+            GRANDCHILDREN=$(pgrep -P "$child" 2>/dev/null || true); \
+            [ -n "$GRANDCHILDREN" ] && kill -9 $GRANDCHILDREN 2>/dev/null || true; \
+            kill -9 "$child" 2>/dev/null || true; \
+          done; \
           kill -9 "$FRONTEND_PID" 2>/dev/null || true; \
           echo "  ✓ Frontend stopped (PID $FRONTEND_PID)"; \
         else \
@@ -433,9 +434,6 @@ toggle:
         fi; \
         skate delete "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null || true; \
       fi; \
-      pkill -9 -f "vite.*TimeSheet.Frontend" 2>/dev/null || true; \
-      pkill -9 -f "esbuild.*TimeSheet" 2>/dev/null || true; \
-      pkill -9 -f "node.*vite" 2>/dev/null || true; \
       echo ""; \
       echo "All services stopped."; \
     else \
