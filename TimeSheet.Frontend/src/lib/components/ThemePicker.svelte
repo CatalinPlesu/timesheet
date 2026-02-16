@@ -1,9 +1,18 @@
 <script lang="ts">
-	import { theme, AVAILABLE_THEMES, type Theme } from '$lib/stores/theme';
+	import { theme, type Theme } from '$lib/stores/theme';
 
 	let currentTheme = $state($theme);
 	let isOpen = $state(false);
 	let showMoreThemes = $state(false);
+
+	// All additional themes (excluding auto, light, dark)
+	const additionalThemes = [
+		'cupcake', 'bumblebee', 'emerald', 'corporate', 'fantasy', 'wireframe',
+		'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord',
+		'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden',
+		'forest', 'aqua', 'lofi', 'pastel', 'black', 'luxury', 'dracula',
+		'business', 'night', 'coffee', 'dim', 'sunset'
+	] as const;
 
 	// Update local state when store changes
 	$effect(() => {
@@ -23,7 +32,9 @@
 		}
 	}
 
-	function toggleMoreThemes() {
+	function toggleMoreThemes(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
 		showMoreThemes = !showMoreThemes;
 	}
 
@@ -33,6 +44,7 @@
 		const dropdown = document.getElementById('theme-picker-dropdown');
 		if (dropdown && !dropdown.contains(target)) {
 			isOpen = false;
+			showMoreThemes = false;
 		}
 	}
 
@@ -85,7 +97,7 @@
 		</svg>
 	</button>
 	{#if isOpen}
-		<ul class="dropdown-content menu bg-base-200 rounded-box z-[1] w-64 p-2 shadow-lg">
+		<ul class="dropdown-content menu bg-base-200 rounded-box z-[1] w-64 p-2 shadow-lg max-h-96 overflow-y-auto">
 			<li class="menu-title">Theme</li>
 			<li>
 				<button
@@ -134,11 +146,11 @@
 			</li>
 			{#if showMoreThemes}
 				<div class="divider my-1"></div>
-				<div class="max-h-64 overflow-y-auto overflow-x-hidden px-2 space-y-1">
-					{#each (['cupcake', 'bumblebee', 'emerald', 'corporate', 'fantasy', 'wireframe', 'cmyk', 'autumn', 'acid', 'lemonade', 'winter', 'nord', 'synthwave', 'retro', 'cyberpunk', 'valentine', 'halloween', 'garden', 'forest', 'aqua', 'lofi', 'pastel', 'black', 'luxury', 'dracula', 'business', 'night', 'coffee', 'dim', 'sunset'] as const) as themeOption}
+				{#each additionalThemes as themeOption}
+					<li>
 						<button
 							onclick={() => selectTheme(themeOption)}
-							class="btn btn-sm {currentTheme === themeOption ? 'btn-primary' : 'btn-ghost'} justify-start w-full"
+							class={currentTheme === themeOption ? 'active' : ''}
 							type="button"
 						>
 							<div class="flex items-center gap-2 w-full">
@@ -147,11 +159,11 @@
 									<div class="w-2 h-2 rounded-full bg-secondary"></div>
 									<div class="w-2 h-2 rounded-full bg-accent"></div>
 								</div>
-								<div class="flex-1 text-left text-xs">{getThemeDisplayName(themeOption)}</div>
+								<span class="flex-1">{getThemeDisplayName(themeOption)}</span>
 							</div>
 						</button>
-					{/each}
-				</div>
+					</li>
+				{/each}
 			{/if}
 		</ul>
 	{/if}
