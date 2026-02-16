@@ -366,6 +366,94 @@ dev-frontend:
 dev:
     @echo "Run 'just dev-api' in one terminal and 'just dev-frontend' in another"
 
+# Check status of all 3 services
+status:
+    @RKEY=$(echo "$PWD" | sed 's|/|__|g'); \
+    BOT_PID=$(skate get "${RKEY}-bot-pid@{{_db}}" 2>/dev/null); \
+    API_PID=$(skate get "${RKEY}-api-pid@{{_db}}" 2>/dev/null); \
+    FRONTEND_PID=$(skate get "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null); \
+    echo "═══ Service Status"; \
+    if [ -n "$BOT_PID" ] && ps -p "$BOT_PID" > /dev/null 2>&1; then \
+      echo "  ✓ Telegram bot: RUNNING (PID $BOT_PID)"; \
+    else \
+      echo "  ✗ Telegram bot: STOPPED"; \
+      [ -n "$BOT_PID" ] && skate delete "${RKEY}-bot-pid@{{_db}}" 2>/dev/null || true; \
+    fi; \
+    if [ -n "$API_PID" ] && ps -p "$API_PID" > /dev/null 2>&1; then \
+      echo "  ✓ API:          RUNNING (PID $API_PID)"; \
+    else \
+      echo "  ✗ API:          STOPPED"; \
+      [ -n "$API_PID" ] && skate delete "${RKEY}-api-pid@{{_db}}" 2>/dev/null || true; \
+    fi; \
+    if [ -n "$FRONTEND_PID" ] && ps -p "$FRONTEND_PID" > /dev/null 2>&1; then \
+      echo "  ✓ Frontend:     RUNNING (PID $FRONTEND_PID)"; \
+    else \
+      echo "  ✗ Frontend:     STOPPED"; \
+      [ -n "$FRONTEND_PID" ] && skate delete "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null || true; \
+    fi; \
+    true
+
+# Toggle all 3 services (bot, API, frontend) on/off
+toggle:
+    @RKEY=$(echo "$PWD" | sed 's|/|__|g'); \
+    BOT_PID=$(skate get "${RKEY}-bot-pid@{{_db}}" 2>/dev/null); \
+    API_PID=$(skate get "${RKEY}-api-pid@{{_db}}" 2>/dev/null); \
+    FRONTEND_PID=$(skate get "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null); \
+    if [ -n "$BOT_PID" ] || [ -n "$API_PID" ] || [ -n "$FRONTEND_PID" ]; then \
+      echo "═══ Stopping services…"; \
+      if [ -n "$BOT_PID" ]; then \
+        if ps -p "$BOT_PID" > /dev/null 2>&1; then \
+          pkill -P "$BOT_PID" 2>/dev/null || true; \
+          kill "$BOT_PID" 2>/dev/null && echo "  ✓ Telegram bot stopped (PID $BOT_PID)" || echo "  ⊘ Telegram bot already stopped"; \
+        else \
+          echo "  ⊘ Telegram bot not running"; \
+        fi; \
+        skate delete "${RKEY}-bot-pid@{{_db}}" 2>/dev/null || true; \
+      fi; \
+      if [ -n "$API_PID" ]; then \
+        if ps -p "$API_PID" > /dev/null 2>&1; then \
+          pkill -P "$API_PID" 2>/dev/null || true; \
+          kill "$API_PID" 2>/dev/null && echo "  ✓ API stopped (PID $API_PID)" || echo "  ⊘ API already stopped"; \
+        else \
+          echo "  ⊘ API not running"; \
+        fi; \
+        skate delete "${RKEY}-api-pid@{{_db}}" 2>/dev/null || true; \
+      fi; \
+      if [ -n "$FRONTEND_PID" ]; then \
+        if ps -p "$FRONTEND_PID" > /dev/null 2>&1; then \
+          pkill -P "$FRONTEND_PID" 2>/dev/null || true; \
+          kill "$FRONTEND_PID" 2>/dev/null && echo "  ✓ Frontend stopped (PID $FRONTEND_PID)" || echo "  ⊘ Frontend already stopped"; \
+        else \
+          echo "  ⊘ Frontend not running"; \
+        fi; \
+        skate delete "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null || true; \
+      fi; \
+      echo ""; \
+      echo "All services stopped."; \
+    else \
+      echo "═══ Starting services…"; \
+      dotnet run --project TimeSheet.Presentation.Telegram/TimeSheet.Presentation.Telegram.csproj > /tmp/timesheet-bot.log 2>&1 & \
+      BOT_PID=$!; \
+      skate set "${RKEY}-bot-pid@{{_db}}" "$BOT_PID"; \
+      echo "  ✓ Telegram bot started (PID $BOT_PID)"; \
+      dotnet run --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj > /tmp/timesheet-api.log 2>&1 & \
+      API_PID=$!; \
+      skate set "${RKEY}-api-pid@{{_db}}" "$API_PID"; \
+      echo "  ✓ API started (PID $API_PID)"; \
+      cd TimeSheet.Frontend && npm run dev > /tmp/timesheet-frontend.log 2>&1 & \
+      FRONTEND_PID=$!; \
+      cd ..; \
+      skate set "${RKEY}-frontend-pid@{{_db}}" "$FRONTEND_PID"; \
+      echo "  ✓ Frontend started (PID $FRONTEND_PID)"; \
+      echo ""; \
+      echo "All services started. Use 'just toggle' again to stop them."; \
+      echo ""; \
+      echo "Logs:"; \
+      echo "  - Bot:      tail -f /tmp/timesheet-bot.log"; \
+      echo "  - API:      tail -f /tmp/timesheet-api.log"; \
+      echo "  - Frontend: tail -f /tmp/timesheet-frontend.log"; \
+    fi
+
 # Start Docker Compose services
 docker-up:
     @docker compose up -d
