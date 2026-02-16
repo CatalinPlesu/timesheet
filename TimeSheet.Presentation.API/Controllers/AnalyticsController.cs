@@ -334,13 +334,32 @@ public class AnalyticsController : ControllerBase
                 .Distinct()
                 .Count();
 
-            // Calculate total duration from first to last activity
+            // Calculate average total duration per day (first to last activity)
             decimal? totalDurationHours = null;
             if (completedSessions.Any())
             {
-                var firstActivity = completedSessions.Min(s => s.StartedAt);
-                var lastActivity = completedSessions.Max(s => s.EndedAt!.Value);
-                totalDurationHours = (decimal)(lastActivity - firstActivity).TotalHours;
+                // Group sessions by day
+                var sessionsByDay = completedSessions
+                    .GroupBy(s => s.StartedAt.Date)
+                    .ToList();
+
+                decimal sumDailyDurations = 0;
+                int daysWithActivity = 0;
+
+                foreach (var dayGroup in sessionsByDay)
+                {
+                    var daySessions = dayGroup.ToList();
+                    var firstActivity = daySessions.Min(s => s.StartedAt);
+                    var lastActivity = daySessions.Max(s => s.EndedAt!.Value);
+                    sumDailyDurations += (decimal)(lastActivity - firstActivity).TotalHours;
+                    daysWithActivity++;
+                }
+
+                // Calculate average duration per day
+                if (daysWithActivity > 0)
+                {
+                    totalDurationHours = sumDailyDurations / daysWithActivity;
+                }
             }
 
             return Ok(new PeriodAggregateDto

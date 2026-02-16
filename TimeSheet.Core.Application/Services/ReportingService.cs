@@ -243,16 +243,32 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             }
         }
 
-        // Calculate total duration from first to last activity
+        // Calculate average total duration per day (first to last activity)
         decimal? totalDurationHours = null;
         if (sessions.Any())
         {
-            var firstActivityStart = sessions.Min(s => s.StartedAt);
+            // Group sessions by day
+            var sessionsByDay = sessions
+                .GroupBy(s => s.StartedAt.Date)
+                .ToList();
 
-            // For last activity end time, consider active sessions (use current time if EndedAt is null)
-            var lastActivityEnd = sessions.Max(s => s.EndedAt ?? DateTime.UtcNow);
+            decimal sumDailyDurations = 0;
+            int daysWithActivity = 0;
 
-            totalDurationHours = (decimal)(lastActivityEnd - firstActivityStart).TotalHours;
+            foreach (var dayGroup in sessionsByDay)
+            {
+                var daySessions = dayGroup.ToList();
+                var firstActivityStart = daySessions.Min(s => s.StartedAt);
+                var lastActivityEnd = daySessions.Max(s => s.EndedAt ?? DateTime.UtcNow);
+                sumDailyDurations += (decimal)(lastActivityEnd - firstActivityStart).TotalHours;
+                daysWithActivity++;
+            }
+
+            // Calculate average duration per day
+            if (daysWithActivity > 0)
+            {
+                totalDurationHours = sumDailyDurations / daysWithActivity;
+            }
         }
 
         return new PeriodAggregate

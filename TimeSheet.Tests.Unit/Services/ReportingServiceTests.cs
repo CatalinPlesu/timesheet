@@ -447,7 +447,7 @@ public class ReportingServiceTests
     }
 
     [Fact]
-    public async Task GetPeriodAggregateAsync_TotalDurationSpansMultipleDays()
+    public async Task GetPeriodAggregateAsync_TotalDurationIsAverageAcrossMultipleDays()
     {
         // Arrange
         const long userId = 123456;
@@ -479,8 +479,9 @@ public class ReportingServiceTests
         var result = await _sut.GetPeriodAggregateAsync(userId, startDate, endDate, CancellationToken.None);
 
         // Assert
-        // Total duration should span from day1 8:00 to day2 17:30 = 33.5 hours
-        Assert.Equal(33.5m, result.TotalDurationHours);
+        // Average daily duration: Day 1 (8:00-18:00 = 10h), Day 2 (9:00-17:30 = 8.5h)
+        // Average = (10 + 8.5) / 2 = 9.25 hours
+        Assert.Equal(9.25m, result.TotalDurationHours);
     }
 
     [Fact]

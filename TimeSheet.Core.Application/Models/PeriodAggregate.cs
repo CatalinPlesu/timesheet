@@ -36,8 +36,9 @@ public record PeriodAggregate
     public int WorkDaysCount { get; init; }
 
     /// <summary>
-    /// Gets the total duration from first to last activity in hours.
-    /// This represents the full "at work" span including idle time between sessions.
+    /// Gets the average daily duration from first to last activity in hours.
+    /// This represents the average "at work" span per day, including idle time between sessions.
+    /// For example: if Monday is 9h (8am-5pm) and Tuesday is 10h (8am-6pm), this will be 9.5h.
     /// Null if there are no sessions in the period.
     /// </summary>
     public decimal? TotalDurationHours { get; init; }

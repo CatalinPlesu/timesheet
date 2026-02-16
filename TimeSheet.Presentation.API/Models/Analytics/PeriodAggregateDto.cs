@@ -36,7 +36,8 @@ public sealed class PeriodAggregateDto
     public required int WorkDaysCount { get; set; }
 
     /// <summary>
-    /// Gets or sets the total duration from first to last activity in hours.
+    /// Gets or sets the average daily duration from first to last activity in hours.
+    /// This represents the average "at work" span per day, including idle time between sessions.
     /// </summary>
     public decimal? TotalDurationHours { get; set; }
 }

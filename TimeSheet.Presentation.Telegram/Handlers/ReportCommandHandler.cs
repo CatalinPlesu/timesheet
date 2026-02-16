@@ -322,10 +322,10 @@ public class ReportCommandHandler(
             builder.AppendLine($"Total commute time: {FormatHours(aggregate.TotalCommuteHours)}");
             builder.AppendLine($"Total lunch time: {FormatHours(aggregate.TotalLunchHours)}");
 
-            // Display total duration from first to last activity
+            // Display average daily duration from first to last activity
             if (aggregate.TotalDurationHours.HasValue)
             {
-                builder.AppendLine($"Total duration (first to last): {FormatHours(aggregate.TotalDurationHours.Value)}");
+                builder.AppendLine($"Avg daily duration (first to last): {FormatHours(aggregate.TotalDurationHours.Value)}");
             }
 
             builder.AppendLine();
