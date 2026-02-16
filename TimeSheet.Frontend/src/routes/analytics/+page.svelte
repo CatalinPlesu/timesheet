@@ -9,26 +9,26 @@
 	Chart.register(...registerables);
 
 	// State
-	let chartCanvas: HTMLCanvasElement;
-	let pieChartCanvas: HTMLCanvasElement;
-	let workHoursChartCanvas: HTMLCanvasElement;
-	let chart: Chart | null = null;
-	let pieChart: Chart | null = null;
-	let workHoursChart: Chart | null = null;
-	let chartData: ChartDataDto | null = null;
-	let dailyAverages: DailyAveragesDto | null = null;
-	let commuteToWorkPatterns: CommutePatternsDto[] = [];
-	let commuteToHomePatterns: CommutePatternsDto[] = [];
-	let userSettings: UserSettingsDto | null = null;
+	let chartCanvas = $state<HTMLCanvasElement>();
+	let pieChartCanvas = $state<HTMLCanvasElement>();
+	let workHoursChartCanvas = $state<HTMLCanvasElement>();
+	let chart = $state<Chart | null>(null);
+	let pieChart = $state<Chart | null>(null);
+	let workHoursChart = $state<Chart | null>(null);
+	let chartData = $state<ChartDataDto | null>(null);
+	let dailyAverages = $state<DailyAveragesDto | null>(null);
+	let commuteToWorkPatterns = $state<CommutePatternsDto[]>([]);
+	let commuteToHomePatterns = $state<CommutePatternsDto[]>([]);
+	let userSettings = $state<UserSettingsDto | null>(null);
 
-	let loading = true;
-	let error = '';
-	let workHoursViewMode: 'week' | 'month' = 'week';
+	let loading = $state(true);
+	let error = $state('');
+	let workHoursViewMode = $state<'week' | 'month'>('week');
 
 	// Form state for date range and grouping
-	let startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 30 days ago
-	let endDate = new Date().toISOString().split('T')[0]; // today
-	let groupBy: 'Day' | 'Week' | 'Month' | 'Year' = 'Day';
+	let startDate = $state(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // 30 days ago
+	let endDate = $state(new Date().toISOString().split('T')[0]); // today
+	let groupBy = $state<'Day' | 'Week' | 'Month' | 'Year'>('Day');
 
 	const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -430,7 +430,7 @@
 		}
 	}
 
-	let initialLoadComplete = false;
+	let initialLoadComplete = $state(false);
 
 	onMount(() => {
 		loadData();
@@ -452,6 +452,27 @@
 		// Skip the initial load (onMount handles that), and only reload if charts exist
 		if (initialLoadComplete) {
 			loadData();
+		}
+	});
+
+	// Update pie chart when data or canvas changes
+	$effect(() => {
+		if (pieChartCanvas && dailyAverages) {
+			updatePieChart();
+		}
+	});
+
+	// Update main chart when data or canvas changes
+	$effect(() => {
+		if (chartCanvas && chartData) {
+			updateChart();
+		}
+	});
+
+	// Update work hours chart when data or canvas changes
+	$effect(() => {
+		if (workHoursChartCanvas && chartData && userSettings?.targetWorkHours) {
+			updateWorkHoursChart();
 		}
 	});
 </script>
