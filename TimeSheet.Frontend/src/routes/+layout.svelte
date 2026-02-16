@@ -97,8 +97,8 @@
 				TimeSheet
 			</a>
 		</div>
-		<div class="flex-none">
-			<ul class="menu menu-horizontal px-1 gap-1">
+		<div class="flex-none flex items-center">
+			<ul class="menu menu-horizontal px-1 gap-1 items-center">
 				{#if showNav}
 					<li>
 						<a href="/tracking" class="btn btn-ghost btn-sm">
