@@ -421,13 +421,21 @@ toggle:
       fi; \
       if [ -n "$FRONTEND_PID" ]; then \
         if ps -p "$FRONTEND_PID" > /dev/null 2>&1; then \
-          pkill -P "$FRONTEND_PID" 2>/dev/null || true; \
-          kill "$FRONTEND_PID" 2>/dev/null && echo "  ✓ Frontend stopped (PID $FRONTEND_PID)" || echo "  ⊘ Frontend already stopped"; \
+          pkill -TERM -P "$FRONTEND_PID" 2>/dev/null || true; \
+          sleep 0.5; \
+          pkill -9 -P "$FRONTEND_PID" 2>/dev/null || true; \
+          kill -TERM "$FRONTEND_PID" 2>/dev/null || true; \
+          sleep 0.5; \
+          kill -9 "$FRONTEND_PID" 2>/dev/null || true; \
+          echo "  ✓ Frontend stopped (PID $FRONTEND_PID)"; \
         else \
           echo "  ⊘ Frontend not running"; \
         fi; \
         skate delete "${RKEY}-frontend-pid@{{_db}}" 2>/dev/null || true; \
       fi; \
+      pkill -9 -f "vite.*TimeSheet.Frontend" 2>/dev/null || true; \
+      pkill -9 -f "esbuild.*TimeSheet" 2>/dev/null || true; \
+      pkill -9 -f "node.*vite" 2>/dev/null || true; \
       echo ""; \
       echo "All services stopped."; \
     else \
