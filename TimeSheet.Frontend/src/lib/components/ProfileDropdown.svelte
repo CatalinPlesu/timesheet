@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { auth } from '$lib/stores/auth';
 	import { getTelegramUserIdFromToken, getUsernameFromToken } from '$lib/utils/jwt';
-	import { createAvatar } from '@dicebear/core';
-	import { identicon } from '@dicebear/collection';
 
 	interface ProfileDropdownProps {
 		onLogout: () => void;
@@ -11,7 +9,7 @@
 	let { onLogout }: ProfileDropdownProps = $props();
 
 	let isOpen = $state(false);
-	let avatarSvg = $state('');
+	let avatarCanvas: HTMLCanvasElement | null = $state(null);
 	let username = $state('User');
 	let userId = $state('');
 
@@ -25,14 +23,12 @@
 			userId = telegramUserId || '';
 			username = telegramUsername || 'User';
 
-			// Generate identicon based on Telegram user ID
-			if (telegramUserId) {
-				const avatar = createAvatar(identicon, {
-					seed: telegramUserId,
-					size: 128,
-				});
-
-				avatarSvg = avatar.toString();
+			// Generate identicon based on Telegram user ID using jdenticon
+			if (telegramUserId && avatarCanvas) {
+				// Use jdenticon from the global window object (loaded from CDN)
+				if (typeof window !== 'undefined' && (window as any).jdenticon) {
+					(window as any).jdenticon.update(avatarCanvas, telegramUserId);
+				}
 			}
 		}
 	});
@@ -71,9 +67,9 @@
 		class="btn btn-ghost btn-circle avatar"
 		aria-label="Profile menu"
 	>
-		<div class="w-10 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2">
-			{#if avatarSvg}
-				{@html avatarSvg}
+		<div class="w-10 h-10 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2 overflow-hidden">
+			{#if $auth.isAuthenticated && userId}
+				<canvas bind:this={avatarCanvas} width="40" height="40" class="w-full h-full"></canvas>
 			{:else}
 				<div class="bg-base-300 w-full h-full flex items-center justify-center">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
