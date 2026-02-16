@@ -29,6 +29,8 @@
 		"vite": "^7.2.6"
 	},
 	"dependencies": {
+		"@dicebear/collection": "^9.3.1",
+		"@dicebear/core": "^9.3.1",
 		"chart.js": "^4.5.1",
 		"heroicons": "^2.2.0"
 	}
