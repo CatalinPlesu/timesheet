@@ -67,6 +67,7 @@ public class HelpCommandHandler(
     private const string ReportHelpMessage = """
         *Report Commands*
 
+        *Text Reports:*
         `/report day` or `/r day` — Today's summary
         `/report week` or `/r week` — This week
         `/report month` or `/r month` — This month
@@ -76,6 +77,20 @@ public class HelpCommandHandler(
         `/report table week` or `/r table week` — Daily table for week
         `/report table month` or `/r table month` — Daily table for month
         `/report all` or `/r all` — All reports as separate messages
+
+        *Chart Reports:*
+        `/report chart breakdown [period]` — Bar chart of daily work hours
+        `/report chart trend [period]` — Line chart of work hours trend
+        `/report chart activity [period]` — Stacked activity breakdown
+        `/report chart averages` — Daily averages comparison (7/30/90 days)
+        `/report chart commute` — Commute patterns by day of week
+
+        *Chart periods:* week (default), month, year
+
+        *Examples:*
+        `/r chart breakdown` — This week's work hours
+        `/r chart trend month` — This month's trend
+        `/r chart activity week` — This week's activities
         """;
 
     private const string SettingsHelpMessage = """
