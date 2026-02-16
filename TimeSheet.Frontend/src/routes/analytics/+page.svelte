@@ -75,50 +75,68 @@
 			chart.destroy();
 		}
 
+		// Build datasets
+		const datasets: any[] = [
+			{
+				label: 'Work',
+				data: chartData.workHours,
+				backgroundColor: 'rgba(59, 130, 246, 0.3)', // blue-500 with transparency
+				borderColor: 'rgba(59, 130, 246, 1)',
+				borderWidth: 2,
+				fill: true,
+				tension: 0.4
+			},
+			{
+				label: 'Commute',
+				data: chartData.commuteHours,
+				backgroundColor: 'rgba(16, 185, 129, 0.3)', // emerald-500 with transparency
+				borderColor: 'rgba(16, 185, 129, 1)',
+				borderWidth: 2,
+				fill: true,
+				tension: 0.4
+			},
+			{
+				label: 'Lunch',
+				data: chartData.lunchHours,
+				backgroundColor: 'rgba(245, 158, 11, 0.3)', // amber-500 with transparency
+				borderColor: 'rgba(245, 158, 11, 1)',
+				borderWidth: 2,
+				fill: true,
+				tension: 0.4
+			},
+			{
+				label: 'Idle',
+				data: chartData.idleHours,
+				backgroundColor: 'rgba(156, 163, 175, 0.2)', // gray-400 with transparency
+				borderColor: 'rgba(156, 163, 175, 0.6)',
+				borderWidth: 1,
+				borderDash: [5, 5],
+				fill: true,
+				tension: 0.4
+			}
+		];
+
+		// Add target line if user settings are available
+		if (userSettings?.targetWorkHours) {
+			datasets.push({
+				type: 'line',
+				label: 'Target',
+				data: new Array(chartData.labels.length).fill(userSettings.targetWorkHours),
+				borderColor: 'rgba(107, 114, 128, 1)', // gray-500 - neutral color
+				borderWidth: 2,
+				borderDash: [5, 5],
+				pointRadius: 0,
+				fill: false,
+				tension: 0
+			});
+		}
+
 		// Create new chart with stacked area visualization
 		chart = new Chart(chartCanvas, {
 			type: 'line',
 			data: {
 				labels: chartData.labels,
-				datasets: [
-					{
-						label: 'Work',
-						data: chartData.workHours,
-						backgroundColor: 'rgba(59, 130, 246, 0.3)', // blue-500 with transparency
-						borderColor: 'rgba(59, 130, 246, 1)',
-						borderWidth: 2,
-						fill: true,
-						tension: 0.4
-					},
-					{
-						label: 'Commute',
-						data: chartData.commuteHours,
-						backgroundColor: 'rgba(16, 185, 129, 0.3)', // emerald-500 with transparency
-						borderColor: 'rgba(16, 185, 129, 1)',
-						borderWidth: 2,
-						fill: true,
-						tension: 0.4
-					},
-					{
-						label: 'Lunch',
-						data: chartData.lunchHours,
-						backgroundColor: 'rgba(245, 158, 11, 0.3)', // amber-500 with transparency
-						borderColor: 'rgba(245, 158, 11, 1)',
-						borderWidth: 2,
-						fill: true,
-						tension: 0.4
-					},
-					{
-						label: 'Idle',
-						data: chartData.idleHours,
-						backgroundColor: 'rgba(156, 163, 175, 0.2)', // gray-400 with transparency
-						borderColor: 'rgba(156, 163, 175, 0.6)',
-						borderWidth: 1,
-						borderDash: [5, 5],
-						fill: true,
-						tension: 0.4
-					}
-				]
+				datasets
 			},
 			options: {
 				responsive: true,
@@ -249,15 +267,11 @@
 		const labels = chartData.labels;
 		const workHours = chartData.workHours;
 
-		// Calculate bar colors based on target
-		const backgroundColors = workHours.map(hours =>
-			hours > targetHours ? 'rgba(239, 68, 68, 0.8)' : 'rgba(34, 197, 94, 0.8)' // red-500 : green-500
-		);
-		const borderColors = workHours.map(hours =>
-			hours > targetHours ? 'rgba(239, 68, 68, 1)' : 'rgba(34, 197, 94, 1)'
-		);
+		// Use consistent blue color for all bars (no red/green markings)
+		const backgroundColor = 'rgba(59, 130, 246, 0.8)'; // blue-500
+		const borderColor = 'rgba(59, 130, 246, 1)'; // blue-500
 
-		// Create new chart with bars and target line
+		// Create new chart with bars (no target line)
 		workHoursChart = new Chart(workHoursChartCanvas, {
 			type: 'bar',
 			data: {
@@ -267,20 +281,10 @@
 						type: 'bar',
 						label: 'Work Hours',
 						data: workHours,
-						backgroundColor: backgroundColors,
-						borderColor: borderColors,
+						backgroundColor,
+						borderColor,
 						borderWidth: 2,
 						borderRadius: 4
-					},
-					{
-						type: 'line',
-						label: 'Target',
-						data: new Array(labels.length).fill(targetHours),
-						borderColor: 'rgba(59, 130, 246, 1)', // blue-500
-						borderWidth: 2,
-						borderDash: [5, 5],
-						pointRadius: 0,
-						fill: false
 					}
 				]
 			},
@@ -296,21 +300,7 @@
 						position: 'top',
 						labels: {
 							usePointStyle: true,
-							padding: 15,
-							filter: function(item) {
-								// Show legend for target line and one entry for work hours
-								return item.text === 'Target' || item.datasetIndex === 0;
-							},
-							generateLabels: function(chart) {
-								const original = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-								// Customize the work hours label to show green/red meaning
-								return original.map(item => {
-									if (item.text === 'Work Hours') {
-										item.text = 'Work Hours (Green: at/below target, Red: above target)';
-									}
-									return item;
-								});
-							}
+							padding: 15
 						}
 					},
 					tooltip: {
@@ -324,11 +314,9 @@
 								label += formatDuration(value);
 
 								// Add difference from target for work hours
-								if (context.datasetIndex === 0 && targetHours) {
-									const diff = value - targetHours;
-									if (diff !== 0) {
-										label += ` (${diff > 0 ? '+' : ''}${formatDuration(Math.abs(diff))})`;
-									}
+								const diff = value - targetHours;
+								if (diff !== 0) {
+									label += ` (${diff > 0 ? '+' : ''}${formatDuration(Math.abs(diff))} vs target)`;
 								}
 
 								return label;
