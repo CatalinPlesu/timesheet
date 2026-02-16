@@ -211,9 +211,8 @@
 			localDate.setUTCFullYear(localDate.getUTCFullYear() - 1);
 		}
 
-		// Convert back to UTC
+		// Convert back to UTC (auto-refresh will trigger via $effect)
 		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
-		fetchEntries();
 	}
 
 	// Navigate to next period
@@ -235,15 +234,14 @@
 			localDate.setUTCFullYear(localDate.getUTCFullYear() + 1);
 		}
 
-		// Convert back to UTC
+		// Convert back to UTC (auto-refresh will trigger via $effect)
 		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
-		fetchEntries();
 	}
 
 	// Jump to today
 	function jumpToToday() {
+		// Auto-refresh will trigger via $effect
 		currentPeriod = new Date();
-		fetchEntries();
 	}
 
 	// Get current period label for display
@@ -327,9 +325,8 @@
 		// Create date in local timezone
 		const localDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
 
-		// Convert to UTC
+		// Convert to UTC (auto-refresh will trigger via $effect)
 		currentPeriod = new Date(localDate.getTime() - utcOffsetMinutes * 60 * 1000);
-		fetchEntries();
 	}
 
 	// Convert Date to HH:MM format for time input (in user's local timezone)
@@ -503,9 +500,27 @@
 		}
 	}
 
+	let initialLoadComplete = $state(false);
+
 	// Load entries on mount
 	onMount(() => {
 		fetchEntries();
+		// Mark initial load as complete after fetch
+		setTimeout(() => {
+			initialLoadComplete = true;
+		}, 100);
+	});
+
+	// Auto-refresh when filters change
+	$effect(() => {
+		// Read reactive dependencies to track them
+		const currentGroupBy = groupBy;
+		const period = currentPeriod;
+
+		// Skip the initial load (onMount handles that)
+		if (initialLoadComplete) {
+			fetchEntries();
+		}
 	});
 </script>
 
@@ -528,41 +543,21 @@
 			</h2>
 			<div class="flex flex-col gap-4">
 				<!-- Group By Select -->
-				<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-					<div class="form-control w-full sm:w-56">
-						<label class="label" for="groupBy">
-							<span class="label-text font-semibold">Group By</span>
-						</label>
-						<select
-							id="groupBy"
-							class="select select-bordered w-full"
-							bind:value={groupBy}
-							onchange={() => fetchEntries()}
-						>
-							<option value={0}>None</option>
-							<option value={1}>Day</option>
-							<option value={2}>Week</option>
-							<option value={3}>Month</option>
-							<option value={4}>Year</option>
-						</select>
-					</div>
-
-					<!-- Refresh Button -->
-					<button
-						class="btn btn-primary w-full sm:w-auto"
-						onclick={() => fetchEntries()}
-						disabled={loading}
+				<div class="form-control w-full sm:w-56">
+					<label class="label" for="groupBy">
+						<span class="label-text font-semibold">Group By</span>
+					</label>
+					<select
+						id="groupBy"
+						class="select select-bordered w-full"
+						bind:value={groupBy}
 					>
-						{#if loading}
-							<span class="loading loading-spinner loading-sm"></span>
-							Loading...
-						{:else}
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-							</svg>
-							Refresh
-						{/if}
-					</button>
+						<option value={0}>None</option>
+						<option value={1}>Day</option>
+						<option value={2}>Week</option>
+						<option value={3}>Month</option>
+						<option value={4}>Year</option>
+					</select>
 				</div>
 
 				<!-- Period Navigation (only shown when groupBy is active) -->
