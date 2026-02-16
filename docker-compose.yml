@@ -46,6 +46,8 @@ services:
       - JwtSettings__ExpirationMinutes=${JWT_EXPIRATION_MINUTES:-60}
       - Cors__AllowedOrigins__0=http://localhost:${FRONTEND_PORT:-3000}
       - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL:-http://localhost:3000}
+      - Serilog__WriteTo__2__Name=Seq
+      - Serilog__WriteTo__2__Args__serverUrl=http://seq:80
     depends_on:
       - seq
     networks:

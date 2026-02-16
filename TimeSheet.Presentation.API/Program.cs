@@ -2,13 +2,29 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using Serilog;
 using System.Text;
 using TimeSheet.Core.Application.Extensions;
 using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Infrastructure.Persistence.Extensions;
 using TimeSheet.Presentation.API.Services;
 
+// Configure Serilog early - before building the host
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("Starting TimeSheet API");
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog from appsettings.json
+builder.Services.AddSerilog((services, lc) => lc
+    .ReadFrom.Configuration(builder.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>
@@ -118,7 +134,17 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = Dat
 
 app.MapControllers();
 
-app.Run();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "API terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // Make Program class accessible to integration tests
 public partial class Program { }
