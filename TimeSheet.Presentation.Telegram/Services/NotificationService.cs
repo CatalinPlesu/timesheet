@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
+using TimeSheet.Core.Application.Common;
 using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Enums;
 
@@ -53,8 +54,8 @@ public sealed class NotificationService(
 
                 You've reached your target work hours for today!
 
-                *Target:* {targetHours:F1} hours
-                *Worked:* {actualHours:F1} hours
+                *Target:* {TimeFormatter.FormatDuration(targetHours)}
+                *Worked:* {TimeFormatter.FormatDuration(actualHours)}
 
                 Great job! 🎉
                 """;
@@ -97,9 +98,7 @@ public sealed class NotificationService(
                 _ => "session"
             };
 
-            var durationText = duration.TotalHours >= 1
-                ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
-                : $"{duration.Minutes}m";
+            var durationText = TimeFormatter.FormatDuration(duration);
 
             var message = $"""
                 ⚠️ *Auto-Shutdown*
@@ -159,8 +158,8 @@ public sealed class NotificationService(
             var message = $"""
                 {stateEmoji} *Forgot to Stop Tracking?*
 
-                Your {stateName} has been running for {currentDuration:F1} hours.
-                Your average {stateName} duration is {averageDuration:F1} hours.
+                Your {stateName} has been running for {TimeFormatter.FormatDuration(currentDuration)}.
+                Your average {stateName} duration is {TimeFormatter.FormatDuration(averageDuration)}.
 
                 This is unusually long. Did you forget to stop tracking?
 
