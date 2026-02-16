@@ -430,10 +430,29 @@
 		}
 	}
 
+	let initialLoadComplete = false;
+
 	onMount(() => {
 		loadData();
 		// Load work hours data separately for the dedicated chart
 		loadWorkHoursData();
+		// Mark initial load as complete after a short delay to allow charts to render
+		setTimeout(() => {
+			initialLoadComplete = true;
+		}, 100);
+	});
+
+	// Auto-refresh when filters change
+	$effect(() => {
+		// Read reactive dependencies to track them
+		const currentGroupBy = groupBy;
+		const currentStartDate = startDate;
+		const currentEndDate = endDate;
+
+		// Skip the initial load (onMount handles that), and only reload if charts exist
+		if (initialLoadComplete) {
+			loadData();
+		}
 	});
 </script>
 
