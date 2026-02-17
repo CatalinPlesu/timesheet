@@ -27,9 +27,10 @@ public class MockTelegramBotClient
     public ITelegramBotClient Client => _mock.Object;
 
     /// <summary>
-    /// Gets all responses captured by this mock (messages, callback answers, etc.).
+    /// Gets a snapshot of all responses captured by this mock (messages, callback answers, etc.).
+    /// Returns a copy so that subsequent ClearResponses() calls do not affect previously captured responses.
     /// </summary>
-    public IReadOnlyList<CapturedResponse> Responses => _responses.AsReadOnly();
+    public IReadOnlyList<CapturedResponse> Responses => _responses.ToList().AsReadOnly();
 
     /// <summary>
     /// Clears all captured responses.

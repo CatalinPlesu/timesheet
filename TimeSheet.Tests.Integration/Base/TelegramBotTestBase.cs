@@ -131,20 +131,24 @@ public abstract class TelegramBotTestBase(TelegramBotTestFixture fixture) : ICla
         long telegramUserId = 67890,
         string telegramUsername = "testuser",
         bool isAdmin = false,
-        int utcOffsetMinutes = 0)
+        int utcOffsetMinutes = 0,
+        bool clearExisting = true)
     {
         using var scope = Fixture.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TimeSheet.Infrastructure.Persistence.AppDbContext>();
 
-        // Clean slate: Remove ALL users and sessions to avoid test pollution
-        // This ensures each test starts with a fresh database state
-        var allSessions = dbContext.Set<TrackingSession>();
-        dbContext.Set<TrackingSession>().RemoveRange(allSessions);
+        if (clearExisting)
+        {
+            // Clean slate: Remove ALL users and sessions to avoid test pollution
+            // This ensures each test starts with a fresh database state
+            var allSessions = dbContext.Set<TrackingSession>();
+            dbContext.Set<TrackingSession>().RemoveRange(allSessions);
 
-        var allUsers = dbContext.Set<DomainUser>();
-        dbContext.Set<DomainUser>().RemoveRange(allUsers);
+            var allUsers = dbContext.Set<DomainUser>();
+            dbContext.Set<DomainUser>().RemoveRange(allUsers);
 
-        await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync();
+        }
 
         var user = new DomainUser(
             telegramUserId: telegramUserId,

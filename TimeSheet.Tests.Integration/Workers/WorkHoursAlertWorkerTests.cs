@@ -19,6 +19,7 @@ public class WorkHoursAlertWorkerTests
     private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<ITrackingSessionRepository> _mockTrackingSessionRepository;
+    private readonly Mock<IHolidayRepository> _mockHolidayRepository;
     private readonly Mock<INotificationService> _mockNotificationService;
     private readonly Mock<ILogger<WorkHoursAlertWorker>> _mockLogger;
     private readonly IOptions<WorkerOptions> _options;
@@ -30,6 +31,7 @@ public class WorkHoursAlertWorkerTests
         _mockServiceProvider = new Mock<IServiceProvider>();
         _mockUserRepository = new Mock<IUserRepository>();
         _mockTrackingSessionRepository = new Mock<ITrackingSessionRepository>();
+        _mockHolidayRepository = new Mock<IHolidayRepository>();
         _mockNotificationService = new Mock<INotificationService>();
         _mockLogger = new Mock<ILogger<WorkHoursAlertWorker>>();
 
@@ -44,8 +46,16 @@ public class WorkHoursAlertWorkerTests
             .Setup(p => p.GetService(typeof(ITrackingSessionRepository)))
             .Returns(_mockTrackingSessionRepository.Object);
         _mockServiceProvider
+            .Setup(p => p.GetService(typeof(IHolidayRepository)))
+            .Returns(_mockHolidayRepository.Object);
+        _mockServiceProvider
             .Setup(p => p.GetService(typeof(INotificationService)))
             .Returns(_mockNotificationService.Object);
+
+        // Default: no holidays
+        _mockHolidayRepository
+            .Setup(r => r.IsHolidayAsync(It.IsAny<Guid>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
 
         // Configure worker options with a short check interval for testing
         _options = Options.Create(new WorkerOptions

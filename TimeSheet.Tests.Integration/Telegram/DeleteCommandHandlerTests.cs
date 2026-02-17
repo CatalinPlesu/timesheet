@@ -314,7 +314,7 @@ public class DeleteCommandHandlerTests(TelegramBotTestFixture fixture) : Telegra
         const long userB = 30011;
 
         await RegisterTestUserAsync(telegramUserId: userA);
-        await RegisterTestUserAsync(telegramUserId: userB);
+        await RegisterTestUserAsync(telegramUserId: userB, clearExisting: false);
 
         await SendTextAsync("/work", userId: userA);
         await SendTextAsync("/work", userId: userA);

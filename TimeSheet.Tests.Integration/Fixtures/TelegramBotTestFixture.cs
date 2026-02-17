@@ -73,6 +73,7 @@ public class TelegramBotTestFixture : IDisposable
         services.AddScoped<ITrackingSessionRepository, TrackingSessionRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IPendingMnemonicRepository, PendingMnemonicRepository>();
+        services.AddScoped<IHolidayRepository, HolidayRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Add application layer services (domain services, app services, parsers)

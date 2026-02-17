@@ -321,7 +321,7 @@ public class EditCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         const long userB = 20012;
 
         await RegisterTestUserAsync(telegramUserId: userA);
-        await RegisterTestUserAsync(telegramUserId: userB);
+        await RegisterTestUserAsync(telegramUserId: userB, clearExisting: false);
 
         await SendTextAsync("/work", userId: userA);
         await SendTextAsync("/work", userId: userA);
