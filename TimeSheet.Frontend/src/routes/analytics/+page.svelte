@@ -120,7 +120,7 @@
 		if (userSettings?.targetWorkHours) {
 			datasets.push({
 				type: 'line',
-				label: 'Target',
+				label: `Target (${formatDuration(userSettings.targetWorkHours)}/day)`,
 				data: new Array(chartData.labels.length).fill(userSettings.targetWorkHours),
 				borderColor: 'rgba(107, 114, 128, 1)', // gray-500 - neutral color
 				borderWidth: 2,
@@ -130,6 +130,9 @@
 				tension: 0
 			});
 		}
+
+		// X-axis label based on grouping mode
+		const xAxisLabel = groupBy === 'Day' ? 'Date' : groupBy === 'Week' ? 'Week' : groupBy === 'Month' ? 'Month' : 'Year';
 
 		// Create new chart with stacked area visualization
 		chart = new Chart(chartCanvas, {
@@ -146,6 +149,12 @@
 					intersect: false
 				},
 				plugins: {
+					title: {
+						display: true,
+						text: `Time Trend — grouped by ${groupBy}`,
+						font: { size: 14, weight: 'bold' },
+						padding: { bottom: 12 }
+					},
 					legend: {
 						position: 'top',
 						labels: {
@@ -155,6 +164,9 @@
 					},
 					tooltip: {
 						callbacks: {
+							title: function(items) {
+								return items[0]?.label ?? '';
+							},
 							label: function (context) {
 								let label = context.dataset.label || '';
 								if (label) {
@@ -163,6 +175,19 @@
 								const value = context.parsed.y ?? 0;
 								label += formatDuration(value);
 								return label;
+							},
+							footer: function(items) {
+								// Sum all non-target, non-idle values for a "total tracked" footer
+								const total = items
+									.filter(i => {
+										const lbl = i.dataset.label ?? '';
+										return !lbl.startsWith('Target') && lbl !== 'Idle';
+									})
+									.reduce((sum, i) => sum + (i.parsed.y ?? 0), 0);
+								if (total > 0) {
+									return `Total tracked: ${formatDuration(total)}`;
+								}
+								return '';
 							}
 						}
 					}
@@ -171,13 +196,17 @@
 					x: {
 						grid: {
 							display: false
+						},
+						title: {
+							display: true,
+							text: xAxisLabel
 						}
 					},
 					y: {
 						beginAtZero: true,
 						title: {
 							display: true,
-							text: 'Duration'
+							text: 'Duration (h m)'
 						},
 						ticks: {
 							callback: function (value) {
@@ -203,12 +232,13 @@
 		const totalCommuteToWork = dailyAverages.averageCommuteToWorkHours * dailyAverages.daysIncluded;
 		const totalCommuteToHome = dailyAverages.averageCommuteToHomeHours * dailyAverages.daysIncluded;
 		const totalLunch = dailyAverages.averageLunchHours * dailyAverages.daysIncluded;
+		const grandTotal = totalWork + totalCommuteToWork + totalCommuteToHome + totalLunch;
 
 		// Create donut chart
 		pieChart = new Chart(pieChartCanvas, {
 			type: 'doughnut',
 			data: {
-				labels: ['Work', 'Commute (To Work)', 'Commute (To Home)', 'Lunch'],
+				labels: ['Work', 'Commute to Work', 'Commute to Home', 'Lunch'],
 				datasets: [
 					{
 						data: [totalWork, totalCommuteToWork, totalCommuteToHome, totalLunch],
@@ -232,11 +262,37 @@
 				responsive: true,
 				maintainAspectRatio: false,
 				plugins: {
+					title: {
+						display: true,
+						text: `Time Distribution (${dailyAverages.daysIncluded} days)`,
+						font: { size: 14, weight: 'bold' },
+						padding: { bottom: 8 }
+					},
 					legend: {
 						position: 'bottom',
 						labels: {
 							usePointStyle: true,
-							padding: 15
+							padding: 15,
+							generateLabels: function(chart) {
+								const data = chart.data;
+								if (!data.labels || !data.datasets[0]) return [];
+								const dataset = data.datasets[0];
+								const values = dataset.data as number[];
+								return (data.labels as string[]).map((label, i) => {
+									const value = values[i] ?? 0;
+									const pct = grandTotal > 0 ? ((value / grandTotal) * 100).toFixed(0) : '0';
+									return {
+										text: `${label} (${pct}%)`,
+										fillStyle: (dataset.backgroundColor as string[])[i],
+										strokeStyle: (dataset.borderColor as string[])[i],
+										lineWidth: dataset.borderWidth as number,
+										hidden: false,
+										index: i,
+										datasetIndex: 0,
+										pointStyle: 'circle' as const
+									};
+								});
+							}
 						}
 					},
 					tooltip: {
@@ -244,7 +300,11 @@
 							label: function (context) {
 								const label = context.label || '';
 								const value = context.parsed ?? 0;
-								return `${label}: ${formatDuration(value)}`;
+								const pct = grandTotal > 0 ? ((value / grandTotal) * 100).toFixed(1) : '0.0';
+								return `${label}: ${formatDuration(value)} (${pct}%)`;
+							},
+							footer: function() {
+								return `Total: ${formatDuration(grandTotal)}`;
 							}
 						}
 					}
@@ -267,11 +327,18 @@
 		const labels = chartData.labels;
 		const workHours = chartData.workHours;
 
-		// Use consistent blue color for all bars (no red/green markings)
-		const backgroundColor = 'rgba(59, 130, 246, 0.8)'; // blue-500
-		const borderColor = 'rgba(59, 130, 246, 1)'; // blue-500
+		// Color bars: red if over target, blue if at/below target
+		const backgroundColors = workHours.map(h =>
+			h > targetHours ? 'rgba(239, 68, 68, 0.75)' : 'rgba(59, 130, 246, 0.8)'
+		);
+		const borderColors = workHours.map(h =>
+			h > targetHours ? 'rgba(239, 68, 68, 1)' : 'rgba(59, 130, 246, 1)'
+		);
 
-		// Create new chart with bars (no target line)
+		const periodLabel = workHoursViewMode === 'week' ? 'Last 7 Days' : 'This Month';
+		const xAxisLabel = workHoursViewMode === 'week' ? 'Date' : 'Day of Month';
+
+		// Create new chart with bars + target annotation line
 		workHoursChart = new Chart(workHoursChartCanvas, {
 			type: 'bar',
 			data: {
@@ -281,10 +348,22 @@
 						type: 'bar',
 						label: 'Work Hours',
 						data: workHours,
-						backgroundColor,
-						borderColor,
+						backgroundColor: backgroundColors,
+						borderColor: borderColors,
 						borderWidth: 2,
 						borderRadius: 4
+					},
+					{
+						type: 'line',
+						label: `Target (${formatDuration(targetHours)}/day)`,
+						data: new Array(labels.length).fill(targetHours),
+						borderColor: 'rgba(107, 114, 128, 0.9)',
+						borderWidth: 2,
+						borderDash: [6, 4],
+						pointRadius: 0,
+						fill: false,
+						tension: 0,
+						order: 0
 					}
 				]
 			},
@@ -296,6 +375,12 @@
 					intersect: false
 				},
 				plugins: {
+					title: {
+						display: true,
+						text: `Working Hours — ${periodLabel}`,
+						font: { size: 14, weight: 'bold' },
+						padding: { bottom: 12 }
+					},
 					legend: {
 						position: 'top',
 						labels: {
@@ -313,10 +398,16 @@
 								const value = context.parsed.y ?? 0;
 								label += formatDuration(value);
 
-								// Add difference from target for work hours
-								const diff = value - targetHours;
-								if (diff !== 0) {
-									label += ` (${diff > 0 ? '+' : ''}${formatDuration(Math.abs(diff))} vs target)`;
+								// Add difference from target for work hours bar only
+								if (context.datasetIndex === 0) {
+									const diff = value - targetHours;
+									if (diff > 0) {
+										label += ` (+${formatDuration(diff)} over target)`;
+									} else if (diff < 0) {
+										label += ` (${formatDuration(Math.abs(diff))} under target)`;
+									} else {
+										label += ' (on target)';
+									}
 								}
 
 								return label;
@@ -328,13 +419,17 @@
 					x: {
 						grid: {
 							display: false
+						},
+						title: {
+							display: true,
+							text: xAxisLabel
 						}
 					},
 					y: {
 						beginAtZero: true,
 						title: {
 							display: true,
-							text: 'Duration'
+							text: 'Work Duration (h m)'
 						},
 						ticks: {
 							callback: function (value) {
@@ -541,15 +636,18 @@
 			<div class="card bg-base-200 shadow-xl mb-6">
 				<div class="card-body p-6">
 					<div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-						<h2 class="card-title text-xl mb-4 md:mb-0">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-							</svg>
-							Working Hours
-						</h2>
+						<div>
+							<h2 class="card-title text-xl mb-1">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+								</svg>
+								Working Hours
+							</h2>
+							<p class="text-sm text-base-content/60 ml-8">Daily work hours vs. target ({formatDuration(userSettings.targetWorkHours)}/day). Blue = on/under target, red = over target.</p>
+						</div>
 
 						<!-- View toggle -->
-						<div class="btn-group">
+						<div class="btn-group mt-2 md:mt-0">
 							<button
 								class="btn btn-sm {workHoursViewMode === 'week' ? 'btn-primary' : 'btn-ghost'}"
 								onclick={() => { workHoursViewMode = 'week'; loadWorkHoursData(); }}
@@ -619,7 +717,7 @@
 							<div class="stat p-4">
 								<div class="stat-title text-xs">Above Target</div>
 								<div class="stat-value text-lg text-error">{periodTotals.daysAboveTarget}</div>
-								<div class="stat-desc text-xs">days</div>
+								<div class="stat-desc text-xs">days (red bars)</div>
 							</div>
 						</div>
 
@@ -628,7 +726,7 @@
 							<div class="stat p-4">
 								<div class="stat-title text-xs">At/Below Target</div>
 								<div class="stat-value text-lg text-success">{periodTotals.daysBelowTarget}</div>
-								<div class="stat-desc text-xs">days</div>
+								<div class="stat-desc text-xs">days (blue bars)</div>
 							</div>
 						</div>
 					</div>
@@ -642,12 +740,13 @@
 		<!-- Trend Chart -->
 		<div class="card bg-base-200 shadow-xl lg:col-span-2">
 			<div class="card-body p-6">
-				<h2 class="card-title text-xl mb-4">
+				<h2 class="card-title text-xl mb-1">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
 					</svg>
 					Time Trend
 				</h2>
+				<p class="text-sm text-base-content/60 mb-4 ml-8">Stacked area chart of daily activity. Hover for exact durations and totals.</p>
 
 				<div class="h-96 w-full">
 					{#if loading}
@@ -671,13 +770,14 @@
 		<!-- Pie Chart -->
 		<div class="card bg-base-200 shadow-xl">
 			<div class="card-body p-6">
-				<h2 class="card-title text-xl mb-4">
+				<h2 class="card-title text-xl mb-1">
 					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 						<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
 						<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
 					</svg>
 					Time Distribution
 				</h2>
+				<p class="text-sm text-base-content/60 mb-4 ml-8">Share of total time per activity. Legend shows % of total.</p>
 
 				<div class="h-96 w-full">
 					{#if loading}
@@ -790,7 +890,7 @@
 					</div>
 					<div class="stat-title">Avg Work Hours</div>
 					<div class="stat-value text-primary">{formatDuration(dailyAverages.averageWorkHours)}</div>
-					<div class="stat-desc">{dailyAverages.totalWorkDays} work days</div>
+					<div class="stat-desc">{dailyAverages.totalWorkDays} work days in range</div>
 				</div>
 			</div>
 
@@ -832,9 +932,9 @@
 							<path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
 						</svg>
 					</div>
-					<div class="stat-title">Total Duration</div>
+					<div class="stat-title">Avg Total Duration</div>
 					<div class="stat-value text-info">{formatDuration(dailyAverages.averageTotalDurationHours)}</div>
-					<div class="stat-desc">Avg per day (incl. all activities)</div>
+					<div class="stat-desc">All activities per day</div>
 				</div>
 			</div>
 		</div>
@@ -846,12 +946,13 @@
 			<!-- Commute to Work -->
 			<div class="card bg-base-200 shadow-xl">
 				<div class="card-body p-6">
-					<h2 class="card-title text-xl mb-4">
+					<h2 class="card-title text-xl mb-1">
 						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
 						</svg>
 						Commute to Work Patterns
 					</h2>
+					<p class="text-sm text-base-content/60 mb-3 ml-8">By day of week. "Best Departure" = hour with shortest commute time.</p>
 
 					<div class="overflow-x-auto -mx-6">
 						<table class="table table-zebra table-sm">
@@ -859,9 +960,9 @@
 								<tr>
 									<th>Day</th>
 									<th>Avg Duration</th>
-									<th>Best Time</th>
-									<th>Shortest</th>
-									<th>Sessions</th>
+									<th>Best Departure</th>
+									<th>Shortest Trip</th>
+									<th>Trips</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -871,16 +972,16 @@
 										<td>{formatDuration(pattern.averageDurationHours)}</td>
 										<td>
 											{#if pattern.optimalStartHour !== null && pattern.optimalStartHour !== undefined}
-												{pattern.optimalStartHour}:00
+												{pattern.optimalStartHour.toString().padStart(2, '0')}:00
 											{:else}
-												-
+												—
 											{/if}
 										</td>
 										<td>
 											{#if pattern.shortestDurationHours !== null && pattern.shortestDurationHours !== undefined}
 												{formatDuration(pattern.shortestDurationHours)}
 											{:else}
-												-
+												—
 											{/if}
 										</td>
 										<td>{pattern.sessionCount}</td>
@@ -895,12 +996,13 @@
 			<!-- Commute to Home -->
 			<div class="card bg-base-200 shadow-xl">
 				<div class="card-body p-6">
-					<h2 class="card-title text-xl mb-4">
+					<h2 class="card-title text-xl mb-1">
 						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
 						</svg>
 						Commute to Home Patterns
 					</h2>
+					<p class="text-sm text-base-content/60 mb-3 ml-8">By day of week. "Best Departure" = hour with shortest commute time.</p>
 
 					<div class="overflow-x-auto -mx-6">
 						<table class="table table-zebra table-sm">
@@ -908,9 +1010,9 @@
 								<tr>
 									<th>Day</th>
 									<th>Avg Duration</th>
-									<th>Best Time</th>
-									<th>Shortest</th>
-									<th>Sessions</th>
+									<th>Best Departure</th>
+									<th>Shortest Trip</th>
+									<th>Trips</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -920,16 +1022,16 @@
 										<td>{formatDuration(pattern.averageDurationHours)}</td>
 										<td>
 											{#if pattern.optimalStartHour !== null && pattern.optimalStartHour !== undefined}
-												{pattern.optimalStartHour}:00
+												{pattern.optimalStartHour.toString().padStart(2, '0')}:00
 											{:else}
-												-
+												—
 											{/if}
 										</td>
 										<td>
 											{#if pattern.shortestDurationHours !== null && pattern.shortestDurationHours !== undefined}
 												{formatDuration(pattern.shortestDurationHours)}
 											{:else}
-												-
+												—
 											{/if}
 										</td>
 										<td>{pattern.sessionCount}</td>
