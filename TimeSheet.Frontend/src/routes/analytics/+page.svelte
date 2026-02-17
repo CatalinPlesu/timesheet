@@ -688,7 +688,7 @@
 		}
 	}
 
-	let initialLoadComplete = $state(false);
+	let initialLoadComplete = false;
 
 	onMount(() => {
 		loadData();

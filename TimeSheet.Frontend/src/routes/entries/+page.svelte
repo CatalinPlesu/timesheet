@@ -32,9 +32,9 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
-	// Date range filters (computed from currentPeriod)
-	let startDate = $state<Date | undefined>(undefined);
-	let endDate = $state<Date | undefined>(undefined);
+	// Date range filters (computed from currentPeriod — plain vars, not reactive state)
+	let startDate: Date | undefined;
+	let endDate: Date | undefined;
 
 	// Current period navigation
 	let currentPeriod = $state<Date>(new Date()); // Defaults to today
@@ -500,7 +500,7 @@
 		}
 	}
 
-	let initialLoadComplete = $state(false);
+	let initialLoadComplete = false;
 
 	// Load entries on mount
 	onMount(() => {
