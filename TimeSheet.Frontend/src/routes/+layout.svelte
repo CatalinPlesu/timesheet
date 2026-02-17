@@ -97,9 +97,9 @@
 				TimeSheet
 			</a>
 		</div>
-		<div class="flex-none flex items-center">
-			<ul class="menu menu-horizontal px-1 gap-1 items-center">
-				{#if showNav}
+		<div class="flex-none flex items-center gap-1">
+			{#if showNav}
+				<ul class="menu menu-horizontal px-1 gap-1 items-center">
 					<li>
 						<a href="/tracking" class="btn btn-ghost btn-sm">
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -124,19 +124,15 @@
 							<span class="hidden sm:inline">Analytics</span>
 						</a>
 					</li>
-					<li>
-						<ThemePicker />
-					</li>
-					<li>
-						<ProfileDropdown onLogout={handleLogout} />
-					</li>
-				{:else}
-					<li>
-						<ThemePicker />
-					</li>
+				</ul>
+				<ThemePicker />
+				<ProfileDropdown onLogout={handleLogout} />
+			{:else}
+				<ul class="menu menu-horizontal px-1 gap-1 items-center">
 					<li><a href="/about" class="btn btn-ghost btn-sm">About</a></li>
-				{/if}
-			</ul>
+				</ul>
+				<ThemePicker />
+			{/if}
 		</div>
 	</div>
 

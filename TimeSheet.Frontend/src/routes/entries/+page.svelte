@@ -581,9 +581,9 @@
 						<!-- Navigation Controls -->
 						<div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
 							<!-- Previous/Next Buttons -->
-							<div class="join w-full sm:w-auto">
+							<div class="flex gap-2 w-full sm:w-auto">
 								<button
-									class="btn btn-outline join-item flex-1"
+									class="btn btn-outline flex-1 sm:flex-none"
 									onclick={navigatePrevious}
 									disabled={loading}
 									aria-label="Previous period"
@@ -592,7 +592,7 @@
 									<span class="hidden sm:inline">Previous</span>
 								</button>
 								<button
-									class="btn btn-outline join-item flex-1"
+									class="btn btn-outline flex-1 sm:flex-none"
 									onclick={navigateNext}
 									disabled={loading}
 									aria-label="Next period"
