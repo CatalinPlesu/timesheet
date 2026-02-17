@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,11 +15,23 @@ namespace TimeSheet.Tests.Integration.Fixtures;
 
 /// <summary>
 /// Test fixture that provides a WebApplicationFactory for API integration testing.
-/// Sets up real services with in-memory database.
+/// Uses an in-memory SQLite connection (same provider as production) to avoid EF Core
+/// internal service provider conflicts that occur when two providers are loaded simultaneously.
+/// The connection is kept open for the fixture's lifetime so the in-memory database persists
+/// across DbContext instances.
 /// </summary>
-public class ApiTestFixture : WebApplicationFactory<Program>
+public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
 {
-    private readonly string _databaseName = $"TestApiDb_{Guid.NewGuid()}";
+    // Keep a single SQLite connection open so the :memory: database is not lost between scopes.
+    private readonly SqliteConnection _connection;
+
+    public ApiTestFixture()
+    {
+        _connection = new SqliteConnection("Data Source=:memory:");
+        _connection.Open();
+        // Schema is created lazily on first use via EnsureCreated in InitializeDatabase.
+        // Tests that need a clean state call ClearDatabase(), which also ensures the schema exists.
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -26,6 +39,8 @@ public class ApiTestFixture : WebApplicationFactory<Program>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                // Connection string is not used directly because we override the DbContext below,
+                // but DatabaseOptions validation still requires a non-empty value.
                 ["Database:ConnectionString"] = "Data Source=:memory:",
                 ["Database:EnableSensitiveDataLogging"] = "true",
                 ["Database:EnableDetailedErrors"] = "true",
@@ -39,26 +54,18 @@ public class ApiTestFixture : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
-            // Remove all DbContext-related registrations (SQLite provider from AddPersistenceServices)
-            services.RemoveAll<DbContextOptions>();
-            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            // Remove the SQLite DbContext registration added by AddPersistenceServices.
+            // We replace it with a SQLite in-memory DbContext that shares a single open
+            // connection, so the database is not dropped between scoped DbContext instances.
             services.RemoveAll<AppDbContext>();
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
 
-            // Also remove the Action<DbContextOptionsBuilder> configurations
-            var dbContextOptionsDescriptors = services.Where(d =>
-                d.ServiceType.IsGenericType &&
-                d.ServiceType.GetGenericTypeDefinition() == typeof(Action<>))
-                .ToList();
-
-            foreach (var descriptor in dbContextOptionsDescriptors)
-            {
-                services.Remove(descriptor);
-            }
-
-            // Add InMemory database for testing
+            // Use the same SQLite provider (no two-provider conflict) but with the shared
+            // in-memory connection instead of a file-based or separate :memory: connection.
+            var connection = _connection;
             services.AddDbContext<AppDbContext>((sp, options) =>
             {
-                options.UseInMemoryDatabase(_databaseName);
+                options.UseSqlite(connection);
                 options.EnableSensitiveDataLogging();
                 options.EnableDetailedErrors();
             });
@@ -83,7 +90,7 @@ public class ApiTestFixture : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Initializes the database and ensures it's created.
+    /// Initializes the database schema. Call once before running tests.
     /// </summary>
     public void InitializeDatabase()
     {
@@ -93,12 +100,16 @@ public class ApiTestFixture : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Clears all data from the database.
+    /// Clears all data from the database between tests.
+    /// Also ensures the schema is created if it does not exist yet.
     /// </summary>
     public void ClearDatabase()
     {
         using var scope = Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Ensure schema exists (idempotent — no-op if already created).
+        dbContext.Database.EnsureCreated();
 
         dbContext.Set<TimeSheet.Core.Domain.Entities.TrackingSession>().RemoveRange(
             dbContext.Set<TimeSheet.Core.Domain.Entities.TrackingSession>());
@@ -108,5 +119,14 @@ public class ApiTestFixture : WebApplicationFactory<Program>
             dbContext.Set<TimeSheet.Core.Domain.Entities.PendingMnemonic>());
 
         dbContext.SaveChanges();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _connection.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }
