@@ -28,7 +28,7 @@
 	let page = $state(1);
 	let pageSize = $state(50);
 	let totalPages = $state(0);
-	let groupBy = $state(0); // 0=None, 1=Day, 2=Week, 3=Month, 4=Year
+	let groupBy = $state(1); // 1=Day, 2=Week, 3=Month, 4=Year
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
@@ -552,7 +552,6 @@
 						class="select select-bordered w-full"
 						bind:value={groupBy}
 					>
-						<option value={0}>None</option>
 						<option value={1}>Day</option>
 						<option value={2}>Week</option>
 						<option value={3}>Month</option>
