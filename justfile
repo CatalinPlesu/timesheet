@@ -462,7 +462,7 @@ toggle:
       API_PID=$!; \
       skate set "${RKEY}-api-pid@{{_db}}" "$API_PID"; \
       echo "  ✓ API started (PID $API_PID)"; \
-      (cd TimeSheet.Frontend && NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble devjs && python3 -m http.server "${FRONTEND_PORT:-3000}" --directory .) > /tmp/timesheet-frontend.log 2>&1 & \
+      (cd TimeSheet.Frontend && API_BASE="http://localhost:${API_PORT:-5191}" NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble devjs && fuser -k "${FRONTEND_PORT:-8080}/tcp" 2>/dev/null || true && python3 -m http.server "${FRONTEND_PORT:-8080}" --directory .) > /tmp/timesheet-frontend.log 2>&1 & \
       FRONTEND_PID=$!; \
       skate set "${RKEY}-frontend-pid@{{_db}}" "$FRONTEND_PID"; \
       echo "  ✓ Frontend started (PID $FRONTEND_PID)"; \
