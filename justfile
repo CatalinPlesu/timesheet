@@ -354,20 +354,27 @@ build-frontend:
     cp -r TimeSheet.Frontend/dist publish/frontend/; \
     echo "  ✓ Built to publish/frontend/"
 
-# Run API with hot reload (dotnet watch)
+# Run API (dotnet run, no file watching to avoid inotify limits)
 dev-api:
-    @echo "→ Starting API in watch mode…"; \
-    dotnet watch --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj run
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "→ Starting API…"
+    dotnet run --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj
 
-# Compile Nim frontend (debug) then serve with Python HTTP server on port 3000.
-# API runs separately; set API_PORT to override (default 5191).
+# Compile Nim frontend then serve on port 3000.
+# API_PORT defaults to 5191 (what dev-api uses).
 dev-frontend:
-    @API_URL="http://localhost:${API_PORT:-5191}"; \
-    echo "→ Compiling frontend (Nim/Karax) with API_BASE=$$API_URL…"; \
-    cd TimeSheet.Frontend && API_BASE=$$API_URL NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
-      mise exec -- nimble devjs; \
-    echo "→ Serving at http://localhost:3000  (API proxied from $$API_URL)"; \
-    python3 -m http.server 3000 --directory TimeSheet.Frontend/
+    #!/usr/bin/env bash
+    set -euo pipefail
+    API_URL="http://localhost:${API_PORT:-5191}"
+    echo "→ Compiling Nim/Karax frontend (API_BASE=$API_URL)…"
+    cd TimeSheet.Frontend
+    API_BASE="$API_URL" \
+      NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
+      mise exec -- nimble devjs
+    echo "→ Serving at http://localhost:3000"
+    fuser -k 3000/tcp 2>/dev/null || true
+    python3 -m http.server 3000 --directory .
 
 # Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
 dev:
