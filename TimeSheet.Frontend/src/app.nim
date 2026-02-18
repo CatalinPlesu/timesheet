@@ -23,3 +23,4 @@ if stored != "":
   token = stored
   page = pgTracking
   fetchCurrentState()
+  fetchAllAnalytics()

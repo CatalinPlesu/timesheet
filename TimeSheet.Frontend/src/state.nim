@@ -9,12 +9,16 @@ import std / jsffi
 # ─── JS glue ───────────────────────────────────────────────────────────────────
 
 proc jsParseJson*(s: cstring): JsObject {.importjs: "JSON.parse(#)".}
+proc jsStringify*(o: JsObject): cstring  {.importjs: "JSON.stringify(#)".}
 proc jsLen*(o: JsObject): int   {.importjs: "#.length".}
 proc isNull*(o: JsObject): bool {.importjs: "(# == null)".}
 proc toStr*(o: JsObject): cstring {.importjs: "String(#)".}
 proc toFloat*(o: JsObject): float {.importjs: "Number(#)".}
 proc toInt*(o: JsObject): int     {.importjs: "Number(#)|0".}
 proc toBool*(o: JsObject): bool   {.importjs: "!!(#)".}
+
+proc jsNow*(): float {.importjs: "Date.now()".}
+proc msToDateStr*(ms: float): cstring {.importjs: "(new Date(#)).toISOString().split('T')[0]".}
 
 proc lsGet*(k: cstring): cstring    {.importjs: "(localStorage.getItem(#)||'')".}
 proc lsSet*(k, v: cstring)          {.importjs: "localStorage.setItem(#,#)".}
@@ -48,7 +52,12 @@ var
   entEntries*: JsObject
 
   # Analytics
-  anaData*: JsObject
+  anaData*:      JsObject
+  anaTab*        = cstring "stats"   # "stats" | "chart" | "calendar"
+  anaPeriod*     = 30                # 7, 30, 90, 365
+  anaStats*:     JsObject
+  anaChart*:     JsObject
+  anaBreakdown*: JsObject
 
 # ─── Token helpers ─────────────────────────────────────────────────────────────
 

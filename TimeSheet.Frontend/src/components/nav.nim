@@ -31,7 +31,7 @@ proc renderNav*(): VNode =
               proc onclick(ev: Event; n: VNode) =
                 page = pgAnalytics
                 successMsg = cstring ""
-                fetchAnalytics()
+                fetchAllAnalytics()
               text "Analytics"
           li:
             a(href = "#"):

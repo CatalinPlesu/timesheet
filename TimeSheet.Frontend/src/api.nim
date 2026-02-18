@@ -110,6 +110,39 @@ proc fetchAnalytics*() =
     if ok: anaData = data
   )
 
+proc fetchAnalyticsStats*() =
+  let url = cstring("/api/analytics/stats-summary?days=" & $anaPeriod)
+  apiGet(url, proc(ok: bool; data: JsObject) =
+    if ok: anaStats = data
+  )
+
+proc fetchChartData*() =
+  let endMs   = jsNow()
+  let startMs = endMs - float(anaPeriod) * 86400000.0
+  let startStr = msToDateStr(startMs)
+  let endStr   = msToDateStr(endMs)
+  let url = cstring("/api/analytics/chart-data?startDate=" & $startStr &
+                    "&endDate=" & $endStr & "&groupBy=Day")
+  apiGet(url, proc(ok: bool; data: JsObject) =
+    if ok: anaChart = data
+  )
+
+proc fetchBreakdown*() =
+  let endMs   = jsNow()
+  let startMs = endMs - float(anaPeriod) * 86400000.0
+  let startStr = msToDateStr(startMs)
+  let endStr   = msToDateStr(endMs)
+  let url = cstring("/api/analytics/daily-breakdown?startDate=" & $startStr &
+                    "&endDate=" & $endStr)
+  apiGet(url, proc(ok: bool; data: JsObject) =
+    if ok: anaBreakdown = data
+  )
+
+proc fetchAllAnalytics*() =
+  fetchAnalyticsStats()
+  fetchChartData()
+  fetchBreakdown()
+
 proc doLogin*(mnemonic: cstring) =
   loading = true
   errorMsg = cstring ""

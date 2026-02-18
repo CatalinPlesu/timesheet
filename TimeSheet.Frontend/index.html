@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TimeSheet</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <style>
     nav                  { border-bottom: 1px solid var(--pico-muted-border-color); }
     .state-label         { font-size: 2rem; font-weight: 700; margin-bottom: 0; }
@@ -18,9 +19,95 @@
     .pagination p        { margin: 0; }
     .btn-compact         { padding: 0.2rem 0.5rem; margin: 0; }
     .muted-sm            { color: var(--pico-muted-color); font-size: 0.85rem; }
+    /* Calendar */
+    .cal-grid            { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 1rem; }
+    .cal-day             { border: 1px solid var(--pico-muted-border-color); border-radius: 4px; padding: 4px; min-height: 60px; font-size: 0.75rem; }
+    .cal-day.no-data     { opacity: 0.4; }
+    .cal-day-num         { font-weight: 600; margin-bottom: 2px; }
+    .cal-bar             { height: 6px; border-radius: 2px; margin-bottom: 1px; }
+    .cal-work            { background: rgba(59,130,246,0.8); }
+    .cal-commute         { background: rgba(34,197,94,0.8); }
+    .cal-lunch           { background: rgba(251,146,60,0.8); }
+    .cal-idle            { background: rgba(156,163,175,0.4); }
+    .cal-header          { text-align: center; font-weight: 600; font-size: 0.75rem; padding: 4px; }
+    /* Period / ana tabs */
+    .period-tabs         { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .ana-tabs            { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--pico-muted-border-color); }
+    .ana-tab             { padding: 0.5rem 1.2rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; background: none; border-top: none; border-left: none; border-right: none; color: var(--pico-color); }
+    .ana-tab.active      { border-bottom-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600; }
+    /* Stats table */
+    .stats-table         { width: 100%; border-collapse: collapse; }
+    .stats-table th,
+    .stats-table td      { padding: 0.4rem 0.8rem; text-align: right; border-bottom: 1px solid var(--pico-muted-border-color); }
+    .stats-table th:first-child,
+    .stats-table td:first-child { text-align: left; }
+    .stats-table thead th { font-weight: 600; background: var(--pico-card-background-color); }
   </style>
 </head>
 <body>
+  <div id="ROOT"></div>
+  <script>
+var _charts = {};
+function renderLineChart(canvasId, labels, datasets) {
+  if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+  var ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  _charts[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Hours' } } }
+    }
+  });
+}
+function renderTimelineChart(canvasId, labels, workData, commuteData, lunchData, idleData) {
+  if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+  var ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  _charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Work',    data: workData,    backgroundColor: 'rgba(59,130,246,0.8)' },
+        { label: 'Commute', data: commuteData, backgroundColor: 'rgba(34,197,94,0.8)'  },
+        { label: 'Lunch',   data: lunchData,   backgroundColor: 'rgba(251,146,60,0.8)' },
+        { label: 'Idle',    data: idleData,    backgroundColor: 'rgba(156,163,175,0.4)' }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Hours' } }
+      }
+    }
+  });
+}
+function renderChartFromJson(canvasId, labelsJson, workJson, commuteJson, lunchJson, idleJson) {
+  var labels  = JSON.parse(labelsJson);
+  var work    = JSON.parse(workJson);
+  var commute = JSON.parse(commuteJson);
+  var lunch   = JSON.parse(lunchJson);
+  var idle    = JSON.parse(idleJson);
+  renderLineChart(canvasId, labels, [
+    { label: 'Work',    data: work,    borderColor: 'rgb(59,130,246)',  backgroundColor: 'rgba(59,130,246,0.1)',  fill: true, tension: 0.3 },
+    { label: 'Commute', data: commute, borderColor: 'rgb(34,197,94)',   backgroundColor: 'rgba(34,197,94,0.1)',   fill: true, tension: 0.3 },
+    { label: 'Lunch',   data: lunch,   borderColor: 'rgb(251,146,60)',  backgroundColor: 'rgba(251,146,60,0.1)',  fill: true, tension: 0.3 },
+    { label: 'Idle',    data: idle,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 }
+  ]);
+}
+function renderStackedFromJson(canvasId, labelsJson, workJson, commuteJson, lunchJson, idleJson) {
+  var labels = JSON.parse(labelsJson);
+  renderTimelineChart(canvasId, labels,
+    JSON.parse(workJson), JSON.parse(commuteJson),
+    JSON.parse(lunchJson), JSON.parse(idleJson));
+}
+  </script>
   <script src="dist/app.js"></script>
 </body>
 </html>

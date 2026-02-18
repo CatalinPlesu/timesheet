@@ -628,6 +628,125 @@ public class AnalyticsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Gets statistical summary (avg, min, max, stddev, total) for all activity types over the last N days.
+    /// </summary>
+    /// <param name="days">Number of days to look back (default 30).</param>
+    /// <returns>StatsSummaryDto with per-activity statistics.</returns>
+    /// <response code="200">Stats summary retrieved successfully.</response>
+    /// <response code="401">Unauthorized - invalid or missing JWT token.</response>
+    /// <response code="500">Internal server error.</response>
+    [HttpGet("stats-summary")]
+    [ProducesResponseType(typeof(StatsSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<StatsSummaryDto>> GetStatsSummary(
+        [FromQuery] int days = 30,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+            var end = DateTime.UtcNow.Date.AddDays(1);
+            var start = DateTime.UtcNow.Date.AddDays(-days);
+
+            var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, start, end, cancellationToken);
+
+            // Only completed sessions, grouped by calendar date
+            var byDate = sessions
+                .Where(s => s.EndedAt.HasValue)
+                .GroupBy(s => s.StartedAt.Date)
+                .ToList();
+
+            int daysWithData = byDate.Count;
+
+            // Accumulate per-day totals for each activity type
+            var workPerDay          = new List<double>(daysWithData);
+            var commutePerDay       = new List<double>(daysWithData);
+            var commuteToWorkPerDay = new List<double>(daysWithData);
+            var commuteToHomePerDay = new List<double>(daysWithData);
+            var lunchPerDay         = new List<double>(daysWithData);
+
+            foreach (var dayGroup in byDate)
+            {
+                double work = 0, commToW = 0, commToH = 0, lunch = 0;
+
+                foreach (var session in dayGroup)
+                {
+                    double dur = (session.EndedAt!.Value - session.StartedAt).TotalHours;
+                    switch (session.State)
+                    {
+                        case TrackingState.Working:
+                            work += dur;
+                            break;
+                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToWork:
+                            commToW += dur;
+                            break;
+                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToHome:
+                            commToH += dur;
+                            break;
+                        case TrackingState.Lunch:
+                            lunch += dur;
+                            break;
+                    }
+                }
+
+                workPerDay.Add(work);
+                commuteToWorkPerDay.Add(commToW);
+                commuteToHomePerDay.Add(commToH);
+                lunchPerDay.Add(lunch);
+
+                // Total commute for the day
+                commutePerDay.Add(commToW + commToH);
+            }
+
+            static ActivityStatsDto CalcStats(List<double> values)
+            {
+                if (values.Count == 0)
+                    return new ActivityStatsDto { Avg = 0, Min = 0, Max = 0, StdDev = 0, Total = 0 };
+
+                double total  = values.Sum();
+                double avg    = total / values.Count;
+                double min    = values.Min();
+                double max    = values.Max();
+                double stdDev = 0;
+                if (values.Count > 1)
+                {
+                    double sumSq = values.Sum(v => (v - avg) * (v - avg));
+                    stdDev = Math.Sqrt(sumSq / (values.Count - 1));
+                }
+
+                return new ActivityStatsDto
+                {
+                    Avg    = Math.Round(avg,    4),
+                    Min    = Math.Round(min,    4),
+                    Max    = Math.Round(max,    4),
+                    StdDev = Math.Round(stdDev, 4),
+                    Total  = Math.Round(total,  4)
+                };
+            }
+
+            return Ok(new StatsSummaryDto
+            {
+                PeriodDays   = days,
+                DaysWithData = daysWithData,
+                Work         = CalcStats(workPerDay),
+                Commute      = CalcStats(commutePerDay),
+                CommuteToWork = CalcStats(commuteToWorkPerDay),
+                CommuteToHome = CalcStats(commuteToHomePerDay),
+                Lunch        = CalcStats(lunchPerDay)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating stats summary");
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while calculating stats summary");
+        }
+    }
+
     private static List<ChartDataGroup> GroupSessionsByPeriod(
         List<Core.Domain.Entities.TrackingSession> sessions,
         DateTime startDate,
