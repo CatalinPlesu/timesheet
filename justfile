@@ -361,20 +361,21 @@ dev-api:
     echo "→ Starting API…"
     dotnet run --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj
 
-# Compile Nim frontend then serve on port 3000.
+# Compile Nim frontend then serve on port 8080.
 # API_PORT defaults to 5191 (what dev-api uses).
+# FRONTEND_PORT defaults to 8080.
 dev-frontend:
     #!/usr/bin/env bash
     set -euo pipefail
+    PORT="${FRONTEND_PORT:-8080}"
     API_URL="http://localhost:${API_PORT:-5191}"
     echo "→ Compiling Nim/Karax frontend (API_BASE=$API_URL)…"
     cd TimeSheet.Frontend
     API_BASE="$API_URL" \
       NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
       mise exec -- nimble devjs
-    echo "→ Serving at http://localhost:3000"
-    fuser -k 3000/tcp 2>/dev/null || true
-    python3 -m http.server 3000 --directory .
+    echo "→ Serving at http://localhost:$PORT"
+    python3 -m http.server "$PORT" --directory .
 
 # Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
 dev:
