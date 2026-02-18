@@ -375,6 +375,7 @@ dev-frontend:
       NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
       mise exec -- nimble devjs
     echo "→ Serving at http://localhost:$PORT"
+    fuser -k "$PORT/tcp" 2>/dev/null || true
     python3 -m http.server "$PORT" --directory .
 
 # Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
