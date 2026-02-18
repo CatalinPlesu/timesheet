@@ -19,7 +19,7 @@ Access Seq UI at: http://localhost:5341
 
 ### Docker Compose (Production)
 
-Seq is already configured in `docker-compose.yml`:
+Seq is already configured in `compose.yaml`:
 ```bash
 docker compose up -d
 ```

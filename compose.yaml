@@ -1,0 +1,78 @@
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: TimeSheet.Presentation.Telegram/Dockerfile
+    container_name: timesheet-telegram-bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - Database__ConnectionString=Data Source=/app/data/timesheet.db
+      - Database__EnableSensitiveDataLogging=false
+      - Database__EnableDetailedErrors=false
+      - Bot__Token=${BOT_TOKEN}
+      - Serilog__WriteTo__1__Name=Seq
+      - Serilog__WriteTo__1__Args__serverUrl=http://seq:80
+      - Workers__AutoShutdownCheckInterval=${AUTO_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
+      - Workers__ForgotShutdownCheckInterval=${FORGOT_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
+      - Workers__LunchReminderCheckInterval=${LUNCH_REMINDER_CHECK_INTERVAL:-00:03:00}
+      - Workers__WorkHoursAlertCheckInterval=${WORK_HOURS_ALERT_CHECK_INTERVAL:-00:03:00}
+    depends_on:
+      - seq
+    networks:
+      - timesheet-network
+
+  api:
+    build:
+      context: .
+      dockerfile: TimeSheet.Presentation.API/Dockerfile
+    container_name: timesheet-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-5000}:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:5000
+      - Database__ConnectionString=Data Source=/app/data/timesheet.db
+      - Database__EnableSensitiveDataLogging=false
+      - Database__EnableDetailedErrors=false
+      - JwtSettings__SecretKey=${JWT_SECRET_KEY}
+      - JwtSettings__Issuer=${JWT_ISSUER:-TimeSheet.API}
+      - JwtSettings__Audience=${JWT_AUDIENCE:-TimeSheet.Web}
+      - JwtSettings__ExpirationMinutes=${JWT_EXPIRATION_MINUTES:-60}
+      - Cors__AllowedOrigins__0=http://localhost:${FRONTEND_PORT:-3000}
+      - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL:-http://localhost:3000}
+      - Serilog__WriteTo__2__Name=Seq
+      - Serilog__WriteTo__2__Args__serverUrl=http://seq:80
+    depends_on:
+      - seq
+    networks:
+      - timesheet-network
+
+  # frontend: TODO — add nginx Dockerfile for Nim/Karax SPA (compile Nim → JS, serve with nginx)
+
+  seq:
+    image: datalust/seq:latest
+    container_name: timesheet-seq
+    restart: unless-stopped
+    ports:
+      - "${SEQ_PORT:-5341}:80"
+    volumes:
+      - seq-data:/data
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=${SEQ_NO_AUTH:-true}
+    networks:
+      - timesheet-network
+
+volumes:
+  seq-data:
+    driver: local
+
+networks:
+  timesheet-network:
+    driver: bridge

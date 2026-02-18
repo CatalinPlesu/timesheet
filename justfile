@@ -345,22 +345,29 @@ publish-api:
       -o publish/api/ \
       --os linux --arch x64
 
-# Build frontend for production to namespaced output directory
+# Build frontend for production (Nim → JS)
 build-frontend:
-    @echo "→ Building frontend to publish/frontend/"; \
-    cd TimeSheet.Frontend && npm run build; \
-    mkdir -p ../publish/frontend; \
-    cp -r build/* ../publish/frontend/
+    @echo "→ Compiling frontend (Nim/Karax)…"; \
+    cd TimeSheet.Frontend && NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble buildjs; \
+    mkdir -p publish/frontend; \
+    cp TimeSheet.Frontend/index.html publish/frontend/; \
+    cp -r TimeSheet.Frontend/dist publish/frontend/; \
+    echo "  ✓ Built to publish/frontend/"
 
 # Run API with hot reload (dotnet watch)
 dev-api:
     @echo "→ Starting API in watch mode…"; \
     dotnet watch --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj run
 
-# Run SvelteKit dev server
+# Compile Nim frontend (debug) then serve with Python HTTP server on port 3000.
+# API runs separately; set API_PORT to override (default 5191).
 dev-frontend:
-    @echo "→ Starting SvelteKit dev server…"; \
-    cd TimeSheet.Frontend && npm run dev
+    @API_URL="http://localhost:${API_PORT:-5191}"; \
+    echo "→ Compiling frontend (Nim/Karax) with API_BASE=$$API_URL…"; \
+    cd TimeSheet.Frontend && API_BASE=$$API_URL NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
+      mise exec -- nimble devjs; \
+    echo "→ Serving at http://localhost:3000  (API proxied from $$API_URL)"; \
+    python3 -m http.server 3000 --directory TimeSheet.Frontend/
 
 # Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
 dev:
@@ -446,9 +453,8 @@ toggle:
       API_PID=$!; \
       skate set "${RKEY}-api-pid@{{_db}}" "$API_PID"; \
       echo "  ✓ API started (PID $API_PID)"; \
-      cd TimeSheet.Frontend && npm run dev > /tmp/timesheet-frontend.log 2>&1 & \
+      (cd TimeSheet.Frontend && NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble devjs && python3 -m http.server "${FRONTEND_PORT:-3000}" --directory .) > /tmp/timesheet-frontend.log 2>&1 & \
       FRONTEND_PID=$!; \
-      cd ..; \
       skate set "${RKEY}-frontend-pid@{{_db}}" "$FRONTEND_PID"; \
       echo "  ✓ Frontend started (PID $FRONTEND_PID)"; \
       echo ""; \
