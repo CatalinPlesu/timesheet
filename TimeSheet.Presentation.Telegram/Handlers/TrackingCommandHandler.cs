@@ -255,13 +255,43 @@ public class TrackingCommandHandler(
                 replyMarkup: keyboard,
                 cancellationToken: cancellationToken);
 
-            // Fire-and-forget end-of-day deviation prompt when a ToHome commute ends
+            // Fire-and-forget and-of-day deviation prompt when a ToHome commute ends,
+            // and office goal notification when a ToWork commute ends (clock-in event).
             var endedSession = result switch
             {
                 TrackingResult.SessionEnded ended => ended.EndedSession,
                 TrackingResult.SessionStarted started => started.EndedSession,
                 _ => null
             };
+
+            // Office goal notification: commute-to-work ended = arrived at office
+            if (endedSession is { State: TrackingState.Commuting, CommuteDirection: CommuteDirection.ToWork })
+            {
+                var clockInTime = endedSession.EndedAt!.Value; // UTC
+                var targetOfficeHours = user.TargetOfficeHours;
+                if (targetOfficeHours.HasValue && targetOfficeHours.Value > 0)
+                {
+                    var delay = clockInTime.AddHours((double)targetOfficeHours.Value) - DateTime.UtcNow;
+                    if (delay > TimeSpan.Zero)
+                    {
+                        var capturedChatId = message.Chat.Id;
+                        var capturedTarget = targetOfficeHours.Value;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await Task.Delay(delay, CancellationToken.None);
+                                await botClient.SendMessage(
+                                    chatId: capturedChatId,
+                                    text: $"You have been in the office for {FormatHours(capturedTarget)} — target reached.",
+                                    cancellationToken: CancellationToken.None);
+                            }
+                            catch { /* ignore */ }
+                        });
+                    }
+                }
+            }
+
             if (endedSession is { State: TrackingState.Commuting, CommuteDirection: CommuteDirection.ToHome })
             {
                 var capturedUserId = userId.Value;
@@ -435,6 +465,16 @@ public class TrackingCommandHandler(
         }
 
         return $"{duration.Minutes}m";
+    }
+
+    /// <summary>
+    /// Formats a decimal hour value into a human-readable string (e.g. 1.5 -> "1h 30m").
+    /// </summary>
+    private static string FormatHours(decimal hours)
+    {
+        var h = (int)hours;
+        var m = (int)((hours - h) * 60);
+        return m > 0 ? $"{h}h {m}m" : $"{h}h";
     }
 
     /// <summary>

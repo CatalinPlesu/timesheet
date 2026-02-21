@@ -114,6 +114,11 @@ public class HelpCommandHandler(
         • `/settings target 7.5` — Notify when 7.5 hours worked
         • `/settings target off` — Disable notification
 
+        *Target office hours:*
+        `/settings officegoal [hours]` or `/settings officegoal off`
+        • `/settings officegoal 9` — Notify when 9 hours in office
+        • `/settings officegoal off` — Disable notification
+
         *Forgot-shutdown alert:*
         `/settings forgot [percent]` or `/settings forgot off`
         • `/settings forgot 150` — Alert at 150% of average

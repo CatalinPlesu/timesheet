@@ -63,6 +63,11 @@ public class SettingsCommandHandler(
             ? $"{user.TargetWorkHours.Value:F1} hours"
             : "Not set";
 
+        // Format target office hours for display
+        var targetOfficeHoursDisplay = user.TargetOfficeHours.HasValue
+            ? $"{user.TargetOfficeHours.Value:F1} hours"
+            : "Not set";
+
         // Format forgot-shutdown threshold for display
         var forgotShutdownDisplay = user.ForgotShutdownThresholdPercent.HasValue
             ? $"{user.ForgotShutdownThresholdPercent.Value}%"
@@ -74,6 +79,7 @@ public class SettingsCommandHandler(
             *Timezone:* {offsetDisplay}
             *Lunch Reminder:* {lunchReminderDisplay}
             *Target Work Hours:* {targetWorkHoursDisplay}
+            *Target Office Hours:* {targetOfficeHoursDisplay}
             *Forgot-Shutdown Alert:* {forgotShutdownDisplay}
 
             Use `/help settings` for usage examples.
@@ -403,6 +409,102 @@ public class SettingsCommandHandler(
 
         logger.LogInformation(
             "User {UserId} updated target work hours to {Hours}",
+            userId.Value,
+            targetHours?.ToString("F1") ?? "disabled");
+    }
+
+    /// <summary>
+    /// Handles office goal configuration from /settings officegoal command.
+    /// </summary>
+    public async Task HandleSettingsOfficeGoalAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        string[] commandParts,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null)
+        {
+            logger.LogWarning("Received /settings officegoal without user ID");
+            return;
+        }
+
+        // Parse target office hours from command
+        // Expected format: /settings officegoal 9, /settings officegoal 8.5, /settings officegoal off
+        if (commandParts.Length < 3)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Usage: `/settings officegoal [hours]` or `/settings officegoal off`\nExample: `/settings officegoal 9`",
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        using var scope = serviceScopeFactory.CreateScope();
+        var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
+
+        decimal? targetHours = null;
+        var hoursString = commandParts[2];
+
+        // Check if user wants to disable the target
+        if (hoursString.Equals("off", StringComparison.OrdinalIgnoreCase))
+        {
+            targetHours = null;
+        }
+        else
+        {
+            // Parse the hours value
+            if (!decimal.TryParse(hoursString, out var hours))
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Invalid hours. Please provide a positive number, or 'off' to disable.\nExample: `/settings officegoal 9`",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            // Validate range: must be positive
+            if (hours <= 0)
+            {
+                await botClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Target office hours must be a positive number.",
+                    cancellationToken: cancellationToken);
+                return;
+            }
+
+            targetHours = hours;
+        }
+
+        // Update the user's target office hours
+        var updatedUser = await userSettingsService.UpdateTargetOfficeHoursAsync(
+            userId.Value,
+            targetHours,
+            cancellationToken);
+
+        if (updatedUser == null)
+        {
+            await botClient.SendMessage(
+                chatId: message.Chat.Id,
+                text: "Failed to update settings. Please try again.",
+                cancellationToken: cancellationToken);
+            return;
+        }
+
+        // Format response
+        var responseText = targetHours.HasValue
+            ? $"✅ Office goal set to {targetHours.Value:F1}h"
+            : "✅ Office goal disabled";
+
+        await botClient.SendMessage(
+            chatId: message.Chat.Id,
+            text: responseText,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "User {UserId} updated target office hours to {Hours}",
             userId.Value,
             targetHours?.ToString("F1") ?? "disabled");
     }

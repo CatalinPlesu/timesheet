@@ -152,6 +152,10 @@ public class UpdateHandler(
             {
                 await settingsCommandHandler.HandleSettingsForgotAsync(botClient, message, parts, cancellationToken);
             }
+            else if (parts.Length >= 2 && parts[1].Equals("officegoal", StringComparison.OrdinalIgnoreCase))
+            {
+                await settingsCommandHandler.HandleSettingsOfficeGoalAsync(botClient, message, parts, cancellationToken);
+            }
             else
             {
                 await settingsCommandHandler.HandleSettingsAsync(botClient, message, cancellationToken);
@@ -328,6 +332,7 @@ public class UpdateHandler(
                 ("settings", "l") => "lunch",
                 ("settings", "t") => "target",
                 ("settings", "f") => "forgot",
+                ("settings", "o") => "officegoal",
 
                 // No match - keep original
                 _ => null
