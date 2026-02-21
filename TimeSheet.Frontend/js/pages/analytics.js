@@ -12,7 +12,9 @@ function fmtDur(h) {
   if (!h) return '0m';
   const m = Math.round(h * 60);
   const hr = Math.floor(m / 60), mn = m % 60;
-  return hr > 0 ? `${hr}h ${mn}m` : `${mn}m`;
+  if (hr > 0 && mn > 0) return `${hr}h ${mn}m`;
+  if (hr > 0) return `${hr}h`;
+  return `${mn}m`;
 }
 
 function dateRange(days) {
