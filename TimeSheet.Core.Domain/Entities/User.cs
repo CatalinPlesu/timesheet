@@ -73,6 +73,13 @@ public sealed class User : CreatedEntity
     public decimal? TargetWorkHours { get; private set; }
 
     /// <summary>
+    /// Gets the target office hours per day (clock-in to present).
+    /// When reached after arriving at the office, the user will be notified once.
+    /// Null means no target is configured.
+    /// </summary>
+    public decimal? TargetOfficeHours { get; private set; }
+
+    /// <summary>
     /// Gets the threshold percentage for forgot-to-shutdown detection.
     /// When a session exceeds average duration by this percentage, a reminder is sent.
     /// Null means no forgot-shutdown detection is configured.
@@ -115,6 +122,7 @@ public sealed class User : CreatedEntity
     /// <param name="lunchReminderHour">The hour (0-23) at which to send a lunch reminder (null = no reminder).</param>
     /// <param name="lunchReminderMinute">The minute (0-59) at which to send a lunch reminder.</param>
     /// <param name="targetWorkHours">The target work hours per day (null = no target).</param>
+    /// <param name="targetOfficeHours">The target office hours per day (null = no target).</param>
     /// <param name="forgotShutdownThresholdPercent">The threshold percentage for forgot-shutdown detection (null = no detection).</param>
     public User(
         Guid id,
@@ -130,6 +138,7 @@ public sealed class User : CreatedEntity
         int? lunchReminderHour = null,
         int lunchReminderMinute = 0,
         decimal? targetWorkHours = null,
+        decimal? targetOfficeHours = null,
         int? forgotShutdownThresholdPercent = null)
         : base(id, createdAt)
     {
@@ -144,6 +153,7 @@ public sealed class User : CreatedEntity
         LunchReminderHour = lunchReminderHour;
         LunchReminderMinute = lunchReminderMinute;
         TargetWorkHours = targetWorkHours;
+        TargetOfficeHours = targetOfficeHours;
         ForgotShutdownThresholdPercent = forgotShutdownThresholdPercent;
     }
 
@@ -234,6 +244,19 @@ public sealed class User : CreatedEntity
             throw new ArgumentException("Target work hours must be positive.", nameof(hours));
 
         TargetWorkHours = hours;
+    }
+
+    /// <summary>
+    /// Updates the target office hours per day setting.
+    /// </summary>
+    /// <param name="hours">The target office hours per day (null = disable target).</param>
+    /// <exception cref="ArgumentException">Thrown when hours is negative or zero.</exception>
+    public void UpdateTargetOfficeHours(decimal? hours)
+    {
+        if (hours.HasValue && hours.Value <= 0)
+            throw new ArgumentException("Target office hours must be positive.", nameof(hours));
+
+        TargetOfficeHours = hours;
     }
 
     /// <summary>
