@@ -151,10 +151,21 @@ function renderStats(el) {
     </tr>`;
   }).join('');
 
+  // Average office span from _breakdown
+  const officeSpanValues = (_breakdown || [])
+    .map(d => d.officeSpanHours)
+    .filter(h => h != null);
+  const avgOfficeSpan = officeSpanValues.length
+    ? officeSpanValues.reduce((a, b) => a + b, 0) / officeSpanValues.length
+    : null;
+
   // Period totals
   let periodTotalsHtml = '';
   if (_periodAggregate) {
     const pa = _periodAggregate;
+    const officeSpanPart = avgOfficeSpan != null
+      ? `  &nbsp;|&nbsp; Avg office span: ${fmtDur(avgOfficeSpan)}`
+      : '';
     periodTotalsHtml = `
       <article>
         <strong>Period Totals</strong>
@@ -162,7 +173,7 @@ function renderStats(el) {
           Work: ${fmtDur(pa.totalWorkHours)}  &nbsp;|&nbsp;
           Commute: ${fmtDur(pa.totalCommuteHours)}  &nbsp;|&nbsp;
           Lunch: ${fmtDur(pa.totalLunchHours)}  &nbsp;|&nbsp;
-          Work days: ${pa.workDaysCount ?? '—'}
+          Work days: ${pa.workDaysCount ?? '—'}${officeSpanPart}
         </p>
       </article>`;
   }
@@ -172,6 +183,13 @@ function renderStats(el) {
       ? `All time · ${_stats.daysWithData} days with data`
       : `${_stats.periodDays} days in period · ${_stats.daysWithData} days with data`
   ) : '';
+
+  const avgOfficeSpanCard = avgOfficeSpan != null ? `
+    <article style="display:inline-block;padding:0.5rem 1rem;margin-bottom:0.75rem;vertical-align:top">
+      <p class="muted-sm" style="margin:0">Avg office span</p>
+      <strong style="font-size:1.25rem">${fmtDur(avgOfficeSpan)}</strong>
+      <p class="muted-sm" style="margin:0;font-size:0.75rem">${officeSpanValues.length} day${officeSpanValues.length !== 1 ? 's' : ''} with data</p>
+    </article>` : '';
 
   el.innerHTML = `
     <p class="muted-sm">${periodLabel}</p>
@@ -186,6 +204,7 @@ function renderStats(el) {
         </tbody>
       </table>
     </article>
+    ${avgOfficeSpanCard}
     ${periodTotalsHtml}
     ${dowRows ? `
     <article>
@@ -251,8 +270,14 @@ function renderChart(el) {
         });
       }
 
+      // Build office span lookup from _breakdown (keyed by date string "yyyy-MM-dd")
+      const officeSpanMap = {};
+      for (const d of (_breakdown || [])) {
+        if (d.officeSpanHours != null) officeSpanMap[d.date] = d.officeSpanHours;
+      }
+
       // Fill every day in range
-      const labels = [], workD = [], commuteD = [], lunchD = [], idleD = [];
+      const labels = [], workD = [], commuteD = [], lunchD = [], idleD = [], officeSpanD = [];
       const weekendIndices = [];
       const cur = new Date(chartWindowStart);
       while (cur < windowEnd) {
@@ -261,24 +286,42 @@ function renderChart(el) {
         labels.push(ds.slice(5)); // "MM-DD"
         const d = apiMap[ds] || { work: 0, commute: 0, lunch: 0, idle: 0 };
         workD.push(d.work); commuteD.push(d.commute); lunchD.push(d.lunch); idleD.push(d.idle);
+        officeSpanD.push(officeSpanMap[ds] ?? null);
         if (dow === 0 || dow === 6) weekendIndices.push(labels.length - 1);
         cur.setUTCDate(cur.getUTCDate() + 1);
       }
+
+      const hasOfficeSpan = officeSpanD.some(v => v != null);
 
       if (chartType === 'bar') {
         const canvas = document.getElementById('lineChart');
         if (!canvas) return;
         if (canvas._chartInstance) canvas._chartInstance.destroy();
+        const barDatasets = [
+          { label: 'Work',    data: workD,    backgroundColor: 'rgba(59,130,246,0.8)' },
+          { label: 'Commute', data: commuteD, backgroundColor: 'rgba(34,197,94,0.8)' },
+          { label: 'Lunch',   data: lunchD,   backgroundColor: 'rgba(251,146,60,0.8)' },
+          { label: 'Idle',    data: idleD,    backgroundColor: 'rgba(156,163,175,0.5)' },
+        ];
+        if (hasOfficeSpan) {
+          barDatasets.push({
+            label: 'Office span',
+            data: officeSpanD.map(v => v ?? 0),
+            type: 'line',
+            borderColor: 'rgba(168,85,247,0.8)',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            fill: false,
+            order: -1,
+          });
+        }
         canvas._chartInstance = new Chart(canvas, {
           type: 'bar',
           data: {
             labels,
-            datasets: [
-              { label: 'Work',    data: workD,    backgroundColor: 'rgba(59,130,246,0.8)' },
-              { label: 'Commute', data: commuteD, backgroundColor: 'rgba(34,197,94,0.8)' },
-              { label: 'Lunch',   data: lunchD,   backgroundColor: 'rgba(251,146,60,0.8)' },
-              { label: 'Idle',    data: idleD,    backgroundColor: 'rgba(156,163,175,0.5)' },
-            ]
+            datasets: barDatasets
           },
           options: {
             responsive: true,
@@ -307,6 +350,19 @@ function renderChart(el) {
           { label: 'Idle',    data: idleD,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 },
           { label: '8h target', data: labels.map(() => 8), borderColor: 'rgba(239,68,68,0.7)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false }
         ];
+        if (hasOfficeSpan) {
+          datasets.push({
+            label: 'Office span',
+            data: officeSpanD,
+            borderColor: 'rgba(168,85,247,0.8)',
+            backgroundColor: 'rgba(168,85,247,0.1)',
+            fill: false,
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3,
+            spanGaps: false,
+          });
+        }
         renderLineChart('lineChart', labels, datasets, weekendIndices);
       }
     } catch {
@@ -582,6 +638,26 @@ async function renderCommute(el) {
   const workChartData = weekdays.map(d => workMap[d] || 0);
   const homeChartData = weekdays.map(d => homeMap[d] || 0);
 
+  // Build per-day office span table from _breakdown
+  const breakdownWithSpan = (_breakdown || [])
+    .filter(d => d.officeSpanHours != null)
+    .sort((a, b) => a.date < b.date ? 1 : -1) // most recent first
+    .slice(0, 30); // cap at 30 rows for readability
+
+  const officeSpanTableHtml = breakdownWithSpan.length ? `
+    <table class="stats-table" style="margin-top:0.75rem">
+      <thead><tr><th>Date</th><th>Office span</th><th>Work</th><th>Commute →Work</th><th>Commute →Home</th></tr></thead>
+      <tbody>
+        ${breakdownWithSpan.map(d => `<tr>
+          <td>${d.date}</td>
+          <td>${fmtDur(d.officeSpanHours)}</td>
+          <td>${fmtDur(d.workHours)}</td>
+          <td>${fmtDur(d.commuteToWorkHours)}</td>
+          <td>${fmtDur(d.commuteToHomeHours)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '<p class="muted-sm">No office span data yet.</p>';
+
   el.innerHTML = `
     <article>
       <strong>Commute duration by weekday</strong>
@@ -594,6 +670,11 @@ async function renderCommute(el) {
     <article>
       <strong>To Home</strong>
       ${commuteTable(filteredHome)}
+    </article>
+    <article>
+      <strong>Office span per day</strong>
+      <p class="muted-sm" style="margin-top:0.25rem">Time from arriving at office (end of commute-to-work) to leaving (start of commute-to-home)</p>
+      ${officeSpanTableHtml}
     </article>`;
 
   // Render chart after DOM is ready
