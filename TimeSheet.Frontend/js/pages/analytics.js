@@ -7,6 +7,7 @@ let anaPeriod = 30;
 let anaTab = 'stats';
 let calStartDate = null;  // Date object — start of visible window
 let chartWindowStart = null; // Date — start of 14-day window
+let chartType = 'bar';
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -60,7 +61,7 @@ function renderPeriodTabs() {
 function renderAnaTabs() {
   const el = document.getElementById('ana-tabs');
   if (!el) return;
-  el.innerHTML = ['stats','chart','calendar','commute'].map(t =>
+  el.innerHTML = ['stats','chart','calendar','commute','patterns'].map(t =>
     `<button class="ana-tab${anaTab===t?' active':''}" onclick="setAnaTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
   ).join('');
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
@@ -87,6 +88,7 @@ async function loadTab() {
   else if (anaTab === 'chart') renderChart(el);
   else if (anaTab === 'calendar') await renderCalendarTab(el);
   else if (anaTab === 'commute') await renderCommute(el);
+  else if (anaTab === 'patterns') await renderPatternsTab(el);
 }
 
 function median(arr) {
@@ -205,6 +207,8 @@ function renderChart(el) {
       <button class="outline btn-compact" id="chartPrev">← Prev</button>
       <strong style="flex:1;text-align:center" id="chartLabel">${startStr} – ${new Date(windowEnd - 1).toISOString().slice(0,10)}</strong>
       <button class="outline btn-compact" id="chartNext">Next →</button>
+      <button class="outline btn-compact${chartType==='bar'?' secondary':''}" id="chartBarBtn">Bar</button>
+      <button class="outline btn-compact${chartType==='line'?' secondary':''}" id="chartLineBtn">Line</button>
     </div>
     <canvas id="lineChart"></canvas>`;
 
@@ -218,6 +222,8 @@ function renderChart(el) {
     chartWindowStart.setUTCDate(chartWindowStart.getUTCDate() + 14);
     renderChart(el);
   };
+  document.getElementById('chartBarBtn').onclick = () => { chartType = 'bar'; renderChart(el); };
+  document.getElementById('chartLineBtn').onclick = () => { chartType = 'line'; renderChart(el); };
 
   // Fetch and render async
   (async () => {
@@ -251,15 +257,50 @@ function renderChart(el) {
         cur.setUTCDate(cur.getUTCDate() + 1);
       }
 
-      const datasets = [
-        { label: 'Work',    data: workD,    borderColor: 'rgb(59,130,246)',  backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 },
-        { label: 'Commute', data: commuteD, borderColor: 'rgb(34,197,94)',   backgroundColor: 'rgba(34,197,94,0.1)',  fill: true, tension: 0.3 },
-        { label: 'Lunch',   data: lunchD,   borderColor: 'rgb(251,146,60)',  backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3 },
-        { label: 'Idle',    data: idleD,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 },
-        { label: '8h target', data: labels.map(() => 8), borderColor: 'rgba(239,68,68,0.7)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false }
-      ];
-
-      renderLineChart('lineChart', labels, datasets, weekendIndices);
+      if (chartType === 'bar') {
+        const canvas = document.getElementById('lineChart');
+        if (!canvas) return;
+        if (canvas._chartInstance) canvas._chartInstance.destroy();
+        canvas._chartInstance = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              { label: 'Work',    data: workD,    backgroundColor: 'rgba(59,130,246,0.8)' },
+              { label: 'Commute', data: commuteD, backgroundColor: 'rgba(34,197,94,0.8)' },
+              { label: 'Lunch',   data: lunchD,   backgroundColor: 'rgba(251,146,60,0.8)' },
+              { label: 'Idle',    data: idleD,    backgroundColor: 'rgba(156,163,175,0.5)' },
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtDur(ctx.parsed.y)}` } }
+            },
+            scales: {
+              x: {
+                ticks: {
+                  color: (ctx) => weekendIndices.includes(ctx.index) ? 'rgba(156,163,175,0.6)' : undefined
+                }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: { callback: v => v === 0 ? '0' : `${Math.floor(v)}h` }
+              }
+            }
+          }
+        });
+      } else {
+        const datasets = [
+          { label: 'Work',    data: workD,    borderColor: 'rgb(59,130,246)',  backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 },
+          { label: 'Commute', data: commuteD, borderColor: 'rgb(34,197,94)',   backgroundColor: 'rgba(34,197,94,0.1)',  fill: true, tension: 0.3 },
+          { label: 'Lunch',   data: lunchD,   borderColor: 'rgb(251,146,60)',  backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3 },
+          { label: 'Idle',    data: idleD,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 },
+          { label: '8h target', data: labels.map(() => 8), borderColor: 'rgba(239,68,68,0.7)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false }
+        ];
+        renderLineChart('lineChart', labels, datasets, weekendIndices);
+      }
     } catch {
       el.innerHTML += '<p class="error">Failed to load chart.</p>';
     }
@@ -407,6 +448,7 @@ export async function renderCalendarTab(el) {
     const localMidnightMs = new Date(colDateStr + 'T00:00:00Z').getTime() + getUtcOffset() * 60000;
     const dayStartMs = localMidnightMs + hourMin * 3600000;
 
+    const fmtTime = (d) => `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
     const sessionBlocks = dayEntries.map(e => {
       const sessionStart = toLocal(e.startedAt);
       const sessionEnd   = e.endedAt ? toLocal(e.endedAt) : toLocal(new Date().toISOString());
@@ -419,7 +461,10 @@ export async function renderCalendarTab(el) {
       const label = heightPx >= 40
         ? `${sessionLabel(e.state)}<br><small>${dur}</small>`
         : '';
-      return `<div class="tl-session ${cls}${activeCls}" style="top:${topPx.toFixed(1)}px; height:${heightPx.toFixed(1)}px" title="${sessionLabel(e.state)} — ${dur}">${label}</div>`;
+      const startTimeStr = fmtTime(sessionStart);
+      const endTimeStr = e.endedAt ? fmtTime(sessionEnd) : 'now';
+      const titleText = `${sessionLabel(e.state)}\n${startTimeStr} – ${endTimeStr} (${dur})`;
+      return `<div class="tl-session ${cls}${activeCls}" style="top:${topPx.toFixed(1)}px; height:${heightPx.toFixed(1)}px" title="${titleText.replace(/"/g, '&quot;')}">${label}</div>`;
     }).join('');
 
     dayCols.push(`
@@ -486,12 +531,14 @@ async function renderCommute(el) {
 
   const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const weekdays = [1,2,3,4,5]; // Mon-Fri only
+  const DOW_STR = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
+  const dowInt = (r) => typeof r.dayOfWeek === 'number' ? r.dayOfWeek : (DOW_STR[r.dayOfWeek] ?? -1);
 
   // Filter out weekends
-  const filteredWork = (toWork || []).filter(r => r.dayOfWeek >= 1 && r.dayOfWeek <= 5)
-    .sort((a,b) => a.dayOfWeek - b.dayOfWeek);
-  const filteredHome = (toHome || []).filter(r => r.dayOfWeek >= 1 && r.dayOfWeek <= 5)
-    .sort((a,b) => a.dayOfWeek - b.dayOfWeek);
+  const filteredWork = (toWork || []).filter(r => { const d = dowInt(r); return d >= 1 && d <= 5; })
+    .sort((a,b) => dowInt(a) - dowInt(b));
+  const filteredHome = (toHome || []).filter(r => { const d = dowInt(r); return d >= 1 && d <= 5; })
+    .sort((a,b) => dowInt(a) - dowInt(b));
 
   function fmtHours(h) {
     if (!h) return '0m';
@@ -506,7 +553,7 @@ async function renderCommute(el) {
       <thead><tr><th>Day</th><th>Avg</th><th>Best departure</th><th>Shortest</th><th>Trips</th></tr></thead>
       <tbody>
         ${data.map(r => `<tr>
-          <td>${dowNames[r.dayOfWeek]}</td>
+          <td>${dowNames[dowInt(r)]}</td>
           <td>${fmtHours(r.averageDurationHours)}</td>
           <td>${String(Math.floor(r.optimalStartHour)).padStart(2,'0')}:00</td>
           <td>${fmtHours(r.shortestDurationHours)}</td>
@@ -518,8 +565,8 @@ async function renderCommute(el) {
 
   // Build chart data aligned to Mon-Fri
   const chartLabels = weekdays.map(d => dowNames[d]);
-  const workMap = Object.fromEntries(filteredWork.map(r => [r.dayOfWeek, r.averageDurationHours || 0]));
-  const homeMap = Object.fromEntries(filteredHome.map(r => [r.dayOfWeek, r.averageDurationHours || 0]));
+  const workMap = Object.fromEntries(filteredWork.map(r => [dowInt(r), r.averageDurationHours || 0]));
+  const homeMap = Object.fromEntries(filteredHome.map(r => [dowInt(r), r.averageDurationHours || 0]));
   const workChartData = weekdays.map(d => workMap[d] || 0);
   const homeChartData = weekdays.map(d => homeMap[d] || 0);
 
@@ -575,4 +622,52 @@ async function renderCommute(el) {
       }
     });
   }
+}
+
+async function renderPatternsTab(el) {
+  if (!_breakdown || !_breakdown.length) {
+    el.innerHTML = '<p>No data yet. Try selecting a longer period.</p>';
+    return;
+  }
+
+  const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const groups = {};
+  for (let d = 1; d <= 5; d++) groups[d] = { work: [], commute: [], commuteHome: [], lunch: [] };
+
+  for (const d of _breakdown) {
+    const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+    if (dow < 1 || dow > 5) continue;
+    if (d.workHours > 0) {
+      groups[dow].work.push(d.workHours || 0);
+      groups[dow].commute.push(d.commuteToWorkHours || 0);
+      groups[dow].commuteHome.push(d.commuteToHomeHours || 0);
+      groups[dow].lunch.push(d.lunchHours || 0);
+    }
+  }
+
+  const avg = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+
+  const rows = [1,2,3,4,5].map(dow => {
+    const g = groups[dow];
+    if (!g.work.length) return '';
+    return `<tr>
+      <td>${dowNames[dow]}</td>
+      <td>${fmtDur(avg(g.work))}</td>
+      <td>${fmtDur(avg(g.commute))}</td>
+      <td>${fmtDur(avg(g.commuteHome))}</td>
+      <td>${fmtDur(avg(g.lunch))}</td>
+      <td>${g.work.length}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <article>
+      <strong>Average work week (Mon–Fri, days with work only)</strong>
+      <table class="stats-table" style="margin-top:0.75rem">
+        <thead>
+          <tr><th>Day</th><th>Avg Work</th><th>Commute →Work</th><th>Commute →Home</th><th>Avg Lunch</th><th>Days</th></tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="6">No data</td></tr>'}</tbody>
+      </table>
+    </article>`;
 }

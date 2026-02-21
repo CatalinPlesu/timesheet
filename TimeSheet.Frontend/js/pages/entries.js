@@ -1,9 +1,10 @@
-import { fetchEntriesForRange, deleteEntry } from '../api.js';
+import { fetchEntriesForRange, deleteEntry, updateEntry } from '../api.js';
 import { fmtLocalDateTime, localDateISO } from '../time.js';
 
 let entPeriodType = 'Day';
 let entPeriodOffset = 0;
 let entSortNewest = true;
+let editingId = null;
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -175,13 +176,30 @@ async function loadPeriodEntries() {
       rows += `<tr class="entry-day-sep"><td colspan="5"><span>${fmtDayLabel(dayKey)}</span></td></tr>`;
       rows += dayEntries.map(e => {
         const rowCls = entryRowClass(e.state);
+        const actionBtns = !e.isActive
+          ? `<button class="outline btn-compact" onclick="toggleEdit('${e.id}')">✎</button>
+             <button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>`
+          : '';
+        const editRow = !e.isActive ? `<tr id="edit-row-${e.id}" style="display:none">
+          <td colspan="5" style="background:var(--pico-card-background-color);padding:0.4rem 0.8rem">
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+              <small>Adjust end time:</small>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-30)">-30m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-5)">-5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-1)">-1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',1)">+1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',5)">+5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',30)">+30m</button>
+            </div>
+          </td>
+        </tr>` : '';
         return `<tr class="${rowCls}">
           <td>${e.state}</td>
           <td>${fmtLocalDateTime(e.startedAt)}</td>
           <td>${e.endedAt ? fmtLocalDateTime(e.endedAt) : '—'}</td>
           <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
-          <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
-        </tr>`;
+          <td>${actionBtns}</td>
+        </tr>${editRow}`;
       }).join('');
     }
 
@@ -194,6 +212,7 @@ async function loadPeriodEntries() {
       </figure>`;
 
     window.delEntry = async (id) => {
+      if (!confirm('Delete this entry? This cannot be undone.')) return;
       try {
         await deleteEntry(id);
         const s = document.getElementById('ent-success');
@@ -202,6 +221,32 @@ async function loadPeriodEntries() {
       } catch {
         const e = document.getElementById('ent-error');
         if (e) { e.textContent = 'Delete failed.'; e.style.display = ''; }
+      }
+    };
+
+    window.toggleEdit = (id) => {
+      if (editingId === id) {
+        const row = document.getElementById(`edit-row-${id}`);
+        if (row) row.style.display = 'none';
+        editingId = null;
+      } else {
+        if (editingId) {
+          const prev = document.getElementById(`edit-row-${editingId}`);
+          if (prev) prev.style.display = 'none';
+        }
+        const row = document.getElementById(`edit-row-${id}`);
+        if (row) row.style.display = '';
+        editingId = id;
+      }
+    };
+
+    window.applyAdjust = async (id, minutes) => {
+      try {
+        await updateEntry(id, minutes);
+        await loadPeriodEntries();
+      } catch {
+        const e = document.getElementById('ent-error');
+        if (e) { e.textContent = 'Adjustment failed.'; e.style.display = ''; }
       }
     };
   } catch {
