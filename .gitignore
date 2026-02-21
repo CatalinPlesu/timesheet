@@ -486,6 +486,11 @@ $RECYCLE.BIN/
 *.db
 *.db-shm
 *.db-wal
+# Windows-style build artifact paths (literal backslash in name, created by Windows dotnet builds)
+**/bin\Debug/
+**/bin\Release/
+**/obj\Debug/
+**/obj\Release/
 # bd worktree
 zei-7-frontend/
 # bd worktree
