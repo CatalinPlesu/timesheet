@@ -1,6 +1,5 @@
 import { login } from '../api.js';
 import { saveToken, saveUtcOffset } from '../auth.js';
-import { navigate } from '../router.js';
 
 export function renderLogin() {
   document.getElementById('app').innerHTML = `
@@ -35,7 +34,7 @@ async function doLogin() {
     const data = await login(mnemonic);
     saveToken(data.accessToken);
     saveUtcOffset(data.utcOffsetMinutes || 0);
-    navigate('tracking');
+    location.href = 'tracking.html';
   } catch {
     err.textContent = 'Invalid mnemonic. Please try again.';
     err.style.display = '';

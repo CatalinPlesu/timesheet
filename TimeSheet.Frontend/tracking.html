@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TimeSheet — Tracking</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+  <style>
+    nav                  { border-bottom: 1px solid var(--pico-muted-border-color); }
+    .state-label         { font-size: 2rem; font-weight: 700; margin-bottom: 0; }
+    .btn-active          { outline: 2px solid var(--pico-primary); }
+    .error               { color: var(--pico-del-color); }
+    .success             { color: var(--pico-ins-color); }
+    .grid-3              { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .login-wrap          { max-width: 480px; margin: 4rem auto; }
+    .groupby-bar         { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .pagination          { display: flex; gap: 1rem; align-items: center; margin-top: 1rem; }
+    .pagination p        { margin: 0; }
+    .btn-compact         { padding: 0.2rem 0.5rem; margin: 0; }
+    .muted-sm            { color: var(--pico-muted-color); font-size: 0.85rem; }
+    /* Entries group header */
+    .group-header td     { background: var(--pico-card-background-color); font-size: 0.85rem; padding: 0.3rem 0.8rem; }
+    /* Period navigation */
+    .period-nav          { margin-bottom: 0.75rem; }
+    /* Timeline (Calendar tab) */
+    .tl-container        { overflow-x: auto; }
+    .tl-nav              { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .tl-nav span         { flex: 1; text-align: center; font-weight: 600; }
+    .tl-grid             { display: grid; min-width: 0; }
+    .tl-corner           { height: 40px; }
+    .tl-hour             { display: flex; align-items: flex-start; padding-right: 0.5rem;
+                           font-size: 0.7rem; color: var(--pico-muted-color);
+                           border-top: 1px solid var(--pico-muted-border-color); box-sizing: border-box; }
+    .tl-day-col          { min-width: 0; }
+    .tl-day-header       { height: 40px; text-align: center; font-weight: 600; font-size: 0.8rem;
+                           border-bottom: 1px solid var(--pico-muted-border-color);
+                           display: flex; flex-direction: column; justify-content: center; }
+    .tl-day-body         { position: relative; border-left: 1px solid var(--pico-muted-border-color); }
+    .tl-hour-line        { position: absolute; left: 0; right: 0; height: 1px;
+                           background: var(--pico-muted-border-color); opacity: 0.4; }
+    .tl-session          { position: absolute; left: 2px; right: 2px; border-radius: 4px;
+                           padding: 2px 4px; font-size: 0.7rem; overflow: hidden;
+                           color: white; cursor: default; box-sizing: border-box; }
+    .tl-session-active   { box-shadow: 0 0 0 2px var(--pico-primary); }
+    .tl-work             { background: rgba(59,130,246,0.85); }
+    .tl-commute          { background: rgba(34,197,94,0.85); }
+    .tl-lunch            { background: rgba(251,146,60,0.85); }
+    /* Period / ana tabs */
+    .period-tabs         { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .ana-tabs            { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--pico-muted-border-color); }
+    .ana-tab             { padding: 0.5rem 1.2rem; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; background: none; border-top: none; border-left: none; border-right: none; color: var(--pico-color); }
+    .ana-tab.active      { border-bottom-color: var(--pico-primary); color: var(--pico-primary); font-weight: 600; }
+    /* Stats table */
+    .stats-table         { width: 100%; border-collapse: collapse; }
+    .stats-table th,
+    .stats-table td      { padding: 0.4rem 0.8rem; text-align: right; border-bottom: 1px solid var(--pico-muted-border-color); }
+    .stats-table th:first-child,
+    .stats-table td:first-child { text-align: left; }
+    .stats-table thead th { font-weight: 600; background: var(--pico-card-background-color); }
+    .entry-work td:first-child    { border-left: 3px solid rgba(59,130,246,0.85); }
+    .entry-commute td:first-child { border-left: 3px solid rgba(34,197,94,0.85); }
+    .entry-lunch td:first-child   { border-left: 3px solid rgba(251,146,60,0.85); }
+    .entry-day-sep td { background-color: rgba(255,255,255,0.05) !important; font-weight: 700;
+                        font-size: 0.78rem; padding: 0.25rem 0.8rem; color: var(--pico-muted-color);
+                        text-transform: uppercase; letter-spacing: 0.06em;
+                        border-top: 1px solid var(--pico-muted-border-color) !important; }
+    .sort-bar       { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .note-icon      { cursor: help; font-size: 0.8rem; color: var(--pico-muted-color); margin-left: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="app"></div>
+  <script type="module">
+    import { isLoggedIn } from './js/auth.js';
+    import { renderNav } from './js/nav.js';
+    import { renderTracking } from './js/pages/tracking.js';
+    if (!isLoggedIn()) { location.replace('login.html'); }
+    else {
+      renderNav('tracking');
+      await renderTracking();
+    }
+    window.addEventListener('ts:logout', () => { location.href = 'login.html'; });
+  </script>
+</body>
+</html>
