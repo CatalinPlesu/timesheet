@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TimeSheet.Core.Application.Interfaces.Persistence;
 using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Presentation.API.Models.Entries;
@@ -17,15 +18,18 @@ public class EntriesController : ControllerBase
 {
     private readonly ITrackingSessionRepository _sessionRepository;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<EntriesController> _logger;
 
     public EntriesController(
         ITrackingSessionRepository sessionRepository,
         IJwtTokenService jwtTokenService,
+        IUnitOfWork unitOfWork,
         ILogger<EntriesController> logger)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
         _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
     /// <summary>
@@ -310,6 +314,7 @@ public class EntriesController : ControllerBase
 
             // Update the session in the repository
             _sessionRepository.Update(session);
+            await _unitOfWork.CompleteAsync(cancellationToken);
 
             // Map to DTO
             var entryDto = new TrackingEntryDto
@@ -396,6 +401,7 @@ public class EntriesController : ControllerBase
 
             // Delete the session
             _sessionRepository.Remove(session);
+            await _unitOfWork.CompleteAsync(cancellationToken);
 
             _logger.LogInformation("User {UserId} deleted entry {EntryId}", userId, id);
 
