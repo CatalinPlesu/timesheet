@@ -6,6 +6,7 @@ let entPeriodOffset = 0;
 let entSortNewest = true;
 let editingId = null;
 let entTypeFilter = 'All';
+let entDowFilter = 'All'; // 'All' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun'
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -90,6 +91,7 @@ export async function renderEntries() {
       <p id="ent-error" class="error" style="display:none"></p>
       <div class="groupby-bar" id="period-type-bar"></div>
       <div class="groupby-bar" id="type-filter-bar"></div>
+      <div class="groupby-bar" id="dow-filter-bar"></div>
       <div id="sort-bar"></div>
       <div class="period-nav" id="period-nav"></div>
       <div id="entries-table"><p aria-busy="true">Loading…</p></div>
@@ -97,8 +99,10 @@ export async function renderEntries() {
   `;
   entPeriodOffset = 0;
   entTypeFilter = 'All';
+  entDowFilter = 'All';
   renderPeriodTypeBar();
   renderTypeFilterBar();
+  renderDowFilterBar();
   renderSortBar();
   await loadPeriodEntries();
 }
@@ -112,8 +116,10 @@ function renderPeriodTypeBar() {
   window.setPeriodType = async (t) => {
     entPeriodType = t;
     entPeriodOffset = 0;
+    entDowFilter = 'All';
     renderPeriodTypeBar();
     renderTypeFilterBar();
+    renderDowFilterBar();
     renderSortBar();
     await loadPeriodEntries();
   };
@@ -129,6 +135,26 @@ function renderTypeFilterBar() {
   window.setTypeFilter = async (t) => {
     entTypeFilter = t;
     renderTypeFilterBar();
+    await loadPeriodEntries();
+  };
+}
+
+function renderDowFilterBar() {
+  const bar = document.getElementById('dow-filter-bar');
+  if (!bar) return;
+  // Only show for Month, Year, All periods
+  if (!['Month','Year','All'].includes(entPeriodType)) {
+    bar.innerHTML = '';
+    return;
+  }
+  const days = ['All','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  bar.innerHTML = `<small class="muted-sm" style="align-self:center">Day:</small>` +
+    days.map(d =>
+      `<button class="${d === entDowFilter ? 'secondary' : 'outline secondary'} btn-compact" onclick="setDowFilter('${d}')">${d}</button>`
+    ).join('');
+  window.setDowFilter = async (d) => {
+    entDowFilter = d;
+    renderDowFilterBar();
     await loadPeriodEntries();
   };
 }
@@ -186,18 +212,27 @@ async function loadPeriodEntries() {
     });
 
     // Apply type filter
-    const filteredEntries = entTypeFilter === 'All'
+    const afterTypeFilter = entTypeFilter === 'All'
       ? entries
       : entries.filter(e => e.state && e.state.toLowerCase() === entTypeFilter.toLowerCase());
 
-    if (filteredEntries.length === 0) {
+    // Apply DOW filter
+    const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const afterDowFilter = entDowFilter === 'All'
+      ? afterTypeFilter
+      : afterTypeFilter.filter(e => {
+          const d = new Date(e.startedAt);
+          return DOW_NAMES[d.getDay()] === entDowFilter;
+        });
+
+    if (afterDowFilter.length === 0) {
       tableEl.innerHTML = '<p>No entries for this period.</p>';
       return;
     }
 
     // Group entries by local date
     const groups = new Map();
-    for (const e of filteredEntries) {
+    for (const e of afterDowFilter) {
       const dayKey = localDateISO(e.startedAt);
       if (!groups.has(dayKey)) groups.set(dayKey, []);
       groups.get(dayKey).push(e);

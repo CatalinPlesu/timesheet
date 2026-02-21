@@ -60,13 +60,17 @@ function renderPeriodTabs() {
 function renderAnaTabs() {
   const el = document.getElementById('ana-tabs');
   if (!el) return;
-  el.innerHTML = ['stats','chart','calendar','commute','patterns'].map(t =>
+  el.innerHTML = ['stats','chart','calendar','commute','patterns','overtime'].map(t =>
     `<button class="ana-tab${anaTab===t?' active':''}" onclick="setAnaTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
   ).join('');
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
 }
 
 let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null;
+
+const WAGE_KEY = 'ts_wage';
+const loadWageSettings = () => JSON.parse(localStorage.getItem(WAGE_KEY) || 'null');
+const saveWageSettings = (s) => localStorage.setItem(WAGE_KEY, JSON.stringify(s));
 
 async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
@@ -88,6 +92,7 @@ async function loadTab() {
   else if (anaTab === 'calendar') await renderCalendarTab(el);
   else if (anaTab === 'commute') await renderCommute(el);
   else if (anaTab === 'patterns') await renderPatternsTab(el);
+  else if (anaTab === 'overtime') await renderOvertimeTab(el);
 }
 
 function median(arr) {
@@ -632,6 +637,52 @@ async function renderCommute(el) {
         }
       }
     });
+
+    // Add context chart (avg work + lunch hours per weekday) below the commute chart
+    const canvas2 = document.createElement('canvas');
+    canvas2.id = 'commuteContextChart';
+    canvas2.style.maxHeight = '200px';
+    canvas2.style.marginTop = '0.75rem';
+    canvas.parentElement.appendChild(canvas2);
+
+    // Compute per-weekday averages of work and lunch from _breakdown
+    const dowWork = {1:[], 2:[], 3:[], 4:[], 5:[]};
+    const dowLunch = {1:[], 2:[], 3:[], 4:[], 5:[]};
+    for (const d of (_breakdown || [])) {
+      if (!d.workHours || d.workHours <= 0) continue;
+      const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+      if (dow < 1 || dow > 5) continue;
+      dowWork[dow].push(d.workHours);
+      dowLunch[dow].push(d.lunchHours || 0);
+    }
+    const avgArr = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+    const workByDay  = weekdays.map(d => avgArr(dowWork[d]));
+    const lunchByDay = weekdays.map(d => avgArr(dowLunch[d]));
+
+    if (canvas2._chartInstance) canvas2._chartInstance.destroy();
+    canvas2._chartInstance = new Chart(canvas2, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          { label: 'Work',  data: workByDay,  backgroundColor: 'rgba(59,130,246,0.8)' },
+          { label: 'Lunch', data: lunchByDay, backgroundColor: 'rgba(251,146,60,0.8)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtDur(ctx.parsed.y)}` } }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: v => v === 0 ? '0' : `${Math.floor(v)}h` }
+          }
+        }
+      }
+    });
   }
 }
 
@@ -673,7 +724,11 @@ async function renderPatternsTab(el) {
 
   el.innerHTML = `
     <article>
-      <strong>Average work week (Mon–Fri, days with work only)</strong>
+      <strong>Typical work week</strong>
+      <canvas id="patternsChart" style="max-height:250px;margin-top:0.75rem"></canvas>
+    </article>
+    <article>
+      <strong>Average by day (Mon–Fri, work days only)</strong>
       <table class="stats-table" style="margin-top:0.75rem">
         <thead>
           <tr><th>Day</th><th>Avg Work</th><th>Commute →Work</th><th>Commute →Home</th><th>Avg Lunch</th><th>Days</th></tr>
@@ -681,4 +736,131 @@ async function renderPatternsTab(el) {
         <tbody>${rows || '<tr><td colspan="6">No data</td></tr>'}</tbody>
       </table>
     </article>`;
+
+  const pCanvas = document.getElementById('patternsChart');
+  if (pCanvas) {
+    if (pCanvas._chartInstance) pCanvas._chartInstance.destroy();
+    pCanvas._chartInstance = new Chart(pCanvas, {
+      type: 'bar',
+      data: {
+        labels: [1,2,3,4,5].map(d => dowNames[d]),
+        datasets: [
+          { label: 'Work',    data: [1,2,3,4,5].map(d => avg(groups[d].work)),        backgroundColor: 'rgba(59,130,246,0.8)', stack: 'a' },
+          { label: 'Commute', data: [1,2,3,4,5].map(d => avg([...groups[d].commute, ...groups[d].commuteHome]) / 2 || avg(groups[d].commute)), backgroundColor: 'rgba(34,197,94,0.8)', stack: 'a' },
+          { label: 'Lunch',   data: [1,2,3,4,5].map(d => avg(groups[d].lunch)),       backgroundColor: 'rgba(251,146,60,0.8)', stack: 'a' },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtDur(ctx.parsed.y)}` } }
+        },
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true, ticks: { callback: v => v === 0 ? '0' : `${Math.floor(v)}h` } }
+        }
+      }
+    });
+  }
+}
+
+async function renderOvertimeTab(el) {
+  const savedExpected = localStorage.getItem('ts_expected_hours');
+  const expectedHours = parseFloat(savedExpected || '8');
+  const wage = loadWageSettings();
+
+  const workDays = (_breakdown || []).filter(d => d.workHours > 0);
+  const overtimeData = workDays.map(d => ({
+    date: d.date,
+    worked: d.workHours,
+    expected: expectedHours,
+    delta: d.workHours - expectedHours
+  }));
+
+  const totalWorked = overtimeData.reduce((s, d) => s + d.worked, 0);
+  const totalExpected = overtimeData.length * expectedHours;
+  const totalDelta = totalWorked - totalExpected;
+
+  let earningsHtml = '';
+  if (wage && wage.amount > 0) {
+    const hourlyRate = wage.type === 'hourly' ? wage.amount
+      : wage.type === 'daily' ? wage.amount / expectedHours
+      : wage.amount / (21.67 * expectedHours);
+    const earned = totalWorked * hourlyRate;
+    const expected = totalExpected * hourlyRate;
+    const cur = wage.currency || '€';
+    earningsHtml = `
+      <p>Earned: <strong>${cur}${earned.toFixed(2)}</strong>
+      &nbsp;(expected ${cur}${expected.toFixed(2)},
+      ${totalDelta >= 0 ? '+' : ''}${cur}${(earned - expected).toFixed(2)})</p>`;
+  }
+
+  const tableRows = overtimeData.slice(-20).reverse().map(d => `<tr>
+    <td>${d.date}</td>
+    <td>${fmtDur(d.worked)}</td>
+    <td>${fmtDur(d.expected)}</td>
+    <td style="color:${d.delta >= 0 ? 'var(--pico-ins-color)' : 'var(--pico-del-color)'}">
+      ${d.delta >= 0 ? '+' : ''}${fmtDur(Math.abs(d.delta))}
+    </td>
+  </tr>`).join('');
+
+  el.innerHTML = `
+    <article>
+      <strong>Expected daily work hours</strong>
+      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap">
+        <input type="number" id="expectedHours" min="1" max="16" step="0.5" value="${expectedHours}" style="width:5rem;margin:0">
+        <span class="muted-sm">hours / day</span>
+        <button class="btn-compact outline" onclick="saveExpectedHours()">Save</button>
+      </div>
+    </article>
+    <article>
+      <strong>Wage (optional)</strong>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.5rem">
+        <select id="wageType" style="width:auto;margin:0">
+          <option value="hourly"${wage && wage.type === 'hourly' ? ' selected' : ''}>Hourly</option>
+          <option value="daily"${wage && wage.type === 'daily' ? ' selected' : ''}>Daily</option>
+          <option value="monthly"${wage && wage.type === 'monthly' ? ' selected' : ''}>Monthly</option>
+        </select>
+        <input type="number" id="wageAmount" min="0" step="0.01" placeholder="Amount" value="${wage && wage.amount > 0 ? wage.amount : ''}" style="width:8rem;margin:0">
+        <input type="text" id="wageCurrency" maxlength="4" placeholder="€" value="${wage ? (wage.currency || '') : ''}" style="width:4rem;margin:0">
+        <button class="btn-compact outline" onclick="saveWage()">Save</button>
+      </div>
+    </article>
+    ${overtimeData.length > 0 ? `
+    <div class="grid-3" style="margin-bottom:1rem">
+      <article style="text-align:center">
+        <p class="muted-sm">Total worked</p>
+        <strong>${fmtDur(totalWorked)}</strong>
+      </article>
+      <article style="text-align:center">
+        <p class="muted-sm">Expected (${overtimeData.length} days)</p>
+        <strong>${fmtDur(totalExpected)}</strong>
+      </article>
+      <article style="text-align:center">
+        <p class="muted-sm">${totalDelta >= 0 ? 'Overtime' : 'Undertime'}</p>
+        <strong style="color:${totalDelta >= 0 ? 'var(--pico-ins-color)' : 'var(--pico-del-color)'}">
+          ${totalDelta >= 0 ? '+' : ''}${fmtDur(Math.abs(totalDelta))}
+        </strong>
+      </article>
+    </div>
+    ${earningsHtml}
+    <article>
+      <strong>Per-day breakdown (last 20 work days)</strong>
+      <table class="stats-table" style="margin-top:0.75rem">
+        <thead><tr><th>Date</th><th>Worked</th><th>Expected</th><th>Delta</th></tr></thead>
+        <tbody>${tableRows || '<tr><td colspan="4">No data</td></tr>'}</tbody>
+      </table>
+    </article>` : '<p>No work days in this period.</p>'}`;
+
+  window.saveExpectedHours = () => {
+    const h = parseFloat(document.getElementById('expectedHours')?.value);
+    if (h > 0) { localStorage.setItem('ts_expected_hours', h); renderOvertimeTab(el); }
+  };
+  window.saveWage = () => {
+    const type = document.getElementById('wageType')?.value;
+    const amount = parseFloat(document.getElementById('wageAmount')?.value);
+    const currency = document.getElementById('wageCurrency')?.value || '€';
+    if (amount > 0) { saveWageSettings({ type, amount, currency }); renderOvertimeTab(el); }
+  };
 }
