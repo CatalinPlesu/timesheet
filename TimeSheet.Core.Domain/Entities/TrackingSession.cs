@@ -42,6 +42,19 @@ public class TrackingSession : BaseEntity
     public bool IsActive => EndedAt == null;
 
     /// <summary>
+    /// Gets an optional note attached to this session.
+    /// </summary>
+    public string? Note { get; private set; }
+
+    /// <summary>
+    /// Updates the note on this session. Null or whitespace clears the note.
+    /// </summary>
+    public void UpdateNote(string? note)
+    {
+        Note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+    }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="TrackingSession"/> class.
     /// Used when creating a new tracking session.
     /// </summary>

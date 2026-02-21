@@ -41,4 +41,9 @@ public sealed class TrackingEntryDto
     /// Gets or sets whether this entry is currently active.
     /// </summary>
     public required bool IsActive { get; set; }
+
+    /// <summary>
+    /// Gets or sets an optional note attached to this entry.
+    /// </summary>
+    public string? Note { get; set; }
 }

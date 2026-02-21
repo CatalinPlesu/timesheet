@@ -112,7 +112,8 @@ public class EntriesController : ControllerBase
                     ? (decimal)(s.EndedAt.Value - s.StartedAt).TotalHours
                     : null,
                 CommuteDirection = s.CommuteDirection,
-                IsActive = s.IsActive
+                IsActive = s.IsActive,
+                Note = s.Note
             }).ToList();
 
             var response = new EntryListResponse
@@ -204,7 +205,8 @@ public class EntriesController : ControllerBase
                     ? (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours
                     : null,
                 CommuteDirection = session.CommuteDirection,
-                IsActive = session.IsActive
+                IsActive = session.IsActive,
+                Note = session.Note
             };
 
             _logger.LogInformation("User {UserId} retrieved entry {EntryId}", userId, id);
@@ -327,7 +329,8 @@ public class EntriesController : ControllerBase
                     ? (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours
                     : null,
                 CommuteDirection = session.CommuteDirection,
-                IsActive = session.IsActive
+                IsActive = session.IsActive,
+                Note = session.Note
             };
 
             _logger.LogInformation(

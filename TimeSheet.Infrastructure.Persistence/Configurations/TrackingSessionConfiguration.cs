@@ -39,6 +39,8 @@ internal sealed class TrackingSessionConfiguration : IEntityTypeConfiguration<Tr
             .IsRequired(false) // Nullable - only set for Commuting state
             .HasConversion<string>(); // Store as string for readability
 
+        builder.Property(e => e.Note).HasMaxLength(2000);
+
         // Indexes for common queries
         builder.HasIndex(e => e.UserId)
             .HasDatabaseName("IX_TrackingSessions_UserId");

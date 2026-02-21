@@ -465,12 +465,16 @@ export async function renderCalendarTab(el) {
       const activeCls = e.isActive ? ' tl-session-active' : '';
       const dur = e.durationHours != null ? fmtDur(e.durationHours) :
         fmtDur((sessionEnd - sessionStart) / 3600000);
+      const notePreview = (heightPx >= 60 && e.note)
+        ? `<br><small><em>${e.note.substring(0, 30)}${e.note.length > 30 ? '…' : ''}</em></small>`
+        : '';
       const label = heightPx >= 40
-        ? `${sessionLabel(e.state)}<br><small>${dur}</small>`
+        ? `${sessionLabel(e.state)}<br><small>${dur}</small>${notePreview}`
         : '';
       const startTimeStr = fmtTime(sessionStart);
       const endTimeStr = e.endedAt ? fmtTime(sessionEnd) : 'now';
-      const titleText = `${sessionLabel(e.state)}\n${startTimeStr} – ${endTimeStr} (${dur})`;
+      const noteText = e.note ? `\nNote: ${e.note}` : '';
+      const titleText = `${sessionLabel(e.state)}\n${startTimeStr} – ${endTimeStr} (${dur})${noteText}`;
       return `<div class="tl-session ${cls}${activeCls}" style="top:${topPx.toFixed(1)}px; height:${heightPx.toFixed(1)}px" title="${titleText.replace(/"/g, '&quot;')}">${label}</div>`;
     }).join('');
 

@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ReportCommandHandler>();
         services.AddSingleton<StatusCommandHandler>();
         services.AddSingleton<LoginCommandHandler>();
+        services.AddSingleton<NoteCommandHandler>();
     }
 
     private static IServiceCollection AddValidatedConfiguration<T>(this IServiceCollection services)

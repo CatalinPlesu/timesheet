@@ -209,6 +209,7 @@ async function loadPeriodEntries() {
       rows += `<tr class="entry-day-sep"><td colspan="5"><span>${fmtDayLabel(dayKey)}</span></td></tr>`;
       rows += dayEntries.map(e => {
         const rowCls = entryRowClass(e.state);
+        const noteIcon = e.note ? `<span class="note-icon" title="${e.note.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}">ℹ</span>` : '';
         const actionBtns = !e.isActive
           ? `<button class="outline btn-compact" onclick="toggleEdit('${e.id}')">✎</button>
              <button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>`
@@ -234,7 +235,7 @@ async function loadPeriodEntries() {
           <td>${fmtLocalDateTime(e.startedAt)}</td>
           <td>${e.endedAt ? fmtLocalDateTime(e.endedAt) : '—'}</td>
           <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
-          <td>${actionBtns}</td>
+          <td>${noteIcon}${actionBtns}</td>
         </tr>${editRow}`;
       }).join('');
     }

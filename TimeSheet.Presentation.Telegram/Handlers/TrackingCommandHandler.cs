@@ -5,6 +5,7 @@ using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Application.Parsers;
 using TimeSheet.Core.Domain.Enums;
+using TimeSheet.Core.Domain.Repositories;
 
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
@@ -253,6 +254,65 @@ public class TrackingCommandHandler(
                 text: responseText,
                 replyMarkup: keyboard,
                 cancellationToken: cancellationToken);
+
+            // Fire-and-forget end-of-day deviation prompt when a ToHome commute ends
+            var endedSession = result switch
+            {
+                TrackingResult.SessionEnded ended => ended.EndedSession,
+                TrackingResult.SessionStarted started => started.EndedSession,
+                _ => null
+            };
+            if (endedSession is { State: TrackingState.Commuting, CommuteDirection: CommuteDirection.ToHome })
+            {
+                var capturedUserId = userId.Value;
+                var capturedChatId = message.Chat.Id;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var deviationScope = serviceScopeFactory.CreateScope();
+                        var sessionRepo = deviationScope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+
+                        var today = DateTime.UtcNow.Date;
+                        // Today's work hours
+                        var todaySessions = await sessionRepo.GetSessionsInRangeAsync(
+                            capturedUserId, today, today.AddDays(1), CancellationToken.None);
+                        var todayWork = todaySessions
+                            .Where(s => s.State == TrackingState.Working && s.EndedAt.HasValue)
+                            .Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalHours);
+
+                        // 30-day average (exclude today)
+                        var history = await sessionRepo.GetSessionsInRangeAsync(
+                            capturedUserId, today.AddDays(-30), today, CancellationToken.None);
+                        var avgWork = history
+                            .Where(s => s.State == TrackingState.Working && s.EndedAt.HasValue)
+                            .GroupBy(s => s.StartedAt.Date)
+                            .Select(g => g.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalHours))
+                            .Where(h => h > 0)
+                            .DefaultIfEmpty(0)
+                            .Average();
+
+                        if (avgWork > 0)
+                        {
+                            var deviation = Math.Abs(todayWork - avgWork) / avgWork;
+                            if (deviation > 0.20)
+                            {
+                                string Fmt(double h) {
+                                    var m = (int)Math.Round(h * 60);
+                                    var hr = m / 60; var mn = m % 60;
+                                    return hr > 0 && mn > 0 ? $"{hr}h {mn}m" : hr > 0 ? $"{hr}h" : $"{mn}m";
+                                }
+                                var dir = todayWork > avgWork ? "more" : "less";
+                                await botClient.SendMessage(capturedChatId,
+                                    $"Today you worked {Fmt(todayWork)} ({dir} than your {Fmt(avgWork)} avg).\n" +
+                                    "Use /note to add context if needed.",
+                                    cancellationToken: CancellationToken.None);
+                            }
+                        }
+                    }
+                    catch { /* fire-and-forget, don't block */ }
+                });
+            }
 
             logger.LogInformation(
                 "User {UserId} executed {State} command: {ResultType}",

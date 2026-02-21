@@ -23,6 +23,7 @@ public class UpdateHandler(
     ReportCommandHandler reportCommandHandler,
     StatusCommandHandler statusCommandHandler,
     LoginCommandHandler loginCommandHandler,
+    NoteCommandHandler noteCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -167,6 +168,10 @@ public class UpdateHandler(
         else if (messageText.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
         {
             await loginCommandHandler.HandleLoginAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/note", StringComparison.OrdinalIgnoreCase))
+        {
+            await noteCommandHandler.HandleNoteAsync(botClient, message, cancellationToken);
         }
         else
         {
