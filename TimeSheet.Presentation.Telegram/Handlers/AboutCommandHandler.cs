@@ -13,9 +13,9 @@ public class AboutCommandHandler(ILogger<AboutCommandHandler> logger)
     private const string AboutMessage = """
         📊 *TimeSheet Bot*
 
-        A private time-tracking bot to help you manage work hours, commute time, and breaks.
+        A personal time-awareness tool to help you understand your daily work and commute patterns, stay in control of your time, and maintain a healthy work-life balance.
 
-        This bot is *not* for employer surveillance — it's a personal tool to ensure work doesn't take more time than it should.
+        Track your work sessions, commutes, and breaks — then use the reports to spot trends, see where your time goes, and make informed decisions about your day.
 
         *Registration Required*
         This is a private bot. You need a registration code from the administrator to use it.
