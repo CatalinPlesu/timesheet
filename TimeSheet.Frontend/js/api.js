@@ -23,6 +23,7 @@ async function request(method, path, body) {
 export const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),
+  put: (path, body) => request('PUT', path, body),
   del: (path) => request('DELETE', path),
 };
 
@@ -35,6 +36,9 @@ export async function toggleState(state) {
 }
 export async function deleteEntry(id) {
   return api.del(`/api/entries/${id}`);
+}
+export async function updateEntry(id, adjustmentMinutes) {
+  return api.put(`/api/entries/${id}`, { adjustmentMinutes });
 }
 export async function login(mnemonic) {
   const headers = { 'Content-Type': 'application/json' };
