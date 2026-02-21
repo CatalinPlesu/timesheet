@@ -58,3 +58,9 @@ export async function fetchChartData(startDate, endDate) {
 export async function fetchBreakdown(startDate, endDate) {
   return api.get(`/api/analytics/daily-breakdown?startDate=${startDate}&endDate=${endDate}`);
 }
+export async function fetchCommutePatterns(direction) {
+  return api.get(`/api/analytics/commute-patterns?direction=${direction}`);
+}
+export async function fetchPeriodAggregate(startDate, endDate) {
+  return api.get(`/api/analytics/period-aggregate?startDate=${startDate}&endDate=${endDate}`);
+}
