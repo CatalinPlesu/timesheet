@@ -465,6 +465,28 @@ public class AnalyticsController : ControllerBase
                         totalDurationHours = (decimal)(lastActivity - firstActivity).TotalHours;
                     }
 
+                    // Calculate office span:
+                    // clock-in  = EndedAt of first commute-to-work session
+                    // clock-out = StartedAt of first commute-to-home session
+                    decimal? officeSpanHours = null;
+                    var firstCommuteToWork = daySessions
+                        .Where(s => s.State == TrackingState.Commuting
+                                 && s.CommuteDirection == CommuteDirection.ToWork
+                                 && s.EndedAt.HasValue)
+                        .OrderBy(s => s.StartedAt)
+                        .FirstOrDefault();
+                    var firstCommuteToHome = daySessions
+                        .Where(s => s.State == TrackingState.Commuting
+                                 && s.CommuteDirection == CommuteDirection.ToHome)
+                        .OrderBy(s => s.StartedAt)
+                        .FirstOrDefault();
+                    if (firstCommuteToWork != null && firstCommuteToHome != null)
+                    {
+                        var clockIn  = firstCommuteToWork.EndedAt!.Value;
+                        var clockOut = firstCommuteToHome.StartedAt;
+                        officeSpanHours = (decimal)(clockOut - clockIn).TotalHours;
+                    }
+
                     result.Add(new DailyBreakdownDto
                     {
                         Date = date,
@@ -473,6 +495,7 @@ public class AnalyticsController : ControllerBase
                         CommuteToHomeHours = commuteToHomeHours,
                         LunchHours = lunchHours,
                         TotalDurationHours = totalDurationHours,
+                        OfficeSpanHours = officeSpanHours,
                         HasActivity = true
                     });
                 }

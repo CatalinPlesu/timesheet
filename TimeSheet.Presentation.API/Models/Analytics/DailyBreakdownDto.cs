@@ -36,6 +36,14 @@ public sealed class DailyBreakdownDto
     public decimal? TotalDurationHours { get; set; }
 
     /// <summary>
+    /// Gets or sets the office span in hours for this day.
+    /// Computed as the time from arriving at the office (EndedAt of first commute-to-work)
+    /// to leaving the office (StartedAt of first commute-to-home).
+    /// Null if either commute event is missing for the day.
+    /// </summary>
+    public decimal? OfficeSpanHours { get; set; }
+
+    /// <summary>
     /// Gets or sets whether this day has any work activity.
     /// </summary>
     public required bool HasActivity { get; set; }
