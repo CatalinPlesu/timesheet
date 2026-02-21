@@ -5,6 +5,7 @@ let entPeriodType = 'Day';
 let entPeriodOffset = 0;
 let entSortNewest = true;
 let editingId = null;
+let entTypeFilter = 'All';
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -72,6 +73,15 @@ function entryRowClass(state) {
   return '';
 }
 
+function stateBadge(state) {
+  if (!state) return state;
+  const s = state.toLowerCase();
+  if (s === 'working')   return `<span class="badge badge-work">Working</span>`;
+  if (s === 'commuting') return `<span class="badge badge-commute">Commuting</span>`;
+  if (s === 'lunch')     return `<span class="badge badge-lunch">Lunch</span>`;
+  return `<span class="badge">${state}</span>`;
+}
+
 export async function renderEntries() {
   document.getElementById('app').innerHTML = `
     <main class="container">
@@ -79,13 +89,16 @@ export async function renderEntries() {
       <p id="ent-success" class="success" style="display:none"></p>
       <p id="ent-error" class="error" style="display:none"></p>
       <div class="groupby-bar" id="period-type-bar"></div>
+      <div class="groupby-bar" id="type-filter-bar"></div>
       <div id="sort-bar"></div>
       <div class="period-nav" id="period-nav"></div>
       <div id="entries-table"><p aria-busy="true">Loading…</p></div>
     </main>
   `;
   entPeriodOffset = 0;
+  entTypeFilter = 'All';
   renderPeriodTypeBar();
+  renderTypeFilterBar();
   renderSortBar();
   await loadPeriodEntries();
 }
@@ -100,7 +113,22 @@ function renderPeriodTypeBar() {
     entPeriodType = t;
     entPeriodOffset = 0;
     renderPeriodTypeBar();
+    renderTypeFilterBar();
     renderSortBar();
+    await loadPeriodEntries();
+  };
+}
+
+function renderTypeFilterBar() {
+  const bar = document.getElementById('type-filter-bar');
+  if (!bar) return;
+  const types = ['All', 'Working', 'Commuting', 'Lunch'];
+  bar.innerHTML = types.map(t =>
+    `<button class="${t === entTypeFilter ? 'secondary' : 'outline secondary'} btn-compact" onclick="setTypeFilter('${t}')">${t}</button>`
+  ).join('');
+  window.setTypeFilter = async (t) => {
+    entTypeFilter = t;
+    renderTypeFilterBar();
     await loadPeriodEntries();
   };
 }
@@ -157,14 +185,19 @@ async function loadPeriodEntries() {
       return entSortNewest ? -diff : diff;
     });
 
-    if (entries.length === 0) {
+    // Apply type filter
+    const filteredEntries = entTypeFilter === 'All'
+      ? entries
+      : entries.filter(e => e.state && e.state.toLowerCase() === entTypeFilter.toLowerCase());
+
+    if (filteredEntries.length === 0) {
       tableEl.innerHTML = '<p>No entries for this period.</p>';
       return;
     }
 
     // Group entries by local date
     const groups = new Map();
-    for (const e of entries) {
+    for (const e of filteredEntries) {
       const dayKey = localDateISO(e.startedAt);
       if (!groups.has(dayKey)) groups.set(dayKey, []);
       groups.get(dayKey).push(e);
@@ -180,10 +213,13 @@ async function loadPeriodEntries() {
           ? `<button class="outline btn-compact" onclick="toggleEdit('${e.id}')">✎</button>
              <button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>`
           : '';
+        const editStartStr = fmtLocalDateTime(e.startedAt);
+        const editEndStr = e.endedAt ? fmtLocalDateTime(e.endedAt) : 'active';
         const editRow = !e.isActive ? `<tr id="edit-row-${e.id}" style="display:none">
           <td colspan="5" style="background:var(--pico-card-background-color);padding:0.4rem 0.8rem">
             <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-              <small>Adjust end time:</small>
+              <small style="color:var(--pico-muted-color)">${editStartStr} – ${editEndStr}</small>
+              <small>End time:</small>
               <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-30)">-30m</button>
               <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-5)">-5m</button>
               <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-1)">-1m</button>
@@ -194,7 +230,7 @@ async function loadPeriodEntries() {
           </td>
         </tr>` : '';
         return `<tr class="${rowCls}">
-          <td>${e.state}</td>
+          <td>${stateBadge(e.state)}</td>
           <td>${fmtLocalDateTime(e.startedAt)}</td>
           <td>${e.endedAt ? fmtLocalDateTime(e.endedAt) : '—'}</td>
           <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
@@ -207,7 +243,7 @@ async function loadPeriodEntries() {
       <figure>
         <table role="grid">
           <thead><tr><th>Type</th><th>Started</th><th>Ended</th><th>Duration</th><th></th></tr></thead>
-          <tbody>${rows}</tbody>
+          <tbody class="entries-tbody">${rows}</tbody>
         </table>
       </figure>`;
 
@@ -244,6 +280,7 @@ async function loadPeriodEntries() {
       try {
         await updateEntry(id, minutes);
         await loadPeriodEntries();
+        window.toggleEdit(id); // keep panel open
       } catch {
         const e = document.getElementById('ent-error');
         if (e) { e.textContent = 'Adjustment failed.'; e.style.display = ''; }

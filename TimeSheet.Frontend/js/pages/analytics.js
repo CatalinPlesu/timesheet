@@ -1,7 +1,6 @@
 import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange } from '../api.js';
 import { renderLineChart } from '../charts.js';
 import { toLocal, localDateISO } from '../time.js';
-import { getUtcOffset } from '../auth.js';
 
 let anaPeriod = 30;
 let anaTab = 'stats';
@@ -120,12 +119,20 @@ function renderStats(el) {
     .filter(h => h > 0);
   const workMedian = median(workValues);
 
+  const commuteWorkValues = (_breakdown || []).map(d => d.commuteToWorkHours || 0).filter(h => h > 0);
+  const commuteWorkMedian = median(commuteWorkValues);
+  const commuteHomeValues = (_breakdown || []).map(d => d.commuteToHomeHours || 0).filter(h => h > 0);
+  const commuteHomeMedian = median(commuteHomeValues);
+  const lunchValues = (_breakdown || []).map(d => d.lunchHours || 0).filter(h => h > 0);
+  const lunchMedian = median(lunchValues);
+
   // Day-of-week breakdown from _breakdown
   const dowGroups = {};
   for (let i = 0; i < 7; i++) dowGroups[i] = { work: [], commute: [], lunch: [] };
   for (const d of (_breakdown || [])) {
-    const dow = new Date(d.date).getUTCDay();
-    dowGroups[dow].work.push(d.workHours || 0);
+    if (!d.workHours || d.workHours <= 0) continue; // skip non-work days
+    const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+    dowGroups[dow].work.push(d.workHours);
     dowGroups[dow].commute.push((d.commuteToWorkHours || 0) + (d.commuteToHomeHours || 0));
     dowGroups[dow].lunch.push(d.lunchHours || 0);
   }
@@ -172,9 +179,9 @@ function renderStats(el) {
         <thead><tr><th>Metric</th><th>Avg</th><th>Median</th><th>Min</th><th>Max</th><th>Std Dev</th><th>Total</th></tr></thead>
         <tbody>
           ${statsRow('Work', _stats.work, workMedian)}
-          ${statsRow('Commute →Work', _stats.commuteToWork)}
-          ${statsRow('Commute →Home', _stats.commuteToHome)}
-          ${statsRow('Lunch', _stats.lunch)}
+          ${statsRow('Commute →Work', _stats.commuteToWork, commuteWorkMedian)}
+          ${statsRow('Commute →Home', _stats.commuteToHome, commuteHomeMedian)}
+          ${statsRow('Lunch', _stats.lunch, lunchMedian)}
         </tbody>
       </table>
     </article>
@@ -408,11 +415,11 @@ export async function renderCalendarTab(el) {
   for (const e of entries) {
     const localStart = toLocal(e.startedAt);
     if (!localStart) continue;
-    const h1 = localStart.getUTCHours() + localStart.getUTCMinutes() / 60;
+    const h1 = localStart.getHours() + localStart.getMinutes() / 60;
     hourMin = Math.min(hourMin, Math.floor(h1) - 1);
     if (e.endedAt) {
       const localEnd = toLocal(e.endedAt);
-      const h2 = localEnd.getUTCHours() + localEnd.getUTCMinutes() / 60;
+      const h2 = localEnd.getHours() + localEnd.getMinutes() / 60;
       hourMax = Math.max(hourMax, Math.ceil(h2) + 1);
     }
   }
@@ -445,10 +452,10 @@ export async function renderCalendarTab(el) {
     ).join('');
 
     // local midnight of colDate in ms
-    const localMidnightMs = new Date(colDateStr + 'T00:00:00Z').getTime() + getUtcOffset() * 60000;
+    const localMidnightMs = new Date(colDateStr + 'T00:00:00').getTime(); // local midnight, no Z
     const dayStartMs = localMidnightMs + hourMin * 3600000;
 
-    const fmtTime = (d) => `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+    const fmtTime = (d) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const sessionBlocks = dayEntries.map(e => {
       const sessionStart = toLocal(e.startedAt);
       const sessionEnd   = e.endedAt ? toLocal(e.endedAt) : toLocal(new Date().toISOString());
