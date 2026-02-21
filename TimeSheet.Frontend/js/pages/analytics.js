@@ -1,9 +1,12 @@
 import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange } from '../api.js';
 import { renderLineChart } from '../charts.js';
+import { toLocal, localDateISO } from '../time.js';
+import { getUtcOffset } from '../auth.js';
 
 let anaPeriod = 30;
 let anaTab = 'stats';
 let calStartDate = null;  // Date object — start of visible window
+let chartWindowStart = null; // Date — start of 14-day window
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -44,7 +47,12 @@ function renderPeriodTabs() {
   el.innerHTML = [7,30,90,365,3650].map(d =>
     `<button class="btn-compact${anaPeriod===d?' btn-active':''}" onclick="setAnaPeriod(${d})">${labels[d]}</button>`
   ).join('');
-  window.setAnaPeriod = async (d) => { anaPeriod = d; renderPeriodTabs(); await loadAll(); };
+  window.setAnaPeriod = async (d) => {
+    anaPeriod = d;
+    chartWindowStart = null;
+    renderPeriodTabs();
+    await loadAll();
+  };
 }
 
 function renderAnaTabs() {
@@ -178,25 +186,82 @@ function renderStats(el) {
 }
 
 function renderChart(el) {
-  if (!_chart) { el.innerHTML = '<p>No chart data yet.</p>'; return; }
-  el.innerHTML = '<canvas id="lineChart"></canvas>';
-  const datasets = [
-    { label: 'Work',      data: _chart.workHours,    borderColor: 'rgb(59,130,246)',  backgroundColor: 'rgba(59,130,246,0.1)',  fill: true, tension: 0.3 },
-    { label: 'Commute',   data: _chart.commuteHours, borderColor: 'rgb(34,197,94)',   backgroundColor: 'rgba(34,197,94,0.1)',   fill: true, tension: 0.3 },
-    { label: 'Lunch',     data: _chart.lunchHours,   borderColor: 'rgb(251,146,60)',  backgroundColor: 'rgba(251,146,60,0.1)',  fill: true, tension: 0.3 },
-    { label: 'Idle',      data: _chart.idleHours,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 },
-    {
-      label: '8h target',
-      data: _chart.labels.map(() => 8),
-      borderColor: 'rgba(239,68,68,0.7)',
-      borderDash: [8, 4],
-      borderWidth: 1.5,
-      pointRadius: 0,
-      fill: false,
-      tension: 0
+  // Initialize window to last 14 days
+  if (!chartWindowStart) {
+    const now = new Date();
+    chartWindowStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 13));
+  }
+  const windowEnd = new Date(chartWindowStart);
+  windowEnd.setUTCDate(windowEnd.getUTCDate() + 14);
+
+  const startStr = chartWindowStart.toISOString().slice(0, 10);
+  const endStr   = windowEnd.toISOString().slice(0, 10);
+
+  // Show loading + nav
+  el.innerHTML = `
+    <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;">
+      <button class="outline btn-compact" id="chartPrev">← Prev</button>
+      <strong style="flex:1;text-align:center" id="chartLabel">${startStr} – ${new Date(windowEnd - 1).toISOString().slice(0,10)}</strong>
+      <button class="outline btn-compact" id="chartNext">Next →</button>
+    </div>
+    <canvas id="lineChart"></canvas>`;
+
+  document.getElementById('chartPrev').onclick = async () => {
+    chartWindowStart = new Date(chartWindowStart);
+    chartWindowStart.setUTCDate(chartWindowStart.getUTCDate() - 14);
+    renderChart(el);
+  };
+  document.getElementById('chartNext').onclick = async () => {
+    chartWindowStart = new Date(chartWindowStart);
+    chartWindowStart.setUTCDate(chartWindowStart.getUTCDate() + 14);
+    renderChart(el);
+  };
+
+  // Fetch and render async
+  (async () => {
+    try {
+      const chartData = await fetchChartData(startStr, endStr);
+
+      // Build a map from the API response
+      const apiMap = {};
+      if (chartData && chartData.labels) {
+        chartData.labels.forEach((lbl, i) => {
+          apiMap[lbl] = {
+            work:    chartData.workHours?.[i]    ?? 0,
+            commute: chartData.commuteHours?.[i] ?? 0,
+            lunch:   chartData.lunchHours?.[i]   ?? 0,
+            idle:    chartData.idleHours?.[i]     ?? 0,
+          };
+        });
+      }
+
+      // Fill every day in range
+      const labels = [], workD = [], commuteD = [], lunchD = [], idleD = [];
+      const weekendIndices = [];
+      const cur = new Date(chartWindowStart);
+      while (cur < windowEnd) {
+        const ds = cur.toISOString().slice(0, 10);
+        const dow = cur.getUTCDay();
+        labels.push(ds.slice(5)); // "MM-DD"
+        const d = apiMap[ds] || { work: 0, commute: 0, lunch: 0, idle: 0 };
+        workD.push(d.work); commuteD.push(d.commute); lunchD.push(d.lunch); idleD.push(d.idle);
+        if (dow === 0 || dow === 6) weekendIndices.push(labels.length - 1);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+      }
+
+      const datasets = [
+        { label: 'Work',    data: workD,    borderColor: 'rgb(59,130,246)',  backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3 },
+        { label: 'Commute', data: commuteD, borderColor: 'rgb(34,197,94)',   backgroundColor: 'rgba(34,197,94,0.1)',  fill: true, tension: 0.3 },
+        { label: 'Lunch',   data: lunchD,   borderColor: 'rgb(251,146,60)',  backgroundColor: 'rgba(251,146,60,0.1)', fill: true, tension: 0.3 },
+        { label: 'Idle',    data: idleD,    borderColor: 'rgb(156,163,175)', borderDash: [5,5], fill: false, tension: 0.3 },
+        { label: '8h target', data: labels.map(() => 8), borderColor: 'rgba(239,68,68,0.7)', borderDash: [8,4], borderWidth: 1.5, pointRadius: 0, fill: false }
+      ];
+
+      renderLineChart('lineChart', labels, datasets, weekendIndices);
+    } catch {
+      el.innerHTML += '<p class="error">Failed to load chart.</p>';
     }
-  ];
-  renderLineChart('lineChart', _chart.labels, datasets);
+  })();
 }
 
 // ─── Calendar: hourly timeline ────────────────────────────────────────────────
@@ -215,13 +280,12 @@ function isoDate(d) {
   return d.toISOString().slice(0, 10);
 }
 
-function fmtRangeLabel(start, n) {
+function fmtRangeLabel(start, end) {
   const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  if (n === 1) {
+  if (isoDate(start) === isoDate(end)) {
     return `${dayNames[start.getUTCDay()]} ${months[start.getUTCMonth()]} ${start.getUTCDate()}, ${start.getUTCFullYear()}`;
   }
-  const end = addDays(start, n - 1);
   return `${dayNames[start.getUTCDay()]} ${months[start.getUTCMonth()]} ${start.getUTCDate()} – ${dayNames[end.getUTCDay()]} ${months[end.getUTCMonth()]} ${end.getUTCDate()}, ${end.getUTCFullYear()}`;
 }
 
@@ -243,25 +307,48 @@ function sessionLabel(state) {
   return state;
 }
 
+// Calendar weekday helpers
+function isWeekend(date) { const d = date.getUTCDay(); return d === 0 || d === 6; }
+
+function getMondayOfWeek(date) {
+  const d = new Date(date);
+  const dow = d.getUTCDay();
+  const diff = dow === 0 ? -6 : 1 - dow; // Monday
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d;
+}
+
+function getFridayOfWeek(date) {
+  const mon = getMondayOfWeek(date);
+  const fri = new Date(mon);
+  fri.setUTCDate(mon.getUTCDate() + 4);
+  return fri;
+}
+
 export async function renderCalendarTab(el) {
   if (!el) el = document.getElementById('ana-content');
   if (!el) return;
 
   const n = visibleDays();
 
-  // Initialize calStartDate to today if not set
+  // Initialize calStartDate to Monday of current week if not set
   if (!calStartDate) {
-    const now = new Date();
-    calStartDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    // Shift back so today is the last visible column
-    calStartDate = addDays(calStartDate, -(n - 1));
+    calStartDate = getMondayOfWeek(new Date());
   }
 
   el.innerHTML = '<p aria-busy="true">Loading timeline…</p>';
 
+  // Build weekday dates array (skip weekends)
+  const weekdayDates = [];
+  let cur = new Date(calStartDate);
+  while (weekdayDates.length < n) {
+    if (!isWeekend(cur)) weekdayDates.push(new Date(cur));
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+
   // Fetch entries for the visible range
   const rangeStart = isoDate(calStartDate);
-  const rangeEnd = isoDate(addDays(calStartDate, n));  // exclusive end
+  const rangeEnd = isoDate(addDays(weekdayDates[weekdayDates.length - 1], 1));
   let data = null;
   try {
     data = await fetchEntriesForRange(rangeStart, rangeEnd);
@@ -272,16 +359,17 @@ export async function renderCalendarTab(el) {
 
   const entries = (data && data.entries) ? data.entries : [];
 
-  // Determine hour range from entries
+  // Determine hour range from entries (using local times)
   let hourMin = defaultHourMin;
   let hourMax = defaultHourMax;
   for (const e of entries) {
-    const start = new Date(e.startedAt);
-    const h1 = start.getUTCHours() + start.getUTCMinutes() / 60;
+    const localStart = toLocal(e.startedAt);
+    if (!localStart) continue;
+    const h1 = localStart.getUTCHours() + localStart.getUTCMinutes() / 60;
     hourMin = Math.min(hourMin, Math.floor(h1) - 1);
     if (e.endedAt) {
-      const end = new Date(e.endedAt);
-      const h2 = end.getUTCHours() + end.getUTCMinutes() / 60;
+      const localEnd = toLocal(e.endedAt);
+      const h2 = localEnd.getUTCHours() + localEnd.getUTCMinutes() / 60;
       hourMax = Math.max(hourMax, Math.ceil(h2) + 1);
     }
   }
@@ -301,24 +389,25 @@ export async function renderCalendarTab(el) {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   const dayCols = [];
-  for (let i = 0; i < n; i++) {
-    const colDate = addDays(calStartDate, i);
+  for (let i = 0; i < weekdayDates.length; i++) {
+    const colDate = weekdayDates[i];
     const colDateStr = isoDate(colDate);
 
-    // Filter entries for this day
-    const dayEntries = entries.filter(e => e.startedAt && e.startedAt.slice(0, 10) === colDateStr);
+    // Filter entries for this day using local date
+    const dayEntries = entries.filter(e => e.startedAt && localDateISO(e.startedAt) === colDateStr);
 
     // Build hour grid lines
     const hourLines = hourLabels.map((_, idx) =>
       `<div class="tl-hour-line" style="top:${idx * pxPerMin * 60}px"></div>`
     ).join('');
 
-    // Build session blocks
-    const dayStartMs = Date.UTC(colDate.getUTCFullYear(), colDate.getUTCMonth(), colDate.getUTCDate(), hourMin, 0, 0, 0);
+    // local midnight of colDate in ms
+    const localMidnightMs = new Date(colDateStr + 'T00:00:00Z').getTime() + getUtcOffset() * 60000;
+    const dayStartMs = localMidnightMs + hourMin * 3600000;
 
     const sessionBlocks = dayEntries.map(e => {
-      const sessionStart = new Date(e.startedAt);
-      const sessionEnd = e.endedAt ? new Date(e.endedAt) : new Date();
+      const sessionStart = toLocal(e.startedAt);
+      const sessionEnd   = e.endedAt ? toLocal(e.endedAt) : toLocal(new Date().toISOString());
       const topPx = Math.max(0, (sessionStart.getTime() - dayStartMs) / 60000 * pxPerMin);
       const heightPx = Math.max((sessionEnd.getTime() - sessionStart.getTime()) / 60000 * pxPerMin, pxPerMin * 15);
       const cls = sessionClass(e.state);
@@ -346,7 +435,8 @@ export async function renderCalendarTab(el) {
     `<div class="tl-hour" style="height:${pxPerMin * 60}px">${h}</div>`
   ).join('');
 
-  const rangeLabel = fmtRangeLabel(calStartDate, n);
+  const lastDate = weekdayDates[weekdayDates.length - 1];
+  const rangeLabel = fmtRangeLabel(calStartDate, lastDate);
 
   el.innerHTML = `
     <div class="tl-container">
@@ -356,7 +446,7 @@ export async function renderCalendarTab(el) {
         <button class="outline btn-compact" onclick="calNext()">→</button>
         <button class="outline btn-compact secondary" onclick="calToday()">Today</button>
       </div>
-      <div class="tl-grid" id="tl-grid" style="grid-template-columns: 52px repeat(${n}, 1fr)">
+      <div class="tl-grid" id="tl-grid" style="grid-template-columns: 52px repeat(${weekdayDates.length}, 1fr)">
         <div class="tl-time-col">
           <div class="tl-corner"></div>
           ${timeLabels}
@@ -366,11 +456,11 @@ export async function renderCalendarTab(el) {
     </div>`;
 
   window.calPrev = async () => {
-    calStartDate = addDays(calStartDate, -visibleDays());
+    calStartDate = addDays(calStartDate, -7);
     await renderCalendarTab(document.getElementById('ana-content'));
   };
   window.calNext = async () => {
-    calStartDate = addDays(calStartDate, visibleDays());
+    calStartDate = addDays(calStartDate, 7);
     await renderCalendarTab(document.getElementById('ana-content'));
   };
   window.calToday = async () => {
@@ -393,30 +483,94 @@ async function renderCommute(el) {
   }
 
   const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const weekdays = [1,2,3,4,5]; // Mon-Fri only
+
+  // Filter out weekends
+  const filteredWork = (toWork || []).filter(r => r.dayOfWeek >= 1 && r.dayOfWeek <= 5)
+    .sort((a,b) => a.dayOfWeek - b.dayOfWeek);
+  const filteredHome = (toHome || []).filter(r => r.dayOfWeek >= 1 && r.dayOfWeek <= 5)
+    .sort((a,b) => a.dayOfWeek - b.dayOfWeek);
+
+  function fmtHours(h) {
+    if (!h) return '0m';
+    const totalMin = Math.round(h * 60);
+    const hr = Math.floor(totalMin / 60), mn = totalMin % 60;
+    return hr > 0 ? `${hr}h ${mn}m` : `${mn}m`;
+  }
 
   function commuteTable(data) {
     if (!data || !data.length) return '<p class="muted-sm">No data yet.</p>';
     return `<table class="stats-table">
-      <thead><tr><th>Day</th><th>Avg Commute</th><th>Best departure</th><th>Shortest commute</th><th>Trips</th></tr></thead>
+      <thead><tr><th>Day</th><th>Avg</th><th>Best departure</th><th>Shortest</th><th>Trips</th></tr></thead>
       <tbody>
         ${data.map(r => `<tr>
-          <td>${dowNames[r.dayOfWeek] || r.dayOfWeek}</td>
-          <td>${fmtDur(r.averageDurationHours)}</td>
+          <td>${dowNames[r.dayOfWeek]}</td>
+          <td>${fmtHours(r.averageDurationHours)}</td>
           <td>${String(Math.floor(r.optimalStartHour)).padStart(2,'0')}:00</td>
-          <td>${fmtDur(r.shortestDurationHours)}</td>
+          <td>${fmtHours(r.shortestDurationHours)}</td>
           <td>${r.sessionCount}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
   }
 
+  // Build chart data aligned to Mon-Fri
+  const chartLabels = weekdays.map(d => dowNames[d]);
+  const workMap = Object.fromEntries(filteredWork.map(r => [r.dayOfWeek, r.averageDurationHours || 0]));
+  const homeMap = Object.fromEntries(filteredHome.map(r => [r.dayOfWeek, r.averageDurationHours || 0]));
+  const workChartData = weekdays.map(d => workMap[d] || 0);
+  const homeChartData = weekdays.map(d => homeMap[d] || 0);
+
   el.innerHTML = `
     <article>
+      <strong>Commute duration by weekday</strong>
+      <canvas id="commuteChart" style="max-height:220px;margin-top:0.75rem"></canvas>
+    </article>
+    <article>
       <strong>To Work</strong>
-      ${commuteTable(toWork)}
+      ${commuteTable(filteredWork)}
     </article>
     <article>
       <strong>To Home</strong>
-      ${commuteTable(toHome)}
+      ${commuteTable(filteredHome)}
     </article>`;
+
+  // Render chart after DOM is ready
+  const canvas = document.getElementById('commuteChart');
+  if (canvas) {
+    if (canvas._chartInstance) canvas._chartInstance.destroy();
+    canvas._chartInstance = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: chartLabels,
+        datasets: [
+          { label: 'To Work', data: workChartData, backgroundColor: 'rgba(34,197,94,0.8)' },
+          { label: 'To Home', data: homeChartData, backgroundColor: 'rgba(59,130,246,0.8)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const h = ctx.parsed.y;
+                if (!h) return `${ctx.dataset.label}: 0m`;
+                const totalMin = Math.round(h * 60);
+                const hr = Math.floor(totalMin / 60), mn = totalMin % 60;
+                return `${ctx.dataset.label}: ${hr > 0 ? hr+'h ' : ''}${mn}m`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: v => v === 0 ? '0' : `${Math.floor(v)}h` }
+          }
+        }
+      }
+    });
+  }
 }

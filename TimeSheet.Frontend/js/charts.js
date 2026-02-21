@@ -1,6 +1,6 @@
 const _charts = {};
 
-export function renderLineChart(canvasId, labels, datasets) {
+export function renderLineChart(canvasId, labels, datasets, weekendIndices = []) {
   if (_charts[canvasId]) { _charts[canvasId].destroy(); }
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
@@ -10,8 +10,35 @@ export function renderLineChart(canvasId, labels, datasets) {
     options: {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true, title: { display: true, text: 'Hours' } } }
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const h = ctx.parsed.y;
+              if (h === 0) return `${ctx.dataset.label}: 0m`;
+              const totalMin = Math.round(h * 60);
+              const hr = Math.floor(totalMin / 60);
+              const mn = totalMin % 60;
+              return `${ctx.dataset.label}: ${hr > 0 ? hr + 'h ' : ''}${mn}m`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: 'Hours' },
+          ticks: {
+            callback: (v) => v === 0 ? '0' : `${Math.floor(v)}h`
+          }
+        },
+        x: {
+          ticks: {
+            color: (ctx) => weekendIndices.includes(ctx.index) ? 'rgba(156,163,175,0.7)' : undefined
+          }
+        }
+      }
     }
   });
 }

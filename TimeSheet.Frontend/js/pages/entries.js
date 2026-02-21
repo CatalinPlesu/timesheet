@@ -1,12 +1,9 @@
 import { fetchEntriesForRange, deleteEntry } from '../api.js';
+import { fmtLocalDateTime, localDateISO } from '../time.js';
 
 let entPeriodType = 'Day';
 let entPeriodOffset = 0;
-
-function fmtDateTime(s) {
-  if (!s) return '—';
-  return s.slice(0, 16).replace('T', ' ');
-}
+let entSortNewest = true;
 
 function fmtDur(h) {
   const m = Math.round(h * 60);
@@ -55,6 +52,22 @@ function getPeriodRange(type, offset) {
   };
 }
 
+function fmtDayLabel(isoDate) {
+  const d = new Date(isoDate + 'T12:00:00Z');
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[d.getUTCDay()]}, ${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+function entryRowClass(state) {
+  if (!state) return '';
+  const s = state.toLowerCase();
+  if (s === 'working') return 'entry-work';
+  if (s === 'commuting') return 'entry-commute';
+  if (s === 'lunch') return 'entry-lunch';
+  return '';
+}
+
 export async function renderEntries() {
   document.getElementById('app').innerHTML = `
     <main class="container">
@@ -62,12 +75,14 @@ export async function renderEntries() {
       <p id="ent-success" class="success" style="display:none"></p>
       <p id="ent-error" class="error" style="display:none"></p>
       <div class="groupby-bar" id="period-type-bar"></div>
+      <div id="sort-bar"></div>
       <div class="period-nav" id="period-nav"></div>
       <div id="entries-table"><p aria-busy="true">Loading…</p></div>
     </main>
   `;
   entPeriodOffset = 0;
   renderPeriodTypeBar();
+  renderSortBar();
   await loadPeriodEntries();
 }
 
@@ -81,8 +96,21 @@ function renderPeriodTypeBar() {
     entPeriodType = t;
     entPeriodOffset = 0;
     renderPeriodTypeBar();
+    renderSortBar();
     await loadPeriodEntries();
   };
+}
+
+function renderSortBar() {
+  const bar = document.getElementById('sort-bar');
+  if (!bar) return;
+  bar.innerHTML = `
+    <div class="sort-bar">
+      <small>Sort:</small>
+      <button class="outline btn-compact ${entSortNewest ? 'secondary' : ''}" onclick="setSortNewest(true)">Newest first</button>
+      <button class="outline btn-compact ${!entSortNewest ? 'secondary' : ''}" onclick="setSortNewest(false)">Oldest first</button>
+    </div>`;
+  window.setSortNewest = async (v) => { entSortNewest = v; renderSortBar(); await loadPeriodEntries(); };
 }
 
 function renderPeriodNav(label) {
@@ -118,29 +146,50 @@ async function loadPeriodEntries() {
   try {
     const data = await fetchEntriesForRange(start, end);
     if (!data) return;
-    const entries = (data.entries || []).sort((a, b) =>
-      new Date(a.startedAt) - new Date(b.startedAt)  // oldest first within period
-    );
+
+    // Sort by startedAt
+    const entries = (data.entries || []).sort((a, b) => {
+      const diff = new Date(a.startedAt) - new Date(b.startedAt);
+      return entSortNewest ? -diff : diff;
+    });
+
     if (entries.length === 0) {
       tableEl.innerHTML = '<p>No entries for this period.</p>';
       return;
     }
+
+    // Group entries by local date
+    const groups = new Map();
+    for (const e of entries) {
+      const dayKey = localDateISO(e.startedAt);
+      if (!groups.has(dayKey)) groups.set(dayKey, []);
+      groups.get(dayKey).push(e);
+    }
+
+    // Build rows with day separators
+    let rows = '';
+    for (const [dayKey, dayEntries] of groups) {
+      rows += `<tr class="entry-day-sep"><td colspan="5"><span>${fmtDayLabel(dayKey)}</span></td></tr>`;
+      rows += dayEntries.map(e => {
+        const rowCls = entryRowClass(e.state);
+        return `<tr class="${rowCls}">
+          <td>${e.state}</td>
+          <td>${fmtLocalDateTime(e.startedAt)}</td>
+          <td>${e.endedAt ? fmtLocalDateTime(e.endedAt) : '—'}</td>
+          <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
+          <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
+        </tr>`;
+      }).join('');
+    }
+
     tableEl.innerHTML = `
       <figure>
         <table role="grid">
           <thead><tr><th>Type</th><th>Started</th><th>Ended</th><th>Duration</th><th></th></tr></thead>
-          <tbody>
-            ${entries.map(e => `
-              <tr>
-                <td>${e.state}</td>
-                <td>${fmtDateTime(e.startedAt)}</td>
-                <td>${e.endedAt ? fmtDateTime(e.endedAt) : '—'}</td>
-                <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
-                <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
-              </tr>`).join('')}
-          </tbody>
+          <tbody>${rows}</tbody>
         </table>
       </figure>`;
+
     window.delEntry = async (id) => {
       try {
         await deleteEntry(id);
