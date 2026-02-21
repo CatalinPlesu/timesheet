@@ -329,58 +329,11 @@ lint *args:
     SLN=$(ls "$ROOT"/*.slnx "$ROOT"/*.sln 2>/dev/null | head -n1); \
     if [ -n "$SLN" ]; then dotnet format "$SLN" --verify-no-changes {{args}}; else echo "✗ No solution file found."; exit 1; fi
 
-# Publish Telegram bot to namespaced output directory
-publish-bot:
-    @echo "→ Publishing Telegram bot to publish/bot/"; \
-    dotnet publish TimeSheet.Presentation.Telegram/TimeSheet.Presentation.Telegram.csproj \
-      -c Release \
-      -o publish/bot/ \
-      --os linux --arch x64
-
-# Publish REST API to namespaced output directory
-publish-api:
-    @echo "→ Publishing REST API to publish/api/"; \
-    dotnet publish TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj \
-      -c Release \
-      -o publish/api/ \
-      --os linux --arch x64
-
-# Build frontend for production (Nim → JS)
-build-frontend:
-    @echo "→ Compiling frontend (Nim/Karax)…"; \
-    cd TimeSheet.Frontend && NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble buildjs; \
-    mkdir -p publish/frontend; \
-    cp TimeSheet.Frontend/index.html publish/frontend/; \
-    cp -r TimeSheet.Frontend/dist publish/frontend/; \
-    echo "  ✓ Built to publish/frontend/"
-
-# Run API (dotnet run, no file watching to avoid inotify limits)
-dev-api:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "→ Starting API…"
-    dotnet run --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj
-
-# Compile Nim frontend then serve on port 8080.
-# API_PORT defaults to 5191 (what dev-api uses).
-# FRONTEND_PORT defaults to 8080.
-dev-frontend:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    PORT="${FRONTEND_PORT:-8080}"
-    API_URL="http://localhost:${API_PORT:-5191}"
-    echo "→ Compiling Nim/Karax frontend (API_BASE=$API_URL)…"
-    cd TimeSheet.Frontend
-    API_BASE="$API_URL" \
-      NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble \
-      mise exec -- nimble devjs
-    echo "→ Serving at http://localhost:$PORT"
-    fuser -k "$PORT/tcp" 2>/dev/null || true
-    python3 -m http.server "$PORT" --directory .
-
-# Run both API and frontend in dev mode (requires terminal multiplexer or separate terminals)
+# Start API and frontend (open two terminals or use a multiplexer)
 dev:
-    @echo "Run 'just dev-api' in one terminal and 'just dev-frontend' in another"
+    @echo "Run in separate terminals:"
+    @echo "  Terminal 1: dotnet run --project TimeSheet.Presentation.API/TimeSheet.Presentation.API.csproj"
+    @echo "  Terminal 2: python3 -m http.server 8080 --directory TimeSheet.Frontend"
 
 # Check status of all 3 services
 status:
@@ -462,7 +415,7 @@ toggle:
       API_PID=$!; \
       skate set "${RKEY}-api-pid@{{_db}}" "$API_PID"; \
       echo "  ✓ API started (PID $API_PID)"; \
-      (cd TimeSheet.Frontend && API_BASE="http://localhost:${API_PORT:-5191}" NIMBLE_DIR=~/.local/share/mise/installs/nim/2.2.6/nimble mise exec -- nimble devjs && fuser -k "${FRONTEND_PORT:-8080}/tcp" 2>/dev/null || true && python3 -m http.server "${FRONTEND_PORT:-8080}" --directory .) > /tmp/timesheet-frontend.log 2>&1 & \
+      (fuser -k "${FRONTEND_PORT:-8080}/tcp" 2>/dev/null || true; python3 -m http.server "${FRONTEND_PORT:-8080}" --directory TimeSheet.Frontend) > /tmp/timesheet-frontend.log 2>&1 & \
       FRONTEND_PID=$!; \
       skate set "${RKEY}-frontend-pid@{{_db}}" "$FRONTEND_PID"; \
       echo "  ✓ Frontend started (PID $FRONTEND_PID)"; \

@@ -53,7 +53,18 @@ services:
     networks:
       - timesheet-network
 
-  # frontend: TODO — add nginx Dockerfile for Nim/Karax SPA (compile Nim → JS, serve with nginx)
+  frontend:
+    image: python:3-slim
+    container_name: timesheet-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:8080"
+    volumes:
+      - ./TimeSheet.Frontend:/app:ro
+    working_dir: /app
+    command: python3 -m http.server 8080
+    networks:
+      - timesheet-network
 
   seq:
     image: datalust/seq:latest
