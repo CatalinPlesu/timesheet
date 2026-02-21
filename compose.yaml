@@ -13,14 +13,16 @@ services:
       - Database__EnableSensitiveDataLogging=false
       - Database__EnableDetailedErrors=false
       - Bot__Token=${BOT_TOKEN}
-      - Serilog__WriteTo__1__Name=Seq
-      - Serilog__WriteTo__1__Args__serverUrl=http://seq:80
+      - Serilog__WriteTo__2__Name=OpenTelemetry
+      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
+      - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
+      - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
       - Workers__AutoShutdownCheckInterval=${AUTO_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
       - Workers__ForgotShutdownCheckInterval=${FORGOT_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
       - Workers__LunchReminderCheckInterval=${LUNCH_REMINDER_CHECK_INTERVAL:-00:03:00}
       - Workers__WorkHoursAlertCheckInterval=${WORK_HOURS_ALERT_CHECK_INTERVAL:-00:03:00}
     depends_on:
-      - seq
+      - openobserve
     networks:
       - timesheet-network
 
@@ -46,10 +48,12 @@ services:
       - JwtSettings__ExpirationMinutes=${JWT_EXPIRATION_MINUTES:-60}
       - Cors__AllowedOrigins__0=http://localhost:${FRONTEND_PORT:-3000}
       - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL:-http://localhost:3000}
-      - Serilog__WriteTo__2__Name=Seq
-      - Serilog__WriteTo__2__Args__serverUrl=http://seq:80
+      - Serilog__WriteTo__2__Name=OpenTelemetry
+      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
+      - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
+      - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
     depends_on:
-      - seq
+      - openobserve
     networks:
       - timesheet-network
 
@@ -66,22 +70,23 @@ services:
     networks:
       - timesheet-network
 
-  seq:
-    image: datalust/seq:latest
-    container_name: timesheet-seq
+  openobserve:
+    image: openobserve/openobserve:latest
+    container_name: timesheet-openobserve
     restart: unless-stopped
     ports:
-      - "${SEQ_PORT:-5341}:80"
+      - "${OPENOBSERVE_PORT:-5080}:5080"
     volumes:
-      - seq-data:/data
+      - openobserve-data:/data
     environment:
-      - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_NOAUTHENTICATION=${SEQ_NO_AUTH:-true}
+      - ZO_ROOT_USER_EMAIL=root@example.com
+      - ZO_ROOT_USER_PASSWORD=Complexpass#123
+      - ZO_DATA_DIR=/data
     networks:
       - timesheet-network
 
 volumes:
-  seq-data:
+  openobserve-data:
     driver: local
 
 networks:
