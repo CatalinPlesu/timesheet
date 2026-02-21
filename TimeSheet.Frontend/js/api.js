@@ -33,9 +33,6 @@ export async function fetchCurrentState() {
 export async function toggleState(state) {
   return api.post('/api/tracking/toggle', { state });
 }
-export async function fetchEntries(page, pageSize, groupBy) {
-  return api.get(`/api/entries?page=${page}&pageSize=${pageSize}&groupBy=${groupBy}`);
-}
 export async function deleteEntry(id) {
   return api.del(`/api/entries/${id}`);
 }
@@ -63,4 +60,7 @@ export async function fetchCommutePatterns(direction) {
 }
 export async function fetchPeriodAggregate(startDate, endDate) {
   return api.get(`/api/analytics/period-aggregate?startDate=${startDate}&endDate=${endDate}`);
+}
+export async function fetchEntriesForRange(startDate, endDate) {
+  return api.get(`/api/entries?startDate=${startDate}&endDate=${endDate}&pageSize=500&page=1`);
 }

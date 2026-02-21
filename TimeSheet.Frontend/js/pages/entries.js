@@ -1,9 +1,7 @@
-import { fetchEntries, deleteEntry } from '../api.js';
+import { fetchEntriesForRange, deleteEntry } from '../api.js';
 
-let entPage = 1;
-let entGroupBy = 'Day';
-let totalPages = 1;
-let sortAsc = false;  // false = newest first (desc)
+let entPeriodType = 'Day';
+let entPeriodOffset = 0;
 
 function fmtDateTime(s) {
   if (!s) return '—';
@@ -16,10 +14,45 @@ function fmtDur(h) {
   return hr > 0 ? `${hr}h ${mn}m` : `${mn}m`;
 }
 
-function dayLabel(iso) {
-  const d = new Date(iso);
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  return `${iso.slice(0,10)} (${days[d.getUTCDay()]})`;
+function getPeriodRange(type, offset) {
+  const now = new Date();
+  let start, end, label;
+
+  if (type === 'Day') {
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + offset));
+    end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 1);
+    label = start.toISOString().slice(0, 10) + ' (' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][start.getUTCDay()] + ')';
+  } else if (type === 'Week') {
+    const day = now.getUTCDay();
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (day === 0 ? 6 : day - 1) + offset * 7));
+    const sunday = new Date(monday);
+    sunday.setUTCDate(monday.getUTCDate() + 7);
+    start = monday;
+    end = sunday;
+    label = `${monday.toISOString().slice(0, 10)} – ${new Date(sunday - 1).toISOString().slice(0, 10)}`;
+  } else if (type === 'Month') {
+    const y = now.getUTCFullYear(), m = now.getUTCMonth() + offset;
+    start = new Date(Date.UTC(y, m, 1));
+    end = new Date(Date.UTC(y, m + 1, 1));
+    label = start.toLocaleString('en', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  } else if (type === 'Year') {
+    const y = now.getUTCFullYear() + offset;
+    start = new Date(Date.UTC(y, 0, 1));
+    end = new Date(Date.UTC(y + 1, 0, 1));
+    label = String(y);
+  } else {
+    // All
+    start = new Date(Date.UTC(2020, 0, 1));
+    end = new Date(Date.UTC(now.getUTCFullYear() + 1, 0, 1));
+    label = 'All time';
+  }
+
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+    label
+  };
 }
 
 export async function renderEntries() {
@@ -28,113 +61,98 @@ export async function renderEntries() {
       <h2>Entries</h2>
       <p id="ent-success" class="success" style="display:none"></p>
       <p id="ent-error" class="error" style="display:none"></p>
-      <div class="groupby-bar" id="groupby-bar"></div>
+      <div class="groupby-bar" id="period-type-bar"></div>
+      <div class="period-nav" id="period-nav"></div>
       <div id="entries-table"><p aria-busy="true">Loading…</p></div>
-      <div class="pagination" id="pagination"></div>
     </main>
   `;
-  renderGroupBy();
-  await loadEntries();
+  entPeriodOffset = 0;
+  renderPeriodTypeBar();
+  await loadPeriodEntries();
 }
 
-function renderGroupBy() {
-  const bar = document.getElementById('groupby-bar');
+function renderPeriodTypeBar() {
+  const bar = document.getElementById('period-type-bar');
   if (!bar) return;
-  bar.innerHTML = ['Day','Week','Month','Year'].map(g =>
-    `<button class="${g === entGroupBy ? 'secondary' : 'outline secondary'}" onclick="setGroupBy('${g}')">${g}</button>`
-  ).join('') + `
-    <button class="outline btn-compact" onclick="toggleSort()">
-      Sort: ${sortAsc ? '↑ Oldest first' : '↓ Newest first'}
-    </button>`;
-  window.setGroupBy = async (g) => { entGroupBy = g; entPage = 1; await loadEntries(); renderGroupBy(); };
-  window.toggleSort = async () => { sortAsc = !sortAsc; await loadEntries(); renderGroupBy(); };
+  bar.innerHTML = ['Day','Week','Month','Year','All'].map(t =>
+    `<button class="${t === entPeriodType ? 'secondary' : 'outline secondary'}" onclick="setPeriodType('${t}')">${t}</button>`
+  ).join('');
+  window.setPeriodType = async (t) => {
+    entPeriodType = t;
+    entPeriodOffset = 0;
+    renderPeriodTypeBar();
+    await loadPeriodEntries();
+  };
 }
 
-async function loadEntries() {
+function renderPeriodNav(label) {
+  const el = document.getElementById('period-nav');
+  if (!el) return;
+  const hideNav = entPeriodType === 'All';
+  el.innerHTML = hideNav
+    ? `<p class="muted-sm">${label}</p>`
+    : `
+    <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;">
+      <button class="outline btn-compact" onclick="entPrevPeriod()">← Prev</button>
+      <strong style="flex:1; text-align:center">${label}</strong>
+      <button class="outline btn-compact" ${entPeriodOffset >= 0 ? 'disabled' : ''} onclick="entNextPeriod()">Next →</button>
+    </div>`;
+  window.entPrevPeriod = async () => {
+    entPeriodOffset--;
+    await loadPeriodEntries();
+  };
+  window.entNextPeriod = async () => {
+    if (entPeriodOffset < 0) {
+      entPeriodOffset++;
+      await loadPeriodEntries();
+    }
+  };
+}
+
+async function loadPeriodEntries() {
+  const { start, end, label } = getPeriodRange(entPeriodType, entPeriodOffset);
+  renderPeriodNav(label);
   const tableEl = document.getElementById('entries-table');
   if (!tableEl) return;
   tableEl.innerHTML = '<p aria-busy="true">Loading…</p>';
   try {
-    const data = await fetchEntries(entPage, 25, entGroupBy);
+    const data = await fetchEntriesForRange(start, end);
     if (!data) return;
-    totalPages = data.totalPages || 1;
-    const entries = data.entries || [];
-
-    // Client-side sort by startedAt
-    entries.sort((a, b) => {
-      const d = new Date(a.startedAt) - new Date(b.startedAt);
-      return sortAsc ? d : -d;
-    });
-
+    const entries = (data.entries || []).sort((a, b) =>
+      new Date(a.startedAt) - new Date(b.startedAt)  // oldest first within period
+    );
     if (entries.length === 0) {
-      tableEl.innerHTML = '<p>No entries.</p>';
-    } else {
-      let rows = '';
-      let lastDate = null;
-
-      if (entGroupBy === 'Day') {
-        for (const e of entries) {
-          const dateStr = e.startedAt ? e.startedAt.slice(0, 10) : null;
-          if (dateStr && dateStr !== lastDate) {
-            lastDate = dateStr;
-            rows += `<tr class="group-header"><td colspan="5"><strong>${dayLabel(e.startedAt)}</strong></td></tr>`;
-          }
-          rows += `
-            <tr>
-              <td>${e.state}</td>
-              <td>${fmtDateTime(e.startedAt)}</td>
-              <td>${e.endedAt ? fmtDateTime(e.endedAt) : '—'}</td>
-              <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
-              <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
-            </tr>`;
-        }
-      } else {
-        for (const e of entries) {
-          rows += `
-            <tr>
-              <td>${e.state}</td>
-              <td>${fmtDateTime(e.startedAt)}</td>
-              <td>${e.endedAt ? fmtDateTime(e.endedAt) : '—'}</td>
-              <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
-              <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
-            </tr>`;
-        }
-      }
-
-      tableEl.innerHTML = `
-        <figure>
-          <table role="grid">
-            <thead><tr><th>Type</th><th>Started</th><th>Ended</th><th>Duration</th><th></th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </figure>
-        ${entGroupBy !== 'Day' ? '<p class="muted-sm">Note: week/month/year grouping shows entries in that period — headers not shown for multi-day groups.</p>' : ''}`;
+      tableEl.innerHTML = '<p>No entries for this period.</p>';
+      return;
     }
-    renderPagination();
+    tableEl.innerHTML = `
+      <figure>
+        <table role="grid">
+          <thead><tr><th>Type</th><th>Started</th><th>Ended</th><th>Duration</th><th></th></tr></thead>
+          <tbody>
+            ${entries.map(e => `
+              <tr>
+                <td>${e.state}</td>
+                <td>${fmtDateTime(e.startedAt)}</td>
+                <td>${e.endedAt ? fmtDateTime(e.endedAt) : '—'}</td>
+                <td>${e.durationHours != null ? fmtDur(e.durationHours) : '—'}</td>
+                <td>${!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : ''}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </figure>`;
     window.delEntry = async (id) => {
       try {
         await deleteEntry(id);
         const s = document.getElementById('ent-success');
-        s.textContent = 'Entry deleted.'; s.style.display = '';
-        await loadEntries();
+        if (s) { s.textContent = 'Entry deleted.'; s.style.display = ''; }
+        await loadPeriodEntries();
       } catch {
         const e = document.getElementById('ent-error');
-        e.textContent = 'Delete failed.'; e.style.display = '';
+        if (e) { e.textContent = 'Delete failed.'; e.style.display = ''; }
       }
     };
-  } catch(e) {
+  } catch {
     tableEl.innerHTML = '<p class="error">Failed to load entries.</p>';
   }
-}
-
-function renderPagination() {
-  const el = document.getElementById('pagination');
-  if (!el) return;
-  el.innerHTML = `
-    ${entPage > 1 ? `<button class="outline" onclick="entPrev()">← Prev</button>` : ''}
-    <p>Page ${entPage} / ${totalPages}</p>
-    ${entPage < totalPages ? `<button class="outline" onclick="entNext()">Next →</button>` : ''}
-  `;
-  window.entPrev = async () => { entPage--; await loadEntries(); };
-  window.entNext = async () => { entPage++; await loadEntries(); };
 }

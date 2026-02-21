@@ -1,9 +1,9 @@
-import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate } from '../api.js';
+import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange } from '../api.js';
 import { renderLineChart } from '../charts.js';
 
 let anaPeriod = 30;
 let anaTab = 'stats';
-let calWeekOffset = 0;  // 0 = current week, -1 = last week, etc.
+let calStartDate = null;  // Date object — start of visible window
 
 function fmtDur(h) {
   if (!h) return '0m';
@@ -18,28 +18,8 @@ function dateRange(days) {
   return { startDate: start.toISOString().slice(0,10), endDate: end.toISOString().slice(0,10) };
 }
 
-function getWeekRange(offset) {
-  const now = new Date();
-  // Find Monday of current week
-  const day = now.getUTCDay(); // 0=Sun
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() - (day === 0 ? 6 : day - 1) + offset * 7);
-  monday.setUTCHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  return { monday, sunday };
-}
-
-function fmtWeekLabel(monday, sunday) {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const ms = months[monday.getUTCMonth()];
-  const me = months[sunday.getUTCMonth()];
-  return `${ms} ${monday.getUTCDate()} – ${me} ${sunday.getUTCDate()}, ${sunday.getUTCFullYear()}`;
-}
-
-function fmtMonthDay(d) {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+function visibleDays() {
+  return window.innerWidth < 640 ? 1 : window.innerWidth < 1024 ? 3 : 5;
 }
 
 export async function renderAnalytics() {
@@ -60,8 +40,9 @@ export async function renderAnalytics() {
 function renderPeriodTabs() {
   const el = document.getElementById('period-tabs');
   if (!el) return;
-  el.innerHTML = [7,30,90,365].map(d =>
-    `<button class="btn-compact${anaPeriod===d?' btn-active':''}" onclick="setAnaPeriod(${d})">${d}d</button>`
+  const labels = { 7: '7d', 30: '30d', 90: '90d', 365: '1y', 3650: 'All' };
+  el.innerHTML = [7,30,90,365,3650].map(d =>
+    `<button class="btn-compact${anaPeriod===d?' btn-active':''}" onclick="setAnaPeriod(${d})">${labels[d]}</button>`
   ).join('');
   window.setAnaPeriod = async (d) => { anaPeriod = d; renderPeriodTabs(); await loadAll(); };
 }
@@ -94,7 +75,7 @@ async function loadTab() {
   if (!el) return;
   if (anaTab === 'stats') renderStats(el);
   else if (anaTab === 'chart') renderChart(el);
-  else if (anaTab === 'calendar') await renderCalendar(el);
+  else if (anaTab === 'calendar') await renderCalendarTab(el);
   else if (anaTab === 'commute') await renderCommute(el);
 }
 
@@ -121,8 +102,10 @@ function statsRow(label, obj, med) {
 function renderStats(el) {
   if (!_stats) { el.innerHTML = '<p>No stats yet.</p>'; return; }
 
-  // Compute medians from _breakdown
-  const workValues = (_breakdown || []).map(d => d.workHours || 0).filter(v => v > 0);
+  // Compute medians from _breakdown — exclude off-days (zero work hours)
+  const workValues = (_breakdown || [])
+    .map(d => d.workHours || 0)
+    .filter(h => h > 0);
   const workMedian = median(workValues);
 
   // Day-of-week breakdown from _breakdown
@@ -164,8 +147,14 @@ function renderStats(el) {
       </article>`;
   }
 
+  const periodLabel = _stats ? (
+    anaPeriod === 3650
+      ? `All time · ${_stats.daysWithData} days with data`
+      : `${_stats.periodDays} days in period · ${_stats.daysWithData} days with data`
+  ) : '';
+
   el.innerHTML = `
-    <p class="muted-sm">${_stats.periodDays} days in period, ${_stats.daysWithData} days with data</p>
+    <p class="muted-sm">${periodLabel}</p>
     <article>
       <table class="stats-table">
         <thead><tr><th>Metric</th><th>Avg</th><th>Median</th><th>Min</th><th>Max</th><th>Std Dev</th><th>Total</th></tr></thead>
@@ -210,68 +199,184 @@ function renderChart(el) {
   renderLineChart('lineChart', _chart.labels, datasets);
 }
 
-async function renderCalendar(el) {
-  el.innerHTML = '<p aria-busy="true">Loading week…</p>';
-  const { monday, sunday } = getWeekRange(calWeekOffset);
-  const startDate = monday.toISOString().slice(0, 10);
-  const endDate = sunday.toISOString().slice(0, 10);
+// ─── Calendar: hourly timeline ────────────────────────────────────────────────
 
-  let weekData = null;
+const pxPerMin = 1.5;
+const defaultHourMin = 6;
+const defaultHourMax = 20;
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d;
+}
+
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtRangeLabel(start, n) {
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (n === 1) {
+    return `${dayNames[start.getUTCDay()]} ${months[start.getUTCMonth()]} ${start.getUTCDate()}, ${start.getUTCFullYear()}`;
+  }
+  const end = addDays(start, n - 1);
+  return `${dayNames[start.getUTCDay()]} ${months[start.getUTCMonth()]} ${start.getUTCDate()} – ${dayNames[end.getUTCDay()]} ${months[end.getUTCMonth()]} ${end.getUTCDate()}, ${end.getUTCFullYear()}`;
+}
+
+function sessionClass(state) {
+  if (!state) return 'tl-work';
+  const s = state.toLowerCase();
+  if (s === 'working') return 'tl-work';
+  if (s === 'commuting') return 'tl-commute';
+  if (s === 'lunch') return 'tl-lunch';
+  return 'tl-work';
+}
+
+function sessionLabel(state) {
+  if (!state) return 'Working';
+  const s = state.toLowerCase();
+  if (s === 'working') return 'Working';
+  if (s === 'commuting') return 'Commuting';
+  if (s === 'lunch') return 'Lunch';
+  return state;
+}
+
+export async function renderCalendarTab(el) {
+  if (!el) el = document.getElementById('ana-content');
+  if (!el) return;
+
+  const n = visibleDays();
+
+  // Initialize calStartDate to today if not set
+  if (!calStartDate) {
+    const now = new Date();
+    calStartDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    // Shift back so today is the last visible column
+    calStartDate = addDays(calStartDate, -(n - 1));
+  }
+
+  el.innerHTML = '<p aria-busy="true">Loading timeline…</p>';
+
+  // Fetch entries for the visible range
+  const rangeStart = isoDate(calStartDate);
+  const rangeEnd = isoDate(addDays(calStartDate, n));  // exclusive end
+  let data = null;
   try {
-    weekData = await fetchBreakdown(startDate, endDate);
+    data = await fetchEntriesForRange(rangeStart, rangeEnd);
   } catch {
     el.innerHTML = '<p class="error">Failed to load calendar data.</p>';
     return;
   }
 
-  // Build a map from date string to breakdown entry
-  const byDate = {};
-  for (const d of (weekData || [])) {
-    byDate[d.date?.slice(0, 10)] = d;
+  const entries = (data && data.entries) ? data.entries : [];
+
+  // Determine hour range from entries
+  let hourMin = defaultHourMin;
+  let hourMax = defaultHourMax;
+  for (const e of entries) {
+    const start = new Date(e.startedAt);
+    const h1 = start.getUTCHours() + start.getUTCMinutes() / 60;
+    hourMin = Math.min(hourMin, Math.floor(h1) - 1);
+    if (e.endedAt) {
+      const end = new Date(e.endedAt);
+      const h2 = end.getUTCHours() + end.getUTCMinutes() / 60;
+      hourMax = Math.max(hourMax, Math.ceil(h2) + 1);
+    }
+  }
+  hourMin = Math.max(0, Math.min(hourMin, defaultHourMin));
+  hourMax = Math.min(24, Math.max(hourMax, defaultHourMax));
+  const totalHours = hourMax - hourMin;
+  const totalPx = totalHours * pxPerMin * 60;
+
+  // Build time column
+  const hourLabels = [];
+  for (let h = hourMin; h < hourMax; h++) {
+    hourLabels.push(`${String(h).padStart(2, '0')}:00`);
   }
 
-  // Build 7 day cells Mon–Sun
-  const dayCells = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setUTCDate(monday.getUTCDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const entry = byDate[dateStr];
-    const hasData = entry && entry.hasActivity;
-    const w = entry ? (entry.workHours || 0) : 0;
-    const c = entry ? ((entry.commuteToWorkHours || 0) + (entry.commuteToHomeHours || 0)) : 0;
-    const l = entry ? (entry.lunchHours || 0) : 0;
+  // Build day columns
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-    dayCells.push(`
-      <div class="cal-day-card${hasData ? '' : ' no-data'}">
-        <div class="cal-day-label">${fmtMonthDay(d)}</div>
-        ${hasData ? `
-          ${w > 0 ? `<div class="cal-activity-bar"><span class="cal-dot cal-work"></span> Work: ${fmtDur(w)}</div>` : ''}
-          ${c > 0 ? `<div class="cal-activity-bar"><span class="cal-dot cal-commute"></span> Commute: ${fmtDur(c)}</div>` : ''}
-          ${l > 0 ? `<div class="cal-activity-bar"><span class="cal-dot cal-lunch"></span> Lunch: ${fmtDur(l)}</div>` : ''}
-        ` : '<div class="cal-no-data">—</div>'}
+  const dayCols = [];
+  for (let i = 0; i < n; i++) {
+    const colDate = addDays(calStartDate, i);
+    const colDateStr = isoDate(colDate);
+
+    // Filter entries for this day
+    const dayEntries = entries.filter(e => e.startedAt && e.startedAt.slice(0, 10) === colDateStr);
+
+    // Build hour grid lines
+    const hourLines = hourLabels.map((_, idx) =>
+      `<div class="tl-hour-line" style="top:${idx * pxPerMin * 60}px"></div>`
+    ).join('');
+
+    // Build session blocks
+    const dayStartMs = Date.UTC(colDate.getUTCFullYear(), colDate.getUTCMonth(), colDate.getUTCDate(), hourMin, 0, 0, 0);
+
+    const sessionBlocks = dayEntries.map(e => {
+      const sessionStart = new Date(e.startedAt);
+      const sessionEnd = e.endedAt ? new Date(e.endedAt) : new Date();
+      const topPx = Math.max(0, (sessionStart.getTime() - dayStartMs) / 60000 * pxPerMin);
+      const heightPx = Math.max((sessionEnd.getTime() - sessionStart.getTime()) / 60000 * pxPerMin, pxPerMin * 15);
+      const cls = sessionClass(e.state);
+      const activeCls = e.isActive ? ' tl-session-active' : '';
+      const dur = e.durationHours != null ? fmtDur(e.durationHours) :
+        fmtDur((sessionEnd - sessionStart) / 3600000);
+      const label = heightPx >= 40
+        ? `${sessionLabel(e.state)}<br><small>${dur}</small>`
+        : '';
+      return `<div class="tl-session ${cls}${activeCls}" style="top:${topPx.toFixed(1)}px; height:${heightPx.toFixed(1)}px" title="${sessionLabel(e.state)} — ${dur}">${label}</div>`;
+    }).join('');
+
+    dayCols.push(`
+      <div class="tl-day-col">
+        <div class="tl-day-header">${dayNames[colDate.getUTCDay()]}<br><small>${months[colDate.getUTCMonth()]} ${colDate.getUTCDate()}</small></div>
+        <div class="tl-day-body" style="position:relative; height:${totalPx}px">
+          ${hourLines}
+          ${sessionBlocks}
+        </div>
       </div>`);
   }
 
+  // Time labels column
+  const timeLabels = hourLabels.map(h =>
+    `<div class="tl-hour" style="height:${pxPerMin * 60}px">${h}</div>`
+  ).join('');
+
+  const rangeLabel = fmtRangeLabel(calStartDate, n);
+
   el.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-      <button class="outline btn-compact" onclick="calPrev()">← Prev</button>
-      <strong id="cal-week-label">${fmtWeekLabel(monday, sunday)}</strong>
-      <button class="outline btn-compact" onclick="calNext()">Next →</button>
-    </div>
-    <div class="cal-week-grid">
-      <div class="cal-col-header">Mon</div>
-      <div class="cal-col-header">Tue</div>
-      <div class="cal-col-header">Wed</div>
-      <div class="cal-col-header">Thu</div>
-      <div class="cal-col-header">Fri</div>
-      <div class="cal-col-header">Sat</div>
-      <div class="cal-col-header">Sun</div>
-      ${dayCells.join('')}
+    <div class="tl-container">
+      <div class="tl-nav">
+        <button class="outline btn-compact" onclick="calPrev()">←</button>
+        <span id="tl-range-label">${rangeLabel}</span>
+        <button class="outline btn-compact" onclick="calNext()">→</button>
+        <button class="outline btn-compact secondary" onclick="calToday()">Today</button>
+      </div>
+      <div class="tl-grid" id="tl-grid" style="grid-template-columns: 52px repeat(${n}, 1fr)">
+        <div class="tl-time-col">
+          <div class="tl-corner"></div>
+          ${timeLabels}
+        </div>
+        ${dayCols.join('')}
+      </div>
     </div>`;
 
-  window.calPrev = async () => { calWeekOffset--; await renderCalendar(document.getElementById('ana-content')); };
-  window.calNext = async () => { calWeekOffset++; await renderCalendar(document.getElementById('ana-content')); };
+  window.calPrev = async () => {
+    calStartDate = addDays(calStartDate, -visibleDays());
+    await renderCalendarTab(document.getElementById('ana-content'));
+  };
+  window.calNext = async () => {
+    calStartDate = addDays(calStartDate, visibleDays());
+    await renderCalendarTab(document.getElementById('ana-content'));
+  };
+  window.calToday = async () => {
+    calStartDate = null;
+    await renderCalendarTab(document.getElementById('ana-content'));
+  };
 }
 
 async function renderCommute(el) {
