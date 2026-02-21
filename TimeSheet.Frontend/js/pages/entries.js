@@ -210,26 +210,36 @@ async function loadPeriodEntries() {
       rows += dayEntries.map(e => {
         const rowCls = entryRowClass(e.state);
         const noteIcon = e.note ? `<span class="note-icon" title="${e.note.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}">ℹ</span>` : '';
-        const actionBtns = !e.isActive
-          ? `<button class="outline btn-compact" onclick="toggleEdit('${e.id}')">✎</button>
-             <button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>`
-          : '';
+        const actionBtns = `<button class="outline btn-compact" onclick="toggleEdit('${e.id}')">✎</button>` +
+          (!e.isActive ? `<button class="outline secondary btn-compact" onclick="delEntry('${e.id}')">✕</button>` : '');
         const editStartStr = fmtLocalDateTime(e.startedAt);
         const editEndStr = e.endedAt ? fmtLocalDateTime(e.endedAt) : 'active';
-        const editRow = !e.isActive ? `<tr id="edit-row-${e.id}" style="display:none">
+        const endRow = !e.isActive ? `<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.3rem">
+              <small style="min-width:4rem">End:</small>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',-30)">-30m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',-5)">-5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',-1)">-1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',1)">+1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',5)">+5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','end',30)">+30m</button>
+            </div>` : '';
+        const editRow = `<tr id="edit-row-${e.id}" style="display:none">
           <td colspan="5" style="background:var(--pico-card-background-color);padding:0.4rem 0.8rem">
             <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
               <small style="color:var(--pico-muted-color)">${editStartStr} – ${editEndStr}</small>
-              <small>End time:</small>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-30)">-30m</button>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-5)">-5m</button>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',-1)">-1m</button>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',1)">+1m</button>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',5)">+5m</button>
-              <button class="outline btn-compact" onclick="applyAdjust('${e.id}',30)">+30m</button>
             </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.3rem">
+              <small style="min-width:4rem">Start:</small>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',-30)">-30m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',-5)">-5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',-1)">-1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',1)">+1m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',5)">+5m</button>
+              <button class="outline btn-compact" onclick="applyAdjust('${e.id}','start',30)">+30m</button>
+            </div>
+            ${endRow}
           </td>
-        </tr>` : '';
+        </tr>`;
         return `<tr class="${rowCls}">
           <td>${stateBadge(e.state)}</td>
           <td>${fmtLocalDateTime(e.startedAt)}</td>
@@ -277,9 +287,12 @@ async function loadPeriodEntries() {
       }
     };
 
-    window.applyAdjust = async (id, minutes) => {
+    window.applyAdjust = async (id, which, minutes) => {
       try {
-        await updateEntry(id, minutes);
+        const opts = which === 'start'
+          ? { startMinutes: minutes }
+          : { endMinutes: minutes };
+        await updateEntry(id, opts);
         await loadPeriodEntries();
         window.toggleEdit(id); // keep panel open
       } catch {

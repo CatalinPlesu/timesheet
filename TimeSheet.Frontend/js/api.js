@@ -37,8 +37,11 @@ export async function toggleState(state) {
 export async function deleteEntry(id) {
   return api.del(`/api/entries/${id}`);
 }
-export async function updateEntry(id, adjustmentMinutes) {
-  return api.put(`/api/entries/${id}`, { adjustmentMinutes });
+export async function updateEntry(id, { startMinutes, endMinutes }) {
+  const body = {};
+  if (startMinutes !== undefined) body.startAdjustmentMinutes = startMinutes;
+  if (endMinutes !== undefined) body.endAdjustmentMinutes = endMinutes;
+  return api.put(`/api/entries/${id}`, body);
 }
 export async function login(mnemonic) {
   const headers = { 'Content-Type': 'application/json' };

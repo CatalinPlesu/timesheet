@@ -232,8 +232,9 @@ public class EntriesController : ControllerBase
     }
 
     /// <summary>
-    /// Updates a tracking entry's time by adjusting the duration.
-    /// Positive adjustment extends the session, negative shortens it.
+    /// Updates a tracking entry's time by adjusting the start and/or end time.
+    /// Positive adjustment moves the time later, negative moves it earlier.
+    /// At least one of StartAdjustmentMinutes or EndAdjustmentMinutes must be provided.
     /// </summary>
     /// <param name="id">The entry ID.</param>
     /// <param name="request">The adjustment request.</param>
@@ -256,14 +257,11 @@ public class EntriesController : ControllerBase
             // Extract user ID from JWT token
             var userId = _jwtTokenService.GetUserIdFromToken(User);
 
-            // Validate request
-            if (request.AdjustmentMinutes == 0)
-            {
-                return Problem(
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Request",
-                    detail: "Adjustment cannot be zero");
-            }
+            // Validate: at least one must be non-null
+            if (request.StartAdjustmentMinutes == null && request.EndAdjustmentMinutes == null)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "At least one adjustment must be provided");
+            if (request.StartAdjustmentMinutes == 0 || request.EndAdjustmentMinutes == 0)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "Adjustment cannot be zero");
 
             // Get the session by ID
             var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
@@ -289,29 +287,29 @@ public class EntriesController : ControllerBase
                     detail: "Entry not found");
             }
 
-            // Apply the adjustment
-            try
+            // Apply adjustments
+            if (request.StartAdjustmentMinutes.HasValue)
             {
-                session.AdjustEndTime(request.AdjustmentMinutes);
+                try { session.AdjustStartTime(request.StartAdjustmentMinutes.Value); }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "User {UserId} attempted invalid start adjustment on entry {EntryId}", userId, id);
+                    return Problem(statusCode: 400, detail: ex.Message);
+                }
             }
-            catch (InvalidOperationException ex)
+            if (request.EndAdjustmentMinutes.HasValue)
             {
-                _logger.LogWarning(ex, "User {UserId} attempted to adjust active entry {EntryId}", userId, id);
-                return Problem(
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Operation",
-                    detail: ex.Message);
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "User {UserId} attempted invalid adjustment of {Minutes} minutes on entry {EntryId}",
-                    userId, request.AdjustmentMinutes, id);
-                return Problem(
-                    statusCode: StatusCodes.Status400BadRequest,
-                    title: "Invalid Request",
-                    detail: ex.Message);
+                try { session.AdjustEndTime(request.EndAdjustmentMinutes.Value); }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogWarning(ex, "User {UserId} attempted to adjust active entry {EntryId}", userId, id);
+                    return Problem(statusCode: 400, detail: ex.Message);
+                }
+                catch (ArgumentException ex)
+                {
+                    _logger.LogWarning(ex, "User {UserId} attempted invalid end adjustment on entry {EntryId}", userId, id);
+                    return Problem(statusCode: 400, detail: ex.Message);
+                }
             }
 
             // Update the session in the repository
@@ -334,8 +332,8 @@ public class EntriesController : ControllerBase
             };
 
             _logger.LogInformation(
-                "User {UserId} adjusted entry {EntryId} by {Minutes} minutes",
-                userId, id, request.AdjustmentMinutes);
+                "User {UserId} adjusted entry {EntryId} (start: {StartMinutes}, end: {EndMinutes})",
+                userId, id, request.StartAdjustmentMinutes, request.EndAdjustmentMinutes);
 
             return Ok(entryDto);
         }

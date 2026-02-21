@@ -22,7 +22,7 @@ public class TrackingSession : BaseEntity
     /// <summary>
     /// Gets the UTC timestamp when this session started.
     /// </summary>
-    public DateTime StartedAt { get; }
+    public DateTime StartedAt { get; private set; }
 
     /// <summary>
     /// Gets the UTC timestamp when this session ended.
@@ -149,6 +149,21 @@ public class TrackingSession : BaseEntity
                 nameof(adjustmentMinutes));
 
         EndedAt = newEndTime;
+    }
+
+    /// <summary>
+    /// Adjusts the start time of a session by a specified number of minutes.
+    /// </summary>
+    public void AdjustStartTime(int adjustmentMinutes)
+    {
+        var newStartTime = StartedAt.AddMinutes(adjustmentMinutes);
+        if (EndedAt.HasValue && newStartTime >= EndedAt.Value)
+            throw new ArgumentException(
+                $"Adjustment of {adjustmentMinutes} minutes would result in start time at or after end time.",
+                nameof(adjustmentMinutes));
+        if (newStartTime > DateTime.UtcNow.AddMinutes(5))
+            throw new ArgumentException("Start time cannot be in the future.", nameof(adjustmentMinutes));
+        StartedAt = newStartTime;
     }
 
     /// <summary>
