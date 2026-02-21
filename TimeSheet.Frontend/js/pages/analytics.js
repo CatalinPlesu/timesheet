@@ -60,7 +60,7 @@ function renderPeriodTabs() {
 function renderAnaTabs() {
   const el = document.getElementById('ana-tabs');
   if (!el) return;
-  el.innerHTML = ['stats','chart','calendar','commute','patterns','overtime'].map(t =>
+  el.innerHTML = ['stats','chart','calendar','commute','patterns'].map(t =>
     `<button class="ana-tab${anaTab===t?' active':''}" onclick="setAnaTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
   ).join('');
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
@@ -68,9 +68,6 @@ function renderAnaTabs() {
 
 let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null;
 
-const WAGE_KEY = 'ts_wage';
-const loadWageSettings = () => JSON.parse(localStorage.getItem(WAGE_KEY) || 'null');
-const saveWageSettings = (s) => localStorage.setItem(WAGE_KEY, JSON.stringify(s));
 
 async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
@@ -92,7 +89,6 @@ async function loadTab() {
   else if (anaTab === 'calendar') await renderCalendarTab(el);
   else if (anaTab === 'commute') await renderCommute(el);
   else if (anaTab === 'patterns') await renderPatternsTab(el);
-  else if (anaTab === 'overtime') await renderOvertimeTab(el);
 }
 
 function median(arr) {
@@ -765,102 +761,3 @@ async function renderPatternsTab(el) {
   }
 }
 
-async function renderOvertimeTab(el) {
-  const savedExpected = localStorage.getItem('ts_expected_hours');
-  const expectedHours = parseFloat(savedExpected || '8');
-  const wage = loadWageSettings();
-
-  const workDays = (_breakdown || []).filter(d => d.workHours > 0);
-  const overtimeData = workDays.map(d => ({
-    date: d.date,
-    worked: d.workHours,
-    expected: expectedHours,
-    delta: d.workHours - expectedHours
-  }));
-
-  const totalWorked = overtimeData.reduce((s, d) => s + d.worked, 0);
-  const totalExpected = overtimeData.length * expectedHours;
-  const totalDelta = totalWorked - totalExpected;
-
-  let earningsHtml = '';
-  if (wage && wage.amount > 0) {
-    const hourlyRate = wage.type === 'hourly' ? wage.amount
-      : wage.type === 'daily' ? wage.amount / expectedHours
-      : wage.amount / (21.67 * expectedHours);
-    const earned = totalWorked * hourlyRate;
-    const expected = totalExpected * hourlyRate;
-    const cur = wage.currency || '€';
-    earningsHtml = `
-      <p>Earned: <strong>${cur}${earned.toFixed(2)}</strong>
-      &nbsp;(expected ${cur}${expected.toFixed(2)},
-      ${totalDelta >= 0 ? '+' : ''}${cur}${(earned - expected).toFixed(2)})</p>`;
-  }
-
-  const tableRows = overtimeData.slice(-20).reverse().map(d => `<tr>
-    <td>${d.date}</td>
-    <td>${fmtDur(d.worked)}</td>
-    <td>${fmtDur(d.expected)}</td>
-    <td style="color:${d.delta >= 0 ? 'var(--pico-ins-color)' : 'var(--pico-del-color)'}">
-      ${d.delta >= 0 ? '+' : ''}${fmtDur(Math.abs(d.delta))}
-    </td>
-  </tr>`).join('');
-
-  el.innerHTML = `
-    <article>
-      <strong>Expected daily work hours</strong>
-      <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;flex-wrap:wrap">
-        <input type="number" id="expectedHours" min="1" max="16" step="0.5" value="${expectedHours}" style="width:5rem;margin:0">
-        <span class="muted-sm">hours / day</span>
-        <button class="btn-compact outline" onclick="saveExpectedHours()">Save</button>
-      </div>
-    </article>
-    <article>
-      <strong>Wage (optional)</strong>
-      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.5rem">
-        <select id="wageType" style="width:auto;margin:0">
-          <option value="hourly"${wage && wage.type === 'hourly' ? ' selected' : ''}>Hourly</option>
-          <option value="daily"${wage && wage.type === 'daily' ? ' selected' : ''}>Daily</option>
-          <option value="monthly"${wage && wage.type === 'monthly' ? ' selected' : ''}>Monthly</option>
-        </select>
-        <input type="number" id="wageAmount" min="0" step="0.01" placeholder="Amount" value="${wage && wage.amount > 0 ? wage.amount : ''}" style="width:8rem;margin:0">
-        <input type="text" id="wageCurrency" maxlength="4" placeholder="€" value="${wage ? (wage.currency || '') : ''}" style="width:4rem;margin:0">
-        <button class="btn-compact outline" onclick="saveWage()">Save</button>
-      </div>
-    </article>
-    ${overtimeData.length > 0 ? `
-    <div class="grid-3" style="margin-bottom:1rem">
-      <article style="text-align:center">
-        <p class="muted-sm">Total worked</p>
-        <strong>${fmtDur(totalWorked)}</strong>
-      </article>
-      <article style="text-align:center">
-        <p class="muted-sm">Expected (${overtimeData.length} days)</p>
-        <strong>${fmtDur(totalExpected)}</strong>
-      </article>
-      <article style="text-align:center">
-        <p class="muted-sm">${totalDelta >= 0 ? 'Overtime' : 'Undertime'}</p>
-        <strong style="color:${totalDelta >= 0 ? 'var(--pico-ins-color)' : 'var(--pico-del-color)'}">
-          ${totalDelta >= 0 ? '+' : ''}${fmtDur(Math.abs(totalDelta))}
-        </strong>
-      </article>
-    </div>
-    ${earningsHtml}
-    <article>
-      <strong>Per-day breakdown (last 20 work days)</strong>
-      <table class="stats-table" style="margin-top:0.75rem">
-        <thead><tr><th>Date</th><th>Worked</th><th>Expected</th><th>Delta</th></tr></thead>
-        <tbody>${tableRows || '<tr><td colspan="4">No data</td></tr>'}</tbody>
-      </table>
-    </article>` : '<p>No work days in this period.</p>'}`;
-
-  window.saveExpectedHours = () => {
-    const h = parseFloat(document.getElementById('expectedHours')?.value);
-    if (h > 0) { localStorage.setItem('ts_expected_hours', h); renderOvertimeTab(el); }
-  };
-  window.saveWage = () => {
-    const type = document.getElementById('wageType')?.value;
-    const amount = parseFloat(document.getElementById('wageAmount')?.value);
-    const currency = document.getElementById('wageCurrency')?.value || '€';
-    if (amount > 0) { saveWageSettings({ type, amount, currency }); renderOvertimeTab(el); }
-  };
-}
