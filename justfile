@@ -436,15 +436,46 @@ docker-up:
 docker-down:
     @docker compose down
 
-# Build and push container image to ghcr.io
-publish-container:
+# Build and push all three container images to ghcr.io
+# Requires: REPO_OWNER and IMAGE_TAG env vars (or a .env file loaded before running)
+# Usage: REPO_OWNER=myuser IMAGE_TAG=latest just publish
+publish repo_owner="" image_tag="latest":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OWNER="${REPO_OWNER:-{{repo_owner}}}"
+    TAG="${IMAGE_TAG:-{{image_tag}}}"
+    if [ -z "$OWNER" ]; then
+      echo "✗ REPO_OWNER is required. Set it as an env var or pass: just publish repo_owner=myuser"
+      exit 1
+    fi
+    echo "═══ Building and pushing TimeSheet images (owner=$OWNER, tag=$TAG)"
+    echo ""
+    echo "→ Building timesheet-bot …"
     dotnet publish TimeSheet.Presentation.Telegram \
       -c Release \
       --os linux --arch x64 \
       /t:PublishContainer \
-      /p:ContainerRepository=catalinplesu/timesheet \
-      /p:ContainerImageTag=latest \
+      /p:ContainerRepository="$OWNER/timesheet-bot" \
+      /p:ContainerImageTag="$TAG" \
       /p:ContainerRegistry=ghcr.io
+    echo "  ✓ timesheet-bot pushed"
+    echo ""
+    echo "→ Building timesheet-api …"
+    dotnet publish TimeSheet.Presentation.API \
+      -c Release \
+      --os linux --arch x64 \
+      /t:PublishContainer \
+      /p:ContainerRepository="$OWNER/timesheet-api" \
+      /p:ContainerImageTag="$TAG" \
+      /p:ContainerRegistry=ghcr.io
+    echo "  ✓ timesheet-api pushed"
+    echo ""
+    echo "→ Building timesheet-frontend …"
+    docker build -t "ghcr.io/$OWNER/timesheet-frontend:$TAG" TimeSheet.Frontend
+    docker push "ghcr.io/$OWNER/timesheet-frontend:$TAG"
+    echo "  ✓ timesheet-frontend pushed"
+    echo ""
+    echo "═══ All images pushed to ghcr.io/$OWNER"
 
 # Restore NuGet packages
 restore:
