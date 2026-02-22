@@ -76,3 +76,8 @@ export async function fetchViolations(from, to) {
   if (!data) return { violations: [], violationCount: 0, totalDays: 0 };
   return data;
 }
+export async function fetchEmployerAttendance(from, to) {
+  const data = await api.get(`/api/employer-attendance?from=${from}&to=${to}`);
+  if (!data) return { records: [], lastImport: null, totalRecords: 0 };
+  return data;
+}

@@ -1,4 +1,4 @@
-import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange, fetchViolations } from '../api.js';
+import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange, fetchViolations, fetchEmployerAttendance } from '../api.js';
 import { renderLineChart } from '../charts.js';
 import { toLocal, localDateISO } from '../time.js';
 
@@ -60,24 +60,26 @@ function renderPeriodTabs() {
 function renderAnaTabs() {
   const el = document.getElementById('ana-tabs');
   if (!el) return;
-  el.innerHTML = ['stats','chart','calendar','commute','patterns'].map(t =>
-    `<button class="ana-tab${anaTab===t?' active':''}" onclick="setAnaTab('${t}')">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`
-  ).join('');
+  el.innerHTML = ['stats','chart','calendar','commute','patterns','employer'].map(t => {
+    const label = t === 'employer' ? 'Employer' : t.charAt(0).toUpperCase() + t.slice(1);
+    return `<button class="ana-tab${anaTab===t?' active':''}" onclick="setAnaTab('${t}')">${label}</button>`;
+  }).join('');
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
 }
 
-let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null, _violations = null;
+let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null, _violations = null, _employer = null;
 
 
 async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
   document.getElementById('ana-content').innerHTML = '<p aria-busy="true">Loading…</p>';
-  [_stats, _chart, _breakdown, _periodAggregate, _violations] = await Promise.all([
+  [_stats, _chart, _breakdown, _periodAggregate, _violations, _employer] = await Promise.all([
     fetchStats(anaPeriod),
     fetchChartData(startDate, endDate),
     fetchBreakdown(startDate, endDate),
     fetchPeriodAggregate(startDate, endDate),
-    fetchViolations(startDate, endDate)
+    fetchViolations(startDate, endDate),
+    fetchEmployerAttendance(startDate, endDate)
   ]);
   await loadTab();
 }
@@ -90,6 +92,7 @@ async function loadTab() {
   else if (anaTab === 'calendar') await renderCalendarTab(el);
   else if (anaTab === 'commute') await renderCommute(el);
   else if (anaTab === 'patterns') await renderPatternsTab(el);
+  else if (anaTab === 'employer') renderEmployerTab(el);
 }
 
 function median(arr) {
@@ -808,6 +811,90 @@ async function renderCommute(el) {
       }
     });
   }
+}
+
+function renderEmployerTab(el) {
+  const data = _employer || { records: [], lastImport: null, totalRecords: 0 };
+  const records = data.records || [];
+
+  // Format last import date
+  let lastImportHtml = '';
+  if (data.lastImport) {
+    const d = new Date(data.lastImport);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const lastImportStr = `${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')}, ${d.getFullYear()}`;
+    lastImportHtml = `<p class="muted-sm">Last imported: <strong>${lastImportStr}</strong></p>`;
+  } else {
+    lastImportHtml = `<p class="muted-sm">No data imported yet. Use <code>/import &lt;token&gt;</code> in Telegram.</p>`;
+  }
+
+  if (!records.length) {
+    el.innerHTML = `
+      <article>
+        <strong>Employer Attendance</strong>
+        ${lastImportHtml}
+        <p style="margin-top:0.75rem">No attendance records in this period.</p>
+      </article>`;
+    return;
+  }
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  function fmtEmployerDate(isoDate) {
+    const d = new Date(isoDate + 'T12:00:00Z');
+    return `${dayNames[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+  }
+
+  function fmtClockTime(utcStr) {
+    if (!utcStr) return '—';
+    const d = new Date(utcStr);
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function fmtHours(h) {
+    if (h == null) return '—';
+    return `${h.toFixed(1)}h`;
+  }
+
+  function statusCell(record) {
+    const eventTypes = record.eventTypes || [];
+    const isAbsent = eventTypes.some(t => (t || '').toLowerCase().includes('absence'));
+    if (isAbsent) return '<span class="muted-sm">Absent</span>';
+    if (record.hasConflict) {
+      const conflictLabel = record.conflictType ? record.conflictType : 'flagged';
+      return `<span class="badge badge-warning">&#9888; ${conflictLabel}</span>`;
+    }
+    return '<span style="color:var(--pico-ins-color)">&#10003;</span>';
+  }
+
+  // Sort records by date descending
+  const sorted = records.slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  const rows = sorted.map(r => {
+    const eventTypes = r.eventTypes || [];
+    const isAbsent = eventTypes.some(t => (t || '').toLowerCase().includes('absence'));
+    const rowStyle = r.hasConflict && !isAbsent ? ' style="background:rgba(234,179,8,0.08)"' : '';
+    const clockInStr = isAbsent ? '—' : fmtClockTime(r.clockIn);
+    const clockOutStr = isAbsent ? '—' : fmtClockTime(r.clockOut);
+    const hoursStr = isAbsent ? '—' : fmtHours(r.workingHours);
+    return `<tr${rowStyle}>
+      <td>${fmtEmployerDate(r.date)}</td>
+      <td>${clockInStr}</td>
+      <td>${clockOutStr}</td>
+      <td>${hoursStr}</td>
+      <td>${statusCell(r)}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <article>
+      <strong>Employer Attendance</strong>
+      ${lastImportHtml}
+      <table class="stats-table" style="margin-top:0.75rem">
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </article>`;
 }
 
 async function renderPatternsTab(el) {
