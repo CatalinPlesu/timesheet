@@ -487,10 +487,11 @@ $RECYCLE.BIN/
 *.db-shm
 *.db-wal
 # Windows-style build artifact paths (literal backslash in name, created by Windows dotnet builds)
-**/bin\Debug/
-**/bin\Release/
-**/obj\Debug/
-**/obj\Release/
+# Use ? to match literal backslash - gitignore treats \X as escape, not literal backslash
+**/bin?Debug/
+**/bin?Release/
+**/obj?Debug/
+**/obj?Release/
 # bd worktree
 zei-7-frontend/
 # bd worktree
