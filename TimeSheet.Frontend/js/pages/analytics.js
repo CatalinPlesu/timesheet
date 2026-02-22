@@ -136,7 +136,7 @@ function renderStats(el) {
   for (let i = 0; i < 7; i++) dowGroups[i] = { work: [], commute: [], lunch: [] };
   for (const d of (_breakdown || [])) {
     if (!d.workHours || d.workHours <= 0) continue; // skip non-work days
-    const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+    const dow = new Date(d.date.slice(0, 10) + 'T12:00:00Z').getUTCDay();
     dowGroups[dow].work.push(d.workHours);
     dowGroups[dow].commute.push((d.commuteToWorkHours || 0) + (d.commuteToHomeHours || 0));
     dowGroups[dow].lunch.push(d.lunchHours || 0);
@@ -593,20 +593,23 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        const empIn  = toLocal(empRecord.clockIn);
-        const empOut = toLocal(empRecord.clockOut);
+        // Treat employer times as local (Timily sends local times, strip any timezone)
+        const parseEmpTime = s => s ? new Date(s.substring(0, 19)) : null;
+        const empIn  = parseEmpTime(empRecord.clockIn);
+        const empOut = parseEmpTime(empRecord.clockOut);
         const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
         const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
         const empInTime  = fmtTime(empIn);
         const empOutTime = fmtTime(empOut);
-        const empHours   = ((empOut - empIn) / 3600000).toFixed(1);
+        const empTotalMins = Math.round((empOut - empIn) / 60000);
+        const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m (${(empTotalMins / 60).toFixed(1)}h)`;
         employerOverlay = `<div style="
           position:absolute; left:0; width:4px;
           top:${empTopPx.toFixed(1)}px; height:${empHeightPx.toFixed(1)}px;
           background:rgba(239,68,68,0.75); border-radius:0 2px 2px 0;
           cursor:help;
-        " title="Employer: ${empInTime} – ${empOutTime} (${empHours}h)"></div>`;
+        " title="Employer: ${empInTime} – ${empOutTime} (${empDurStr})"></div>`;
       }
     }
 
@@ -806,7 +809,7 @@ async function renderCommute(el) {
     const dowLunch = {1:[], 2:[], 3:[], 4:[], 5:[]};
     for (const d of (_breakdown || [])) {
       if (!d.workHours || d.workHours <= 0) continue;
-      const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+      const dow = new Date(d.date.slice(0, 10) + 'T12:00:00Z').getUTCDay();
       if (dow < 1 || dow > 5) continue;
       dowWork[dow].push(d.workHours);
       dowLunch[dow].push(d.lunchHours || 0);
@@ -876,7 +879,7 @@ function renderEmployerTab(el) {
 
   function fmtClockTime(utcStr) {
     if (!utcStr) return '—';
-    const d = new Date(utcStr);
+    const d = new Date(utcStr.substring(0, 19)); // treat as local (Timily times are local)
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
@@ -886,8 +889,7 @@ function renderEmployerTab(el) {
   }
 
   function statusCell(record) {
-    const eventTypes = record.eventTypes || [];
-    const isAbsent = eventTypes.some(t => (t || '').toLowerCase().includes('absence'));
+    const isAbsent = (record.eventTypes || '').toLowerCase().includes('absence');
     if (isAbsent) return '<span class="muted-sm">Absent</span>';
     if (record.hasConflict) {
       const conflictLabel = record.conflictType ? record.conflictType : 'flagged';
@@ -900,8 +902,7 @@ function renderEmployerTab(el) {
   const sorted = records.slice().sort((a, b) => b.date.localeCompare(a.date));
 
   const rows = sorted.map(r => {
-    const eventTypes = r.eventTypes || [];
-    const isAbsent = eventTypes.some(t => (t || '').toLowerCase().includes('absence'));
+    const isAbsent = (r.eventTypes || '').toLowerCase().includes('absence');
     const rowStyle = r.hasConflict && !isAbsent ? ' style="background:rgba(234,179,8,0.08)"' : '';
     const clockInStr = isAbsent ? '—' : fmtClockTime(r.clockIn);
     const clockOutStr = isAbsent ? '—' : fmtClockTime(r.clockOut);
@@ -937,7 +938,7 @@ async function renderPatternsTab(el) {
   for (let d = 1; d <= 5; d++) groups[d] = { work: [], commute: [], commuteHome: [], lunch: [] };
 
   for (const d of _breakdown) {
-    const dow = new Date(d.date + 'T12:00:00Z').getUTCDay();
+    const dow = new Date(d.date.slice(0, 10) + 'T12:00:00Z').getUTCDay();
     if (dow < 1 || dow > 5) continue;
     if (d.workHours > 0) {
       groups[dow].work.push(d.workHours || 0);

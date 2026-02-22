@@ -26,9 +26,10 @@ public class HelpCommandHandler(
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
         *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
+        *Import:* `/import` — import employer attendance data
         *Other:* `/a` `/h` — about, help
 
-        For details: `/help tracking`, `/help report`, `/help settings`
+        For details: `/help tracking`, `/help report`, `/help settings`, `/help import`
         """;
 
     private string MainHelpMessageAdmin => $"""
@@ -39,10 +40,11 @@ public class HelpCommandHandler(
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
         *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
+        *Import:* `/import` — import employer attendance data
         *Admin:* `/g` — generate registration mnemonic
         *Other:* `/a` `/h` — about, help
 
-        For details: `/help tracking`, `/help report`, `/help settings`, `/help admin`
+        For details: `/help tracking`, `/help report`, `/help settings`, `/help import`, `/help admin`
         """;
 
     private const string TrackingHelpMessage = """
@@ -125,6 +127,27 @@ public class HelpCommandHandler(
         • `/settings forgot off` — Disable alert
         """;
 
+    private const string ImportHelpMessage = """
+        *Import Command*
+
+        `/import <bearer_token>` — Import employer attendance data
+        `/import <bearer_token> --force` — Override the 7-day rate limit
+
+        Your bearer token is a short-lived JWT from your employer's time-tracking system.
+        It expires in a few hours, so you'll need a fresh one each time.
+
+        *How to get your token:*
+        1. Log in to your employer's portal in a browser
+        2. Open DevTools → Network tab
+        3. Copy the `Authorization: Bearer ...` header from any API request
+
+        *Usage:*
+        `/import eyJhbGc...` — paste the raw token
+        `/import Bearer eyJhbGc...` — "Bearer " prefix is stripped automatically
+
+        *Rate limit:* Once every 7 days. Use `--force` to override.
+        """;
+
     private const string AdminHelpMessage = """
         *Admin Commands*
 
@@ -172,6 +195,7 @@ public class HelpCommandHandler(
             "tracking" => TrackingHelpMessage,
             "report" => ReportHelpMessage,
             "settings" => SettingsHelpMessage,
+            "import" => ImportHelpMessage,
             "admin" when isAdmin => AdminHelpMessage,
             "admin" => "⛔ Admin commands are only available to administrators.",
             _ => isAdmin ? MainHelpMessageAdmin : MainHelpMessage
