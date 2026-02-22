@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TimeSheet.Core.Application.ExternalApi.Timily;
 using TimeSheet.Core.Application.Interfaces.Persistence;
@@ -21,6 +22,7 @@ public class EmployerImportService : IEmployerImportService
     private readonly IEmployerAttendanceRepository _repo;
     private readonly HttpClient _httpClient;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<EmployerImportService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -34,16 +36,53 @@ public class EmployerImportService : IEmployerImportService
     /// <param name="repo">Repository for attendance records and import logs.</param>
     /// <param name="httpClient">HTTP client used to call the employer API.</param>
     /// <param name="unitOfWork">Unit of work for committing changes.</param>
+    /// <param name="logger">Logger for debug diagnostics.</param>
     public EmployerImportService(
         IOptions<EmployerApiOptions> options,
         IEmployerAttendanceRepository repo,
         HttpClient httpClient,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ILogger<EmployerImportService> logger)
     {
         _options = options.Value;
         _repo = repo;
         _httpClient = httpClient;
         _unitOfWork = unitOfWork;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Normalises a <see cref="DateTime"/> value received from the Timily API to UTC.
+    /// <para>
+    /// Timily sends clock timestamps as naive ISO-8601 strings without a timezone suffix
+    /// (e.g. <c>"2026-02-13T07:00:21"</c>).  <c>System.Text.Json</c> deserialises these
+    /// as <see cref="DateTimeKind.Unspecified"/>.  The EF Core write-converter in
+    /// <c>AppDbContext</c> then calls <c>ToUniversalTime()</c> on any non-UTC value,
+    /// which subtracts the server's local UTC offset a second time — producing timestamps
+    /// that are off by the server's UTC offset (e.g. 2 h in EET).
+    /// </para>
+    /// <para>
+    /// The fix: treat every incoming Timily timestamp as UTC regardless of the <c>Kind</c>
+    /// flag, by calling <see cref="DateTime.SpecifyKind"/> before handing it to the domain
+    /// model.  When the value already carries <see cref="DateTimeKind.Utc"/> (e.g. if
+    /// Timily ever adds a <c>Z</c> suffix) or <see cref="DateTimeKind.Local"/> (offset
+    /// present in JSON), we first normalise to UTC via <c>ToUniversalTime()</c> so the
+    /// wall-clock value is preserved, then re-tag as <c>Utc</c>.
+    /// </para>
+    /// </summary>
+    private static DateTime? ToUtc(DateTime? dt)
+    {
+        if (dt is null) return null;
+
+        var utc = dt.Value.Kind switch
+        {
+            DateTimeKind.Utc => dt.Value,
+            DateTimeKind.Local => dt.Value.ToUniversalTime(),
+            // Unspecified: Timily sends UTC without Z — treat as-is, just re-tag.
+            _ => DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)
+        };
+
+        return utc;
     }
 
     /// <inheritdoc/>
@@ -96,10 +135,12 @@ public class EmployerImportService : IEmployerImportService
 
         // 4. Deserialize the response
         TimilyAttendanceResponse? data;
+        string rawJson = string.Empty;
         try
         {
-            var json = await response.Content.ReadAsStringAsync(ct);
-            data = JsonSerializer.Deserialize<TimilyAttendanceResponse>(json, JsonOptions);
+            rawJson = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogDebug("Timily raw JSON response: {Json}", rawJson);
+            data = JsonSerializer.Deserialize<TimilyAttendanceResponse>(rawJson, JsonOptions);
         }
         catch (Exception ex)
         {
@@ -133,11 +174,24 @@ public class EmployerImportService : IEmployerImportService
                     continue;
                 }
 
+                var clockInUtc  = ToUtc(clockInOut?.StartDate);
+                var clockOutUtc = ToUtc(clockInOut?.EndDate);
+
+                if (clockInOut is not null)
+                {
+                    _logger.LogDebug(
+                        "Day {Date}: raw StartDate={RawStart} (Kind={RawKind}) → stored UTC={UtcStart}; " +
+                        "raw EndDate={RawEnd} (Kind={RawEndKind}) → stored UTC={UtcEnd}",
+                        date,
+                        clockInOut.StartDate, clockInOut.StartDate?.Kind, clockInUtc,
+                        clockInOut.EndDate,   clockInOut.EndDate?.Kind,   clockOutUtc);
+                }
+
                 var record = EmployerAttendanceRecord.Create(
                     userId,
                     date,
-                    clockIn: clockInOut?.StartDate,
-                    clockOut: clockInOut?.EndDate,
+                    clockIn: clockInUtc,
+                    clockOut: clockOutUtc,
                     workingHours: clockInOut?.WorkingHours,
                     hasConflict: day.ConflictType != "None",
                     conflictType: day.ConflictType == "None" ? null : day.ConflictType,
