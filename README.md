@@ -31,9 +31,34 @@ A private Telegram bot for personal work-hour tracking. Not employer surveillanc
 
 ## 🚀 Deploy (VPS / Production)
 
-Copy `compose.yaml` to your server, create a `.env` file next to it, then run `docker compose up -d`.
+The recommended production setup uses **Caddy** as a reverse proxy on the same Docker network.
+Caddy routes `/api/*` internally to the `api` container and everything else to the `frontend` container.
+The API port is never exposed publicly.
+
+### Caddyfile
+
+```
+timesheet.catalinplesu.xyz {
+    reverse_proxy /api/* api:5000
+    reverse_proxy * frontend:80
+}
+```
+
+Run Caddy on the same Docker network as the containers:
+
+```bash
+docker run -d \
+  --name caddy \
+  --network timesheet-network \
+  -p 80:80 -p 443:443 \
+  -v $PWD/Caddyfile:/etc/caddy/Caddyfile \
+  -v caddy_data:/data \
+  caddy:latest
+```
 
 ### `.env` file
+
+Copy `compose.yaml` to your server, create a `.env` file next to it, then run `docker compose up -d`.
 
 ```env
 # --- Required ---
@@ -45,7 +70,7 @@ FRONTEND_EXTERNAL_URL=https://timesheet.example.com   # Public URL of the fronte
 EMPLOYER_API_BASE_URL=https://api.timily.example.com
 
 # --- Ports (optional, defaults shown) ---
-API_PORT=5000
+# API is not exposed publicly — Caddy proxies /api/* to the api container internally
 FRONTEND_PORT=3000
 OPENOBSERVE_PORT=5080
 
