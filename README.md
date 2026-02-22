@@ -31,52 +31,80 @@ A private Telegram bot for personal work-hour tracking. Not employer surveillanc
 
 ## 🚀 Deploy (VPS / Production)
 
-Caddy runs as a system service on the host and handles multiple sites. The containers bind to `127.0.0.1` only so they're not publicly exposed — Caddy proxies to them via localhost.
+Copy `compose.yaml` to your server alongside a `.env` file (see below).
 
-### Caddyfile
+### 1. Generate a JWT secret
+
+The key must be at least 32 characters (256 bits) or the API will crash at login:
+
+```bash
+openssl rand -base64 32
+```
+
+### 2. `.env` file
+
+```env
+# --- Required ---
+BOT_TOKEN=123456789:ABCdef...
+JWT_SECRET_KEY=<output of openssl rand -base64 32>
+FRONTEND_EXTERNAL_URL=https://timesheet.example.com
+
+# --- Employer API (Timily) ---
+EMPLOYER_API_BASE_URL=https://your-timily-instance.azurewebsites.net
+
+# --- Ports (must match Caddyfile) ---
+API_PORT=5004
+FRONTEND_PORT=3345
+OPENOBSERVE_PORT=5080
+
+# --- JWT (optional, defaults shown) ---
+# JWT_ISSUER=TimeSheet.API
+# JWT_AUDIENCE=TimeSheet.Web
+# JWT_EXPIRATION_MINUTES=60
+
+# --- Worker intervals (optional, defaults shown) ---
+# AUTO_SHUTDOWN_CHECK_INTERVAL=00:03:00
+# FORGOT_SHUTDOWN_CHECK_INTERVAL=00:03:00
+# LUNCH_REMINDER_CHECK_INTERVAL=00:03:00
+# WORK_HOURS_ALERT_CHECK_INTERVAL=00:03:00
+```
+
+### 3. Caddy
+
+Caddy runs as a system service on the host. Containers bind to `127.0.0.1` only — not publicly exposed. Caddy proxies both the frontend and the API (the frontend JS calls `/api/*` relative URLs, which Caddy routes internally):
 
 ```
-timesheet.catalinplesu.xyz {
+timesheet.example.com {
     reverse_proxy /api/* localhost:5004
     reverse_proxy * localhost:3345
 }
 ```
 
-### `.env` file
+### 4. Data directory
 
-Copy `compose.yaml` to your server, create a `.env` file next to it, then run `docker compose up -d`.
+Create the data directory before first run — this is where the SQLite database lives:
 
-```env
-# --- Required ---
-BOT_TOKEN=123456789:ABCdef...          # Telegram bot token from @BotFather
-JWT_SECRET_KEY=change-me-long-random-string
-FRONTEND_EXTERNAL_URL=https://timesheet.example.com   # Public URL of the frontend
-
-# --- Employer API (Timily) ---
-EMPLOYER_API_BASE_URL=https://api.timily.example.com
-
-# --- Ports (optional, defaults shown) ---
-# API is not exposed publicly — Caddy proxies /api/* to the api container internally
-FRONTEND_PORT=3000
-OPENOBSERVE_PORT=5080
-
-# --- JWT (optional, defaults shown) ---
-JWT_ISSUER=TimeSheet.API
-JWT_AUDIENCE=TimeSheet.Web
-JWT_EXPIRATION_MINUTES=60
-
-# --- Worker intervals (optional, defaults shown) ---
-AUTO_SHUTDOWN_CHECK_INTERVAL=00:03:00
-FORGOT_SHUTDOWN_CHECK_INTERVAL=00:03:00
-LUNCH_REMINDER_CHECK_INTERVAL=00:03:00
-WORK_HOURS_ALERT_CHECK_INTERVAL=00:03:00
-```
-
-Pull and start:
 ```bash
-docker compose pull
-docker compose up -d
+mkdir -p data
 ```
+
+### 5. Pull and start
+
+```bash
+podman compose pull
+podman compose up -d
+```
+
+### 6. First login
+
+1. Register via the Telegram bot (see Registration section below)
+2. Run `/login` in the bot — it prints a 24-word mnemonic
+3. Enter it on the web login page within **15 minutes** (it expires)
+4. The mnemonic is single-use — generate a new one each session
+
+### OpenObserve (logs)
+
+> TODO: document OpenObserve setup and connectivity
 
 ## 🚀 Getting Started (Development)
 
