@@ -439,7 +439,7 @@ docker-down:
 # Build and push all three container images to ghcr.io
 # Requires: REPO_OWNER and IMAGE_TAG env vars (or a .env file loaded before running)
 # Usage: REPO_OWNER=myuser IMAGE_TAG=latest just publish
-publish repo_owner="" image_tag="latest":
+publish repo_owner="catalinplesu" image_tag="latest":
     #!/usr/bin/env bash
     set -euo pipefail
     OWNER="${REPO_OWNER:-{{repo_owner}}}"
