@@ -919,7 +919,10 @@ function renderEmployerTab(el) {
 
   // Reserve calculator — only days with actual clock data, compared to target
   let reserveHtml = '';
-  const targetH = _settings?.targetOfficeHours ? Number(_settings.targetOfficeHours) : null;
+  // Prefer targetOfficeHours (door-to-door span target); fall back to targetWorkHours if unset
+  const targetH = _settings?.targetOfficeHours
+    ? Number(_settings.targetOfficeHours)
+    : (_settings?.targetWorkHours ? Number(_settings.targetWorkHours) : null);
 
   // Sort records by date descending
   const sorted = records.slice().sort((a, b) => b.date.localeCompare(a.date));
