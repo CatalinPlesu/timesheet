@@ -1,4 +1,4 @@
-import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange } from '../api.js';
+import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange, fetchViolations } from '../api.js';
 import { renderLineChart } from '../charts.js';
 import { toLocal, localDateISO } from '../time.js';
 
@@ -66,17 +66,18 @@ function renderAnaTabs() {
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
 }
 
-let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null;
+let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null, _violations = null;
 
 
 async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
   document.getElementById('ana-content').innerHTML = '<p aria-busy="true">Loading…</p>';
-  [_stats, _chart, _breakdown, _periodAggregate] = await Promise.all([
+  [_stats, _chart, _breakdown, _periodAggregate, _violations] = await Promise.all([
     fetchStats(anaPeriod),
     fetchChartData(startDate, endDate),
     fetchBreakdown(startDate, endDate),
-    fetchPeriodAggregate(startDate, endDate)
+    fetchPeriodAggregate(startDate, endDate),
+    fetchViolations(startDate, endDate)
   ]);
   await loadTab();
 }
@@ -191,6 +192,51 @@ function renderStats(el) {
       <p class="muted-sm" style="margin:0;font-size:0.75rem">${officeSpanValues.length} day${officeSpanValues.length !== 1 ? 's' : ''} with data</p>
     </article>` : '';
 
+  // Build compliance section
+  let complianceHtml = '';
+  if (_violations) {
+    const violations = _violations.violations || [];
+    const violationCount = _violations.violationCount ?? violations.length;
+    if (violationCount === 0) {
+      complianceHtml = `
+    <article>
+      <strong>Compliance</strong>
+      <p style="margin-top:0.5rem;color:var(--pico-ins-color)">&#10003; All days compliant</p>
+    </article>`;
+    } else {
+      const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      function fmtViolationDate(isoDate) {
+        const d = new Date(isoDate + 'T12:00:00Z');
+        return `${days[d.getUTCDay()]} ${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}`;
+      }
+      const violationRows = violations
+        .slice()
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map(v => {
+          const diff = v.actualHours - v.thresholdHours;
+          const isSlightlyUnder = diff >= -1;
+          const badgeCls = isSlightlyUnder ? 'badge-warning' : 'badge-error';
+          const diffLabel = `&#9888; ${diff.toFixed(1)}h`;
+          return `<tr>
+            <td>${fmtViolationDate(v.date)}</td>
+            <td>${v.actualHours.toFixed(1)}h</td>
+            <td>${v.thresholdHours.toFixed(1)}h</td>
+            <td><span class="badge ${badgeCls}">${diffLabel}</span></td>
+          </tr>`;
+        }).join('');
+      complianceHtml = `
+    <article>
+      <strong>Compliance</strong>
+      <p class="muted-sm" style="margin-top:0.25rem">${violationCount} violation${violationCount !== 1 ? 's' : ''} in period</p>
+      <table class="stats-table" style="margin-top:0.75rem">
+        <thead><tr><th>Date</th><th>Actual</th><th>Required</th><th>Status</th></tr></thead>
+        <tbody>${violationRows}</tbody>
+      </table>
+    </article>`;
+    }
+  }
+
   el.innerHTML = `
     <p class="muted-sm">${periodLabel}</p>
     <article>
@@ -206,6 +252,7 @@ function renderStats(el) {
     </article>
     ${avgOfficeSpanCard}
     ${periodTotalsHtml}
+    ${complianceHtml}
     ${dowRows ? `
     <article>
       <strong>By Day of Week</strong>

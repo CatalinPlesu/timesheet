@@ -1,4 +1,4 @@
-import { fetchEntriesForRange, deleteEntry, updateEntry } from '../api.js';
+import { fetchEntriesForRange, deleteEntry, updateEntry, fetchViolations } from '../api.js';
 import { fmtLocalDateTime, localDateISO } from '../time.js';
 
 let entPeriodType = 'Day';
@@ -202,8 +202,17 @@ async function loadPeriodEntries() {
   if (!tableEl) return;
   tableEl.innerHTML = '<p aria-busy="true">Loading…</p>';
   try {
-    const data = await fetchEntriesForRange(start, end);
+    const [data, violationsData] = await Promise.all([
+      fetchEntriesForRange(start, end),
+      fetchViolations(start, end)
+    ]);
     if (!data) return;
+
+    // Build a map of violation info keyed by date string for O(1) lookup
+    const violationMap = new Map();
+    for (const v of (violationsData.violations || [])) {
+      violationMap.set(v.date, v);
+    }
 
     // Sort by startedAt
     const entries = (data.entries || []).sort((a, b) => {
@@ -241,7 +250,11 @@ async function loadPeriodEntries() {
     // Build rows with day separators
     let rows = '';
     for (const [dayKey, dayEntries] of groups) {
-      rows += `<tr class="entry-day-sep"><td colspan="5"><span>${fmtDayLabel(dayKey)}</span></td></tr>`;
+      const violation = violationMap.get(dayKey);
+      const violationBadge = violation
+        ? `<span class="badge badge-warning" title="${violation.description.replace(/"/g, '&quot;')}">&#9888; ${violation.actualHours.toFixed(1)}h</span>`
+        : '';
+      rows += `<tr class="entry-day-sep"><td colspan="5"><span>${fmtDayLabel(dayKey)}</span>${violationBadge}</td></tr>`;
       rows += dayEntries.map(e => {
         const rowCls = entryRowClass(e.state);
         const noteIcon = e.note ? `<span class="note-icon" title="${e.note.replace(/"/g,'&quot;').replace(/\n/g,'&#10;')}">ℹ</span>` : '';

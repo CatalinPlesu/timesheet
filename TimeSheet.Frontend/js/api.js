@@ -71,3 +71,8 @@ export async function fetchPeriodAggregate(startDate, endDate) {
 export async function fetchEntriesForRange(startDate, endDate) {
   return api.get(`/api/entries?startDate=${startDate}&endDate=${endDate}&pageSize=500&page=1`);
 }
+export async function fetchViolations(from, to) {
+  const data = await api.get(`/api/compliance/violations?from=${from}&to=${to}`);
+  if (!data) return { violations: [], violationCount: 0, totalDays: 0 };
+  return data;
+}
