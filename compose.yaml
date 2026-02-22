@@ -1,8 +1,6 @@
 services:
   telegram-bot:
-    build:
-      context: .
-      dockerfile: TimeSheet.Presentation.Telegram/Dockerfile
+    image: ghcr.io/${REPO_OWNER}/timesheet-bot:${IMAGE_TAG:-latest}
     container_name: timesheet-telegram-bot
     restart: unless-stopped
     volumes:
@@ -27,9 +25,7 @@ services:
       - timesheet-network
 
   api:
-    build:
-      context: .
-      dockerfile: TimeSheet.Presentation.API/Dockerfile
+    image: ghcr.io/${REPO_OWNER}/timesheet-api:${IMAGE_TAG:-latest}
     container_name: timesheet-api
     restart: unless-stopped
     ports:
@@ -58,15 +54,11 @@ services:
       - timesheet-network
 
   frontend:
-    image: python:3-slim
+    image: ghcr.io/${REPO_OWNER}/timesheet-frontend:${IMAGE_TAG:-latest}
     container_name: timesheet-frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:8080"
-    volumes:
-      - ./TimeSheet.Frontend:/app:ro
-    working_dir: /app
-    command: python3 -m http.server 8080
+      - "${FRONTEND_PORT:-3000}:80"
     networks:
       - timesheet-network
 
