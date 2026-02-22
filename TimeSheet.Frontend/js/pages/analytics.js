@@ -74,12 +74,12 @@ async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
   document.getElementById('ana-content').innerHTML = '<p aria-busy="true">Loading…</p>';
   [_stats, _chart, _breakdown, _periodAggregate, _violations, _employer] = await Promise.all([
-    fetchStats(anaPeriod),
-    fetchChartData(startDate, endDate),
-    fetchBreakdown(startDate, endDate),
-    fetchPeriodAggregate(startDate, endDate),
-    fetchViolations(startDate, endDate),
-    fetchEmployerAttendance(startDate, endDate)
+    fetchStats(anaPeriod).catch(() => null),
+    fetchChartData(startDate, endDate).catch(() => null),
+    fetchBreakdown(startDate, endDate).catch(() => []),
+    fetchPeriodAggregate(startDate, endDate).catch(() => null),
+    fetchViolations(startDate, endDate).catch(() => ({ violations: [], violationCount: 0, totalDays: 0 })),
+    fetchEmployerAttendance(startDate, endDate).catch(() => ({ records: [], lastImport: null, totalRecords: 0 })),
   ]);
   await loadTab();
 }
@@ -303,9 +303,11 @@ function renderChart(el) {
   document.getElementById('chartLineBtn').onclick = () => { chartType = 'line'; renderChart(el); };
 
   // Fetch and render async
+  const capturedTab = 'chart';
   (async () => {
     try {
       const chartData = await fetchChartData(startStr, endStr);
+      if (anaTab !== capturedTab) return;  // navigated away
 
       // Build a map from the API response
       const apiMap = {};
@@ -416,7 +418,8 @@ function renderChart(el) {
         renderLineChart('lineChart', labels, datasets, weekendIndices);
       }
     } catch {
-      el.innerHTML += '<p class="error">Failed to load chart.</p>';
+      if (anaTab === capturedTab)
+        el.innerHTML += '<p class="error">Failed to load chart.</p>';
     }
   })();
 }
@@ -585,12 +588,35 @@ export async function renderCalendarTab(el) {
       return `<div class="tl-session ${cls}${activeCls}" style="top:${topPx.toFixed(1)}px; height:${heightPx.toFixed(1)}px" title="${titleText.replace(/"/g, '&quot;')}">${label}</div>`;
     }).join('');
 
+    // Employer clock-in/out overlay
+    let employerOverlay = '';
+    if (_employer && _employer.records) {
+      const empRecord = _employer.records.find(r => r.date === colDateStr);
+      if (empRecord && empRecord.clockIn && empRecord.clockOut) {
+        const empIn  = toLocal(empRecord.clockIn);
+        const empOut = toLocal(empRecord.clockOut);
+        const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
+        const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
+        const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
+        const empInTime  = fmtTime(empIn);
+        const empOutTime = fmtTime(empOut);
+        const empHours   = ((empOut - empIn) / 3600000).toFixed(1);
+        employerOverlay = `<div style="
+          position:absolute; left:0; width:4px;
+          top:${empTopPx.toFixed(1)}px; height:${empHeightPx.toFixed(1)}px;
+          background:rgba(239,68,68,0.75); border-radius:0 2px 2px 0;
+          cursor:help;
+        " title="Employer: ${empInTime} – ${empOutTime} (${empHours}h)"></div>`;
+      }
+    }
+
     dayCols.push(`
       <div class="tl-day-col">
         <div class="tl-day-header">${dayNames[colDate.getUTCDay()]}<br><small>${months[colDate.getUTCMonth()]} ${colDate.getUTCDate()}</small></div>
         <div class="tl-day-body" style="position:relative; height:${totalPx}px">
           ${hourLines}
           ${sessionBlocks}
+          ${employerOverlay}
         </div>
       </div>`);
   }
@@ -635,6 +661,7 @@ export async function renderCalendarTab(el) {
 }
 
 async function renderCommute(el) {
+  const capturedTab = 'commute';
   el.innerHTML = '<p aria-busy="true">Loading commute patterns…</p>';
   let toWork = null, toHome = null;
   try {
@@ -643,9 +670,11 @@ async function renderCommute(el) {
       fetchCommutePatterns('ToHome')
     ]);
   } catch {
-    el.innerHTML = '<p class="error">Failed to load commute patterns.</p>';
+    if (anaTab === capturedTab)
+      el.innerHTML = '<p class="error">Failed to load commute patterns.</p>';
     return;
   }
+  if (anaTab !== capturedTab) return;  // navigated away while fetching
 
   const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const weekdays = [1,2,3,4,5]; // Mon-Fri only
