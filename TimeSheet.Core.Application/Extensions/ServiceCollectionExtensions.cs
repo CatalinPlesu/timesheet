@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IReportingService, ReportingService>();
         services.AddSingleton<IChartGenerationService, ChartGenerationService>();
         services.AddScoped<IMnemonicService, MnemonicService>();
+        services.AddScoped<IComplianceRuleEngine, ComplianceRuleEngine>();
 
         // Parsers
         services.AddSingleton<ICommandParameterParser, CommandParameterParser>();

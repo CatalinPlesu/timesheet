@@ -16,16 +16,20 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddOptions();
+        services.AddOptions(configuration);
         services.AddDatabase();
         services.AddRepositories();
 
         return services;
     }
 
-    private static void AddOptions(this IServiceCollection services)
+    private static void AddOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddValidatedConfiguration<DatabaseOptions>();
+
+        // EmployerApiOptions: BaseUrl is intentionally left empty until the user configures it,
+        // so we use Configure rather than validated binding (BaseUrl is not required at startup).
+        services.Configure<EmployerApiOptions>(configuration.GetSection(EmployerApiOptions.SectionName));
     }
 
     private static void AddDatabase(this IServiceCollection services)
@@ -66,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPendingMnemonicRepository, PendingMnemonicRepository>();
         services.AddScoped<IHolidayRepository, HolidayRepository>();
         services.AddScoped<IUserComplianceRuleRepository, UserComplianceRuleRepository>();
+        services.AddScoped<IEmployerAttendanceRepository, EmployerAttendanceRepository>();
 
         // Register Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();

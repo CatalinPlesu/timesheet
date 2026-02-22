@@ -35,6 +35,16 @@ public sealed class AppDbContext : DbContext
     public DbSet<UserComplianceRule> ComplianceRules => Set<UserComplianceRule>();
 
     /// <summary>
+    /// Gets or sets the DbSet for EmployerAttendanceRecord entities.
+    /// </summary>
+    public DbSet<EmployerAttendanceRecord> EmployerAttendanceRecords => Set<EmployerAttendanceRecord>();
+
+    /// <summary>
+    /// Gets or sets the DbSet for EmployerImportLog entities.
+    /// </summary>
+    public DbSet<EmployerImportLog> EmployerImportLogs => Set<EmployerImportLog>();
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
     /// <param name="dbContextOptions">The DbContext options configured with SQLite provider.</param>
