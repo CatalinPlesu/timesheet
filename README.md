@@ -29,7 +29,45 @@ A private Telegram bot for personal work-hour tracking. Not employer surveillanc
 - **`/settings`** - Configure user preferences
 - **`/help`** - Show available commands
 
-## 🚀 Getting Started
+## 🚀 Deploy (VPS / Production)
+
+Copy `compose.yaml` to your server, create a `.env` file next to it, then run `docker compose up -d`.
+
+### `.env` file
+
+```env
+# --- Required ---
+BOT_TOKEN=123456789:ABCdef...          # Telegram bot token from @BotFather
+JWT_SECRET_KEY=change-me-long-random-string
+FRONTEND_EXTERNAL_URL=https://timesheet.example.com   # Public URL of the frontend
+
+# --- Employer API (Timily) ---
+EMPLOYER_API_BASE_URL=https://api.timily.example.com
+
+# --- Ports (optional, defaults shown) ---
+API_PORT=5000
+FRONTEND_PORT=3000
+OPENOBSERVE_PORT=5080
+
+# --- JWT (optional, defaults shown) ---
+JWT_ISSUER=TimeSheet.API
+JWT_AUDIENCE=TimeSheet.Web
+JWT_EXPIRATION_MINUTES=60
+
+# --- Worker intervals (optional, defaults shown) ---
+AUTO_SHUTDOWN_CHECK_INTERVAL=00:03:00
+FORGOT_SHUTDOWN_CHECK_INTERVAL=00:03:00
+LUNCH_REMINDER_CHECK_INTERVAL=00:03:00
+WORK_HOURS_ALERT_CHECK_INTERVAL=00:03:00
+```
+
+Pull and start:
+```bash
+docker compose pull
+docker compose up -d
+```
+
+## 🚀 Getting Started (Development)
 
 ### 1. Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)

@@ -15,6 +15,9 @@ services:
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
       - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
       - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
+      - FrontendUrl=${FRONTEND_EXTERNAL_URL}
+      - EmployerApi__BaseUrl=${EMPLOYER_API_BASE_URL}
+      - EmployerApi__AttendanceEndpoint=/api/TimeOff/getEmployeeAttendance
       - Workers__AutoShutdownCheckInterval=${AUTO_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
       - Workers__ForgotShutdownCheckInterval=${FORGOT_SHUTDOWN_CHECK_INTERVAL:-00:03:00}
       - Workers__LunchReminderCheckInterval=${LUNCH_REMINDER_CHECK_INTERVAL:-00:03:00}
@@ -43,7 +46,8 @@ services:
       - JwtSettings__Audience=${JWT_AUDIENCE:-TimeSheet.Web}
       - JwtSettings__ExpirationMinutes=${JWT_EXPIRATION_MINUTES:-60}
       - Cors__AllowedOrigins__0=http://localhost:${FRONTEND_PORT:-3000}
-      - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL:-http://localhost:3000}
+      - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL}
+      - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - Serilog__WriteTo__2__Name=OpenTelemetry
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
       - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
