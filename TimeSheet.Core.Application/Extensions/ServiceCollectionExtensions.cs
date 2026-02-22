@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IChartGenerationService, ChartGenerationService>();
         services.AddScoped<IMnemonicService, MnemonicService>();
         services.AddScoped<IComplianceRuleEngine, ComplianceRuleEngine>();
+        services.AddHttpClient<IEmployerImportService, EmployerImportService>();
 
         // Parsers
         services.AddSingleton<ICommandParameterParser, CommandParameterParser>();
