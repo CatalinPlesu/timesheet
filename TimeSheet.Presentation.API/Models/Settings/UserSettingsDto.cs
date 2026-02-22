@@ -47,6 +47,13 @@ public sealed class UserSettingsDto
     public decimal? TargetWorkHours { get; set; }
 
     /// <summary>
+    /// Gets or sets the target office hours per day (clock-in to clock-out span).
+    /// Used for employer attendance reserve calculations.
+    /// Null means no target is configured.
+    /// </summary>
+    public decimal? TargetOfficeHours { get; set; }
+
+    /// <summary>
     /// Gets or sets the threshold percentage for forgot-to-shutdown detection.
     /// Null means no forgot-shutdown detection is configured.
     /// </summary>

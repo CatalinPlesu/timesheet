@@ -132,6 +132,23 @@ function renderStats(el) {
   const lunchValues = (_breakdown || []).map(d => d.lunchHours || 0).filter(h => h > 0);
   const lunchMedian = median(lunchValues);
 
+  // Idle = office span - work - lunch, only for days with office span data
+  const idleValues = (_breakdown || [])
+    .filter(d => d.officeSpanHours > 0)
+    .map(d => Math.max(0, (d.officeSpanHours || 0) - (d.workHours || 0) - (d.lunchHours || 0)));
+  const idleMedian = median(idleValues);
+  const idleAvg   = idleValues.length ? idleValues.reduce((a, b) => a + b, 0) / idleValues.length : 0;
+  const idleMin   = idleValues.length ? Math.min(...idleValues) : 0;
+  const idleMax   = idleValues.length ? Math.max(...idleValues) : 0;
+  const idleTotal = idleValues.reduce((a, b) => a + b, 0);
+  const idleMean  = idleAvg;
+  const idleStdDev = idleValues.length
+    ? Math.sqrt(idleValues.reduce((a, b) => a + (b - idleMean) ** 2, 0) / idleValues.length)
+    : 0;
+  const idleStatObj = idleValues.length
+    ? { avg: idleAvg, min: idleMin, max: idleMax, stdDev: idleStdDev, total: idleTotal }
+    : null;
+
   // Day-of-week breakdown from _breakdown
   const dowGroups = {};
   for (let i = 0; i < 7; i++) dowGroups[i] = { work: [], commute: [], lunch: [] };
@@ -251,6 +268,7 @@ function renderStats(el) {
           ${statsRow('Commute →Work', _stats.commuteToWork, commuteWorkMedian)}
           ${statsRow('Commute →Home', _stats.commuteToHome, commuteHomeMedian)}
           ${statsRow('Lunch', _stats.lunch, lunchMedian)}
+          ${statsRow('Idle (in office)', idleStatObj, idleMedian)}
         </tbody>
       </table>
     </article>
@@ -630,16 +648,22 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        // Timily times are UTC but stored without Z — append Z to parse correctly as UTC
-        const toUtc = s => s ? new Date(s.endsWith('Z') ? s : s + 'Z') : null;
-        const empIn  = toUtc(empRecord.clockIn);
-        const empOut = toUtc(empRecord.clockOut);
-        const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
-        const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
+        // Use user's UTC offset from settings for timezone-independent positioning
+        const userOffsetMs = (_settings?.utcOffsetMinutes ?? 0) * 60000;
+        // User's local midnight in epoch ms: UTC midnight of date minus utcOffset
+        // e.g. UTC+2: UTC midnight - 2h = UTC 22:00 prev day = local midnight
+        const userLocalMidnightMs = new Date(colDateStr + 'T00:00:00Z').getTime() - userOffsetMs;
+        const userDayStartMs = userLocalMidnightMs + hourMin * 3600000;
+        const parseUtcMs = s => s ? new Date(s.endsWith('Z') ? s : s + 'Z').getTime() : null;
+        const empInMs  = parseUtcMs(empRecord.clockIn);
+        const empOutMs = parseUtcMs(empRecord.clockOut);
+        const empTopPx    = Math.max(0, (empInMs  - userDayStartMs) / 60000 * pxPerMin);
+        const empBottomPx = Math.max(0, (empOutMs - userDayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
-        const empInTime  = fmtTime(empIn);
-        const empOutTime = fmtTime(empOut);
-        const empTotalMins = Math.round((empOut - empIn) / 60000);
+        const fmtLocalEmp = ms => { const d = new Date(ms + userOffsetMs); return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
+        const empInTime  = fmtLocalEmp(empInMs);
+        const empOutTime = fmtLocalEmp(empOutMs);
+        const empTotalMins = Math.round((empOutMs - empInMs) / 60000);
         const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m`;
         employerOverlay = `<div style="
           position:absolute; left:0; width:4px;
@@ -765,12 +789,11 @@ async function renderCommute(el) {
 
   const officeSpanTableHtml = breakdownWithSpan.length ? `
     <table class="stats-table" style="margin-top:0.75rem">
-      <thead><tr><th>Date</th><th>Office span</th><th>Work</th><th>Commute →Work</th><th>Commute →Home</th></tr></thead>
+      <thead><tr><th>Date</th><th>Office span</th><th>Commute →Work</th><th>Commute →Home</th></tr></thead>
       <tbody>
         ${breakdownWithSpan.map(d => `<tr>
           <td>${d.date}</td>
           <td>${fmtDur(d.officeSpanHours)}</td>
-          <td>${fmtDur(d.workHours)}</td>
           <td>${fmtDur(d.commuteToWorkHours)}</td>
           <td>${fmtDur(d.commuteToHomeHours)}</td>
         </tr>`).join('')}
@@ -834,51 +857,6 @@ async function renderCommute(el) {
       }
     });
 
-    // Add context chart (avg work + lunch hours per weekday) below the commute chart
-    const canvas2 = document.createElement('canvas');
-    canvas2.id = 'commuteContextChart';
-    canvas2.style.maxHeight = '200px';
-    canvas2.style.marginTop = '0.75rem';
-    canvas.parentElement.appendChild(canvas2);
-
-    // Compute per-weekday averages of work and lunch from _breakdown
-    const dowWork = {1:[], 2:[], 3:[], 4:[], 5:[]};
-    const dowLunch = {1:[], 2:[], 3:[], 4:[], 5:[]};
-    for (const d of (_breakdown || [])) {
-      if (!d.workHours || d.workHours <= 0) continue;
-      const dow = new Date(d.date.slice(0, 10) + 'T12:00:00Z').getUTCDay();
-      if (dow < 1 || dow > 5) continue;
-      dowWork[dow].push(d.workHours);
-      dowLunch[dow].push(d.lunchHours || 0);
-    }
-    const avgArr = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
-    const workByDay  = weekdays.map(d => avgArr(dowWork[d]));
-    const lunchByDay = weekdays.map(d => avgArr(dowLunch[d]));
-
-    if (canvas2._chartInstance) canvas2._chartInstance.destroy();
-    canvas2._chartInstance = new Chart(canvas2, {
-      type: 'bar',
-      data: {
-        labels: chartLabels,
-        datasets: [
-          { label: 'Work',  data: workByDay,  backgroundColor: 'rgba(59,130,246,0.8)' },
-          { label: 'Lunch', data: lunchByDay, backgroundColor: 'rgba(251,146,60,0.8)' }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtDur(ctx.parsed.y)}` } }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { callback: v => v === 0 ? '0' : `${Math.floor(v)}h` }
-          }
-        }
-      }
-    });
   }
 }
 
@@ -935,6 +913,18 @@ function renderEmployerTab(el) {
     return '<span style="color:var(--pico-ins-color)">&#10003;</span>';
   }
 
+  function deltaCell(workingHours, targetH) {
+    if (workingHours == null || targetH == null) return '<td>—</td>';
+    const diff = workingHours - targetH;
+    const absDur = fmtDur(Math.abs(diff));
+    if (diff >= 0) return `<td><span style="color:var(--pico-ins-color)">+${absDur}</span></td>`;
+    return `<td><span style="color:var(--pico-del-color)">−${absDur}</span></td>`;
+  }
+
+  // Reserve calculator — only days with actual clock data, compared to target
+  let reserveHtml = '';
+  const targetH = _settings?.targetOfficeHours ? Number(_settings.targetOfficeHours) : null;
+
   // Sort records by date descending
   const sorted = records.slice().sort((a, b) => b.date.localeCompare(a.date));
 
@@ -944,18 +934,16 @@ function renderEmployerTab(el) {
     const clockInStr = isAbsent ? '—' : fmtClockTime(r.clockIn);
     const clockOutStr = isAbsent ? '—' : fmtClockTime(r.clockOut);
     const hoursStr = isAbsent ? '—' : fmtHours(r.workingHours);
+    const deltaTd = isAbsent ? '<td>—</td>' : deltaCell(r.workingHours, targetH);
     return `<tr${rowStyle}>
       <td>${fmtEmployerDate(r.date)}</td>
       <td>${clockInStr}</td>
       <td>${clockOutStr}</td>
       <td>${hoursStr}</td>
+      ${deltaTd}
       <td>${statusCell(r)}</td>
     </tr>`;
   }).join('');
-
-  // Reserve calculator — only days with actual clock data, compared to target
-  let reserveHtml = '';
-  const targetH = _settings?.targetWorkHours ? Number(_settings.targetWorkHours) : null;
   if (targetH != null) {
     const daysWithData = records.filter(r => r.workingHours != null);
     const totalWorked = daysWithData.reduce((s, r) => s + r.workingHours, 0);
@@ -968,7 +956,7 @@ function renderEmployerTab(el) {
     const targetDur = fmtDur(targetH);
     reserveHtml = `
       <p style="margin-top:0.5rem">
-        Reserve (${daysWithData.length} days × ${targetDur} target): ${reserveLabel}
+        Reserve (${daysWithData.length} days × ${targetDur} office target): ${reserveLabel}
       </p>`;
   }
 
@@ -978,7 +966,7 @@ function renderEmployerTab(el) {
       ${lastImportHtml}
       ${reserveHtml}
       <table class="stats-table" style="margin-top:0.75rem">
-        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th></tr></thead>
+        <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Delta</th><th>Status</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </article>`;
@@ -992,7 +980,7 @@ async function renderPatternsTab(el) {
 
   const dowNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const groups = {};
-  for (let d = 1; d <= 5; d++) groups[d] = { work: [], commute: [], commuteHome: [], lunch: [] };
+  for (let d = 1; d <= 5; d++) groups[d] = { work: [], commute: [], commuteHome: [], lunch: [], idle: [] };
 
   for (const d of _breakdown) {
     const dow = new Date(d.date.slice(0, 10) + 'T12:00:00Z').getUTCDay();
@@ -1002,6 +990,9 @@ async function renderPatternsTab(el) {
       groups[dow].commute.push(d.commuteToWorkHours || 0);
       groups[dow].commuteHome.push(d.commuteToHomeHours || 0);
       groups[dow].lunch.push(d.lunchHours || 0);
+      if (d.officeSpanHours > 0) {
+        groups[dow].idle.push(Math.max(0, (d.officeSpanHours || 0) - (d.workHours || 0) - (d.lunchHours || 0)));
+      }
     }
   }
 
@@ -1016,6 +1007,7 @@ async function renderPatternsTab(el) {
       <td>${fmtDur(avg(g.commute))}</td>
       <td>${fmtDur(avg(g.commuteHome))}</td>
       <td>${fmtDur(avg(g.lunch))}</td>
+      <td>${fmtDur(avg(g.idle))}</td>
       <td>${g.work.length}</td>
     </tr>`;
   }).join('');
@@ -1029,9 +1021,9 @@ async function renderPatternsTab(el) {
       <strong>Average by day (Mon–Fri, work days only)</strong>
       <table class="stats-table" style="margin-top:0.75rem">
         <thead>
-          <tr><th>Day</th><th>Avg Work</th><th>Commute →Work</th><th>Commute →Home</th><th>Avg Lunch</th><th>Days</th></tr>
+          <tr><th>Day</th><th>Avg Work</th><th>Commute →Work</th><th>Commute →Home</th><th>Avg Lunch</th><th>Avg Idle</th><th>Days</th></tr>
         </thead>
-        <tbody>${rows || '<tr><td colspan="6">No data</td></tr>'}</tbody>
+        <tbody>${rows || '<tr><td colspan="7">No data</td></tr>'}</tbody>
       </table>
     </article>`;
 
@@ -1046,6 +1038,7 @@ async function renderPatternsTab(el) {
           { label: 'Work',    data: [1,2,3,4,5].map(d => avg(groups[d].work)),        backgroundColor: 'rgba(59,130,246,0.8)', stack: 'a' },
           { label: 'Commute', data: [1,2,3,4,5].map(d => avg([...groups[d].commute, ...groups[d].commuteHome]) / 2 || avg(groups[d].commute)), backgroundColor: 'rgba(34,197,94,0.8)', stack: 'a' },
           { label: 'Lunch',   data: [1,2,3,4,5].map(d => avg(groups[d].lunch)),       backgroundColor: 'rgba(251,146,60,0.8)', stack: 'a' },
+          { label: 'Idle',    data: [1,2,3,4,5].map(d => avg(groups[d].idle)),        backgroundColor: 'rgba(156,163,175,0.5)', stack: 'a' },
         ]
       },
       options: {

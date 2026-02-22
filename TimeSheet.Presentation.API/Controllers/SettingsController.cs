@@ -63,6 +63,7 @@ public class SettingsController : ControllerBase
                 LunchReminderHour = user.LunchReminderHour,
                 LunchReminderMinute = user.LunchReminderMinute,
                 TargetWorkHours = user.TargetWorkHours,
+                TargetOfficeHours = user.TargetOfficeHours,
                 ForgotShutdownThresholdPercent = user.ForgotShutdownThresholdPercent
             });
         }
