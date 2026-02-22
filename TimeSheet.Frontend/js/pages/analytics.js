@@ -648,19 +648,16 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        // Use user's UTC offset from settings for timezone-independent positioning
-        const userOffsetMs = (_settings?.utcOffsetMinutes ?? 0) * 60000;
-        // User's local midnight in epoch ms: UTC midnight of date minus utcOffset
-        // e.g. UTC+2: UTC midnight - 2h = UTC 22:00 prev day = local midnight
-        const userLocalMidnightMs = new Date(colDateStr + 'T00:00:00Z').getTime() - userOffsetMs;
-        const userDayStartMs = userLocalMidnightMs + hourMin * 3600000;
+        // Use the same dayStartMs reference as session blocks (browser local midnight + hourMin),
+        // so the employer bar aligns correctly with the user's sessions regardless of _settings.
         const parseUtcMs = s => s ? new Date(s.endsWith('Z') ? s : s + 'Z').getTime() : null;
         const empInMs  = parseUtcMs(empRecord.clockIn);
         const empOutMs = parseUtcMs(empRecord.clockOut);
-        const empTopPx    = Math.max(0, (empInMs  - userDayStartMs) / 60000 * pxPerMin);
-        const empBottomPx = Math.max(0, (empOutMs - userDayStartMs) / 60000 * pxPerMin);
+        const empTopPx    = Math.max(0, (empInMs  - dayStartMs) / 60000 * pxPerMin);
+        const empBottomPx = Math.max(0, (empOutMs - dayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
-        const fmtLocalEmp = ms => { const d = new Date(ms + userOffsetMs); return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
+        // Use browser local time (.getHours()/.getMinutes()), same as fmtTime used for sessions.
+        const fmtLocalEmp = ms => { const d = new Date(ms); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
         const empInTime  = fmtLocalEmp(empInMs);
         const empOutTime = fmtLocalEmp(empOutMs);
         const empTotalMins = Math.round((empOutMs - empInMs) / 60000);
