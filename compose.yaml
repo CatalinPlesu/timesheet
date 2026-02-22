@@ -1,6 +1,6 @@
 services:
   telegram-bot:
-    image: ghcr.io/${REPO_OWNER}/timesheet-bot:${IMAGE_TAG:-latest}
+    image: ghcr.io/catalinplesu/timesheet-bot:${IMAGE_TAG:-latest}
     container_name: timesheet-telegram-bot
     restart: unless-stopped
     volumes:
@@ -25,7 +25,7 @@ services:
       - timesheet-network
 
   api:
-    image: ghcr.io/${REPO_OWNER}/timesheet-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/catalinplesu/timesheet-api:${IMAGE_TAG:-latest}
     container_name: timesheet-api
     restart: unless-stopped
     ports:
@@ -54,7 +54,7 @@ services:
       - timesheet-network
 
   frontend:
-    image: ghcr.io/${REPO_OWNER}/timesheet-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/catalinplesu/timesheet-frontend:${IMAGE_TAG:-latest}
     container_name: timesheet-frontend
     restart: unless-stopped
     ports:
