@@ -5,7 +5,7 @@ export function renderNav(activePage) {
   if (!el) return;
   el.innerHTML = `
     <nav class="container-fluid">
-      <ul><li><strong>TimeSheet</strong></li></ul>
+      <ul><li><img src="logo.png" alt="TimeSheet" style="height:32px;width:auto;vertical-align:middle;margin-right:0.5rem;"><strong>TimeSheet</strong></li></ul>
       <ul>
         <li><a href="tracking.html" ${activePage==='tracking'?'class="contrast"':''}>Tracking</a></li>
         <li><a href="entries.html"  ${activePage==='entries' ?'class="contrast"':''}>Entries</a></li>

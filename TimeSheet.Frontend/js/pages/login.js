@@ -5,6 +5,9 @@ export function renderLogin() {
   document.getElementById('app').innerHTML = `
     <main class="container">
       <div class="login-wrap">
+        <div style="text-align:center;margin-bottom:1.5rem;">
+          <img src="logo.png" alt="TimeSheet" style="height:64px;width:auto;">
+        </div>
         <article>
           <header><h2>TimeSheet</h2></header>
           <p>Enter the one-time mnemonic from Telegram to log in.</p>
