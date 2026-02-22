@@ -12,7 +12,7 @@ services:
       - Database__EnableDetailedErrors=false
       - Bot__Token=${BOT_TOKEN}
       - Serilog__WriteTo__2__Name=OpenTelemetry
-      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
+      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
       - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
       - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
@@ -49,7 +49,7 @@ services:
       - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL}
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - Serilog__WriteTo__2__Name=OpenTelemetry
-      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/logs
+      - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
       - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
       - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
     depends_on:

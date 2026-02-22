@@ -104,7 +104,25 @@ podman compose up -d
 
 ### OpenObserve (logs)
 
-> TODO: document OpenObserve setup and connectivity
+OpenObserve runs as a container and receives logs from the bot and API via **Serilog's OpenTelemetry sink** (OTLP/HTTP). No agent installation needed — logs are pushed directly.
+
+**Access the UI** (SSH tunnel from your machine):
+```bash
+ssh -L 5080:localhost:5080 user@yourserver
+# Then open http://localhost:5080 in your browser
+```
+
+Default credentials (set in `compose.yaml`):
+- Email: `root@example.com`
+- Password: `Complexpass#123`
+
+**View logs**: Logs → select stream `logs` → set time range → search.
+
+> To change the default password, update `ZO_ROOT_USER_PASSWORD` in `compose.yaml` and re-encode the Basic auth header for the Serilog config:
+> ```bash
+> echo -n "root@example.com:YourNewPassword" | base64
+> ```
+> Then update `Serilog__WriteTo__2__Args__headers__Authorization=Basic <new-value>` for both `telegram-bot` and `api` services.
 
 ## 🚀 Getting Started (Development)
 
