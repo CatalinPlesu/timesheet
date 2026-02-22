@@ -648,22 +648,17 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        // Employer timestamps are UTC stored without Z. Use _settings.utcOffsetMinutes
-        // to position them correctly regardless of browser timezone.
-        const userOffsetMs = (_settings?.utcOffsetMinutes ?? 0) * 60000;
-        // User's local midnight: UTC midnight minus utcOffset (e.g. UTC+2: midnight-2h = UTC 22:00 prev day)
-        const userDayStartMs = new Date(colDateStr + 'T00:00:00Z').getTime() - userOffsetMs + hourMin * 3600000;
-        const parseUtcMs = s => s ? new Date(s.endsWith('Z') ? s : s + 'Z').getTime() : null;
-        const empInMs  = parseUtcMs(empRecord.clockIn);
-        const empOutMs = parseUtcMs(empRecord.clockOut);
-        const empTopPx    = Math.max(0, (empInMs  - userDayStartMs) / 60000 * pxPerMin);
-        const empBottomPx = Math.max(0, (empOutMs - userDayStartMs) / 60000 * pxPerMin);
+        // Treat employer times the same as session times: no Z, browser interprets as local
+        // This aligns employer bar with session blocks on the timeline
+        const empIn  = new Date(empRecord.clockIn);
+        const empOut = new Date(empRecord.clockOut);
+        const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
+        const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
-        // Display in user's configured local time (UTC + offset), not browser timezone.
-        const fmtLocalEmp = ms => { const d = new Date(ms + userOffsetMs); return `${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`; };
-        const empInTime  = fmtLocalEmp(empInMs);
-        const empOutTime = fmtLocalEmp(empOutMs);
-        const empTotalMins = Math.round((empOutMs - empInMs) / 60000);
+        const fmtLocalEmp = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        const empInTime  = fmtLocalEmp(empIn);
+        const empOutTime = fmtLocalEmp(empOut);
+        const empTotalMins = Math.round((empOut - empIn) / 60000);
         const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m`;
         employerOverlay = `<div style="
           position:absolute; left:0; width:8px;
