@@ -1,7 +1,7 @@
 import { fetchEntriesForRange, deleteEntry, updateEntry, fetchViolations } from '../api.js';
 import { fmtLocalDateTime, localDateISO } from '../time.js';
 
-let entPeriodType = 'Day';
+let entPeriodType = 'Week';
 let entPeriodOffset = 0;
 let entSortNewest = true;
 let editingId = null;
