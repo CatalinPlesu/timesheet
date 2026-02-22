@@ -648,10 +648,11 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        // Treat employer times the same as session times: no Z, browser interprets as local
-        // This aligns employer bar with session blocks on the timeline
-        const empIn  = new Date(empRecord.clockIn);
-        const empOut = new Date(empRecord.clockOut);
+        // Employer times have T separator → browser treats as LOCAL without Z (wrong).
+        // Append Z so they're parsed as UTC, matching fmtClockTime behaviour.
+        const toUtc = s => new Date(s.endsWith('Z') ? s : s + 'Z');
+        const empIn  = toUtc(empRecord.clockIn);
+        const empOut = toUtc(empRecord.clockOut);
         const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
         const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
