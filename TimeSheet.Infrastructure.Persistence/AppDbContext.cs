@@ -30,6 +30,11 @@ public sealed class AppDbContext : DbContext
     public DbSet<Holiday> Holidays => Set<Holiday>();
 
     /// <summary>
+    /// Gets or sets the DbSet for UserComplianceRule entities.
+    /// </summary>
+    public DbSet<UserComplianceRule> ComplianceRules => Set<UserComplianceRule>();
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="AppDbContext"/> class.
     /// </summary>
     /// <param name="dbContextOptions">The DbContext options configured with SQLite provider.</param>
