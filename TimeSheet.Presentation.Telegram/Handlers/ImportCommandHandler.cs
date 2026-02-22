@@ -83,6 +83,10 @@ public class ImportCommandHandler(
             return;
         }
 
+        // Strip "Bearer " prefix if user pasted the full Authorization header value
+        if (bearerToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            bearerToken = bearerToken["Bearer ".Length..].Trim();
+
         logger.LogInformation(
             "Import command from user {UserId} ({Username}), force={Force}",
             userId.Value,
