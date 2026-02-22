@@ -81,3 +81,6 @@ export async function fetchEmployerAttendance(from, to) {
   if (!data) return { records: [], lastImport: null, totalRecords: 0 };
   return data;
 }
+export async function fetchSettings() {
+  return api.get('/api/settings');
+}

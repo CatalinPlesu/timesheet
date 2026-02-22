@@ -1,4 +1,4 @@
-import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange, fetchViolations, fetchEmployerAttendance } from '../api.js';
+import { fetchStats, fetchChartData, fetchBreakdown, fetchCommutePatterns, fetchPeriodAggregate, fetchEntriesForRange, fetchViolations, fetchEmployerAttendance, fetchSettings } from '../api.js';
 import { renderLineChart } from '../charts.js';
 import { toLocal, localDateISO } from '../time.js';
 
@@ -67,19 +67,20 @@ function renderAnaTabs() {
   window.setAnaTab = async (t) => { anaTab = t; renderAnaTabs(); await loadTab(); };
 }
 
-let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null, _violations = null, _employer = null;
+let _stats = null, _chart = null, _breakdown = null, _periodAggregate = null, _violations = null, _employer = null, _settings = null;
 
 
 async function loadAll() {
   const { startDate, endDate } = dateRange(anaPeriod);
   document.getElementById('ana-content').innerHTML = '<p aria-busy="true">Loading…</p>';
-  [_stats, _chart, _breakdown, _periodAggregate, _violations, _employer] = await Promise.all([
+  [_stats, _chart, _breakdown, _periodAggregate, _violations, _employer, _settings] = await Promise.all([
     fetchStats(anaPeriod).catch(() => null),
     fetchChartData(startDate, endDate).catch(() => null),
     fetchBreakdown(startDate, endDate).catch(() => []),
     fetchPeriodAggregate(startDate, endDate).catch(() => null),
     fetchViolations(startDate, endDate).catch(() => ({ violations: [], violationCount: 0, totalDays: 0 })),
     fetchEmployerAttendance(startDate, endDate).catch(() => ({ records: [], lastImport: null, totalRecords: 0 })),
+    fetchSettings().catch(() => null),
   ]);
   await loadTab();
 }
@@ -220,11 +221,11 @@ function renderStats(el) {
           const diff = v.actualHours - v.thresholdHours;
           const isSlightlyUnder = diff >= -1;
           const badgeCls = isSlightlyUnder ? 'badge-warning' : 'badge-error';
-          const diffLabel = `&#9888; ${diff.toFixed(1)}h`;
+          const diffLabel = `&#9888; ${fmtDur(Math.abs(diff))} short`;
           return `<tr>
             <td>${fmtViolationDate(v.date)}</td>
-            <td>${v.actualHours.toFixed(1)}h</td>
-            <td>${v.thresholdHours.toFixed(1)}h</td>
+            <td>${fmtDur(v.actualHours)}</td>
+            <td>${fmtDur(v.thresholdHours)}</td>
             <td><span class="badge ${badgeCls}">${diffLabel}</span></td>
           </tr>`;
         }).join('');
@@ -325,11 +326,17 @@ function renderChart(el) {
       // Build office span lookup from _breakdown (keyed by date string "yyyy-MM-dd")
       const officeSpanMap = {};
       for (const d of (_breakdown || [])) {
-        if (d.officeSpanHours != null) officeSpanMap[d.date] = d.officeSpanHours;
+        if (d.officeSpanHours != null) officeSpanMap[d.date.slice(0, 10)] = d.officeSpanHours;
+      }
+
+      // Build employer hours lookup
+      const employerHoursMap = {};
+      for (const r of ((_employer && _employer.records) || [])) {
+        if (r.workingHours != null) employerHoursMap[r.date] = r.workingHours;
       }
 
       // Fill every day in range
-      const labels = [], workD = [], commuteD = [], lunchD = [], idleD = [], officeSpanD = [];
+      const labels = [], workD = [], commuteD = [], lunchD = [], idleD = [], officeSpanD = [], employerD = [];
       const weekendIndices = [];
       const cur = new Date(chartWindowStart);
       while (cur < windowEnd) {
@@ -339,11 +346,13 @@ function renderChart(el) {
         const d = apiMap[ds] || { work: 0, commute: 0, lunch: 0, idle: 0 };
         workD.push(d.work); commuteD.push(d.commute); lunchD.push(d.lunch); idleD.push(d.idle);
         officeSpanD.push(officeSpanMap[ds] ?? null);
+        employerD.push(employerHoursMap[ds] ?? null);
         if (dow === 0 || dow === 6) weekendIndices.push(labels.length - 1);
         cur.setUTCDate(cur.getUTCDate() + 1);
       }
 
       const hasOfficeSpan = officeSpanD.some(v => v != null);
+      const hasEmployerHours = employerD.some(v => v != null);
 
       if (chartType === 'bar') {
         const canvas = document.getElementById('lineChart');
@@ -367,6 +376,21 @@ function renderChart(el) {
             tension: 0.3,
             fill: false,
             order: -1,
+          });
+        }
+        if (hasEmployerHours) {
+          barDatasets.push({
+            label: 'Employer',
+            data: employerD,
+            type: 'line',
+            borderColor: 'rgba(239,68,68,0.9)',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 4,
+            tension: 0.2,
+            fill: false,
+            spanGaps: false,
+            order: -2,
           });
         }
         canvas._chartInstance = new Chart(canvas, {
@@ -412,6 +436,19 @@ function renderChart(el) {
             tension: 0.3,
             borderWidth: 2,
             pointRadius: 3,
+            spanGaps: false,
+          });
+        }
+        if (hasEmployerHours) {
+          datasets.push({
+            label: 'Employer',
+            data: employerD,
+            borderColor: 'rgba(239,68,68,0.9)',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.2,
+            borderWidth: 2,
+            pointRadius: 4,
             spanGaps: false,
           });
         }
@@ -593,17 +630,17 @@ export async function renderCalendarTab(el) {
     if (_employer && _employer.records) {
       const empRecord = _employer.records.find(r => r.date === colDateStr);
       if (empRecord && empRecord.clockIn && empRecord.clockOut) {
-        // Treat employer times as local (Timily sends local times, strip any timezone)
-        const parseEmpTime = s => s ? new Date(s.substring(0, 19)) : null;
-        const empIn  = parseEmpTime(empRecord.clockIn);
-        const empOut = parseEmpTime(empRecord.clockOut);
+        // Timily times are UTC but stored without Z — append Z to parse correctly as UTC
+        const toUtc = s => s ? new Date(s.endsWith('Z') ? s : s + 'Z') : null;
+        const empIn  = toUtc(empRecord.clockIn);
+        const empOut = toUtc(empRecord.clockOut);
         const empTopPx    = Math.max(0, (empIn.getTime()  - dayStartMs) / 60000 * pxPerMin);
         const empBottomPx = Math.max(0, (empOut.getTime() - dayStartMs) / 60000 * pxPerMin);
         const empHeightPx = Math.max(empBottomPx - empTopPx, pxPerMin * 5);
         const empInTime  = fmtTime(empIn);
         const empOutTime = fmtTime(empOut);
         const empTotalMins = Math.round((empOut - empIn) / 60000);
-        const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m (${(empTotalMins / 60).toFixed(1)}h)`;
+        const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m`;
         employerOverlay = `<div style="
           position:absolute; left:0; width:4px;
           top:${empTopPx.toFixed(1)}px; height:${empHeightPx.toFixed(1)}px;
@@ -879,18 +916,18 @@ function renderEmployerTab(el) {
 
   function fmtClockTime(utcStr) {
     if (!utcStr) return '—';
-    const d = new Date(utcStr.substring(0, 19)); // treat as local (Timily times are local)
+    const d = new Date(utcStr.endsWith('Z') ? utcStr : utcStr + 'Z'); // Timily times are UTC
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
 
   function fmtHours(h) {
     if (h == null) return '—';
-    return `${h.toFixed(1)}h`;
+    return fmtDur(h);
   }
 
   function statusCell(record) {
     const isAbsent = (record.eventTypes || '').toLowerCase().includes('absence');
-    if (isAbsent) return '<span class="muted-sm">Absent</span>';
+    if (isAbsent) return '<span class="muted-sm">No data</span>';
     if (record.hasConflict) {
       const conflictLabel = record.conflictType ? record.conflictType : 'flagged';
       return `<span class="badge badge-warning">&#9888; ${conflictLabel}</span>`;
@@ -916,10 +953,30 @@ function renderEmployerTab(el) {
     </tr>`;
   }).join('');
 
+  // Reserve calculator — only days with actual clock data, compared to target
+  let reserveHtml = '';
+  const targetH = _settings?.targetWorkHours ? Number(_settings.targetWorkHours) : null;
+  if (targetH != null) {
+    const daysWithData = records.filter(r => r.workingHours != null);
+    const totalWorked = daysWithData.reduce((s, r) => s + r.workingHours, 0);
+    const totalTarget = daysWithData.length * targetH;
+    const reserveHours = totalWorked - totalTarget;
+    const absDur = fmtDur(Math.abs(reserveHours));
+    const reserveLabel = reserveHours >= 0
+      ? `<span style="color:var(--pico-ins-color)">+${absDur} ahead</span>`
+      : `<span style="color:var(--pico-del-color)">−${absDur} behind</span>`;
+    const targetDur = fmtDur(targetH);
+    reserveHtml = `
+      <p style="margin-top:0.5rem">
+        Reserve (${daysWithData.length} days × ${targetDur} target): ${reserveLabel}
+      </p>`;
+  }
+
   el.innerHTML = `
     <article>
       <strong>Employer Attendance</strong>
       ${lastImportHtml}
+      ${reserveHtml}
       <table class="stats-table" style="margin-top:0.75rem">
         <thead><tr><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th></tr></thead>
         <tbody>${rows}</tbody>
