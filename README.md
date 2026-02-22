@@ -31,29 +31,15 @@ A private Telegram bot for personal work-hour tracking. Not employer surveillanc
 
 ## 🚀 Deploy (VPS / Production)
 
-The recommended production setup uses **Caddy** as a reverse proxy on the same Docker network.
-Caddy routes `/api/*` internally to the `api` container and everything else to the `frontend` container.
-The API port is never exposed publicly.
+Caddy runs as a system service on the host and handles multiple sites. The containers bind to `127.0.0.1` only so they're not publicly exposed — Caddy proxies to them via localhost.
 
 ### Caddyfile
 
 ```
 timesheet.catalinplesu.xyz {
-    reverse_proxy /api/* api:5000
-    reverse_proxy * frontend:80
+    reverse_proxy /api/* localhost:5004
+    reverse_proxy * localhost:3345
 }
-```
-
-Run Caddy on the same Docker network as the containers:
-
-```bash
-docker run -d \
-  --name caddy \
-  --network timesheet-network \
-  -p 80:80 -p 443:443 \
-  -v $PWD/Caddyfile:/etc/caddy/Caddyfile \
-  -v caddy_data:/data \
-  caddy:latest
 ```
 
 ### `.env` file

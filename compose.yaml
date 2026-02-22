@@ -31,7 +31,8 @@ services:
     image: ghcr.io/catalinplesu/timesheet-api:latest
     container_name: timesheet-api
     restart: unless-stopped
-    # No public ports — Caddy proxies /api/* to api:5000 on the internal network
+    ports:
+      - "127.0.0.1:${API_PORT:-5004}:5000"
     volumes:
       - ./data:/app/data
     environment:
@@ -61,7 +62,7 @@ services:
     container_name: timesheet-frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "127.0.0.1:${FRONTEND_PORT:-3345}:80"
     networks:
       - timesheet-network
 
