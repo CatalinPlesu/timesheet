@@ -666,7 +666,7 @@ export async function renderCalendarTab(el) {
         const empTotalMins = Math.round((empOutMs - empInMs) / 60000);
         const empDurStr  = `${Math.floor(empTotalMins / 60)}h ${empTotalMins % 60}m`;
         employerOverlay = `<div style="
-          position:absolute; left:0; width:4px;
+          position:absolute; left:0; width:8px;
           top:${empTopPx.toFixed(1)}px; height:${empHeightPx.toFixed(1)}px;
           background:rgba(239,68,68,0.75); border-radius:0 2px 2px 0;
           cursor:help;
