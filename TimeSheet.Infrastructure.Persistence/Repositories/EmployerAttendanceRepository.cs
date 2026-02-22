@@ -45,9 +45,10 @@ public sealed class EmployerAttendanceRepository(AppDbContext dbContext) : IEmpl
     /// <inheritdoc/>
     public async Task<EmployerImportLog?> GetLastImportAsync(Guid userId, CancellationToken ct = default)
     {
+        // SQLite doesn't support ORDER BY DateTimeOffset — order by Id (auto-increment) instead
         return await dbContext.EmployerImportLogs
             .Where(l => l.UserId == userId)
-            .OrderByDescending(l => l.CreatedAt)
+            .OrderByDescending(l => l.Id)
             .FirstOrDefaultAsync(ct);
     }
 
