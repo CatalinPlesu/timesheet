@@ -17,15 +17,18 @@ namespace TimeSheet.Presentation.API.Controllers;
 public class AnalyticsController : ControllerBase
 {
     private readonly ITrackingSessionRepository _sessionRepository;
+    private readonly IUserRepository _userRepository;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ILogger<AnalyticsController> _logger;
 
     public AnalyticsController(
         ITrackingSessionRepository sessionRepository,
+        IUserRepository userRepository,
         IJwtTokenService jwtTokenService,
         ILogger<AnalyticsController> logger)
     {
         _sessionRepository = sessionRepository ?? throw new ArgumentNullException(nameof(sessionRepository));
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _jwtTokenService = jwtTokenService ?? throw new ArgumentNullException(nameof(jwtTokenService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -200,6 +203,10 @@ public class AnalyticsController : ControllerBase
                     detail: "Start date must be before end date");
             }
 
+            // Load user settings to get UTC offset for local-time grouping
+            var user = await _userRepository.GetByTelegramUserIdAsync(userId, cancellationToken);
+            var utcOffsetMinutes = user?.UtcOffsetMinutes ?? 0;
+
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, start, end, cancellationToken);
 
             // Filter commute sessions by direction
@@ -209,18 +216,18 @@ public class AnalyticsController : ControllerBase
                          && s.EndedAt.HasValue)
                 .ToList();
 
-            // Group by day of week
+            // Group by local day of week (convert UTC start time to local time first)
             var patternsByDayOfWeek = commuteSessions
-                .GroupBy(s => s.StartedAt.DayOfWeek)
+                .GroupBy(s => s.StartedAt.AddMinutes(utcOffsetMinutes).DayOfWeek)
                 .OrderBy(g => g.Key)
                 .Select(g =>
                 {
                     var sessionsForDay = g.ToList();
                     var averageDuration = (decimal)sessionsForDay.Average(s => (s.EndedAt!.Value - s.StartedAt).TotalHours);
 
-                    // Find optimal start hour by grouping by hour and finding shortest average
+                    // Find optimal local start hour by grouping by hour and finding shortest average
                     var byHour = sessionsForDay
-                        .GroupBy(s => s.StartedAt.Hour)
+                        .GroupBy(s => s.StartedAt.AddMinutes(utcOffsetMinutes).Hour)
                         .Select(h => new
                         {
                             Hour = h.Key,
@@ -418,9 +425,16 @@ public class AnalyticsController : ControllerBase
 
             var sessions = await _sessionRepository.GetSessionsInRangeAsync(userId, startDate, endDate, cancellationToken);
 
-            // Group by date
+            // Group completed sessions by date (for work/lunch/commute hour totals and duration)
             var sessionsByDate = sessions
                 .Where(s => s.EndedAt.HasValue)
+                .GroupBy(s => s.StartedAt.Date)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // Group ALL sessions by date (including active ones) for office span calculation.
+            // An out-of-order work entry added after the home commute will have EndedAt=null,
+            // but the commute sessions we need for clock-in/clock-out must still be found.
+            var allSessionsByDate = sessions
                 .GroupBy(s => s.StartedAt.Date)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -428,6 +442,7 @@ public class AnalyticsController : ControllerBase
             var result = new List<DailyBreakdownDto>();
             for (var date = startDate.Date; date < endDate.Date; date = date.AddDays(1))
             {
+                allSessionsByDate.TryGetValue(date, out var allDaySessions);
                 if (sessionsByDate.TryGetValue(date, out var daySessions))
                 {
                     decimal workHours = 0;
@@ -468,14 +483,18 @@ public class AnalyticsController : ControllerBase
                     // Calculate office span:
                     // clock-in  = EndedAt of first commute-to-work session
                     // clock-out = StartedAt of first commute-to-home session
+                    // Search in ALL day sessions (not just completed ones) so that a work session
+                    // added out-of-order with EndedAt=null does not cause the home commute to be
+                    // excluded from the lookup (the commute sessions themselves are always completed).
+                    var commuteLookup = allDaySessions ?? daySessions;
                     decimal? officeSpanHours = null;
-                    var firstCommuteToWork = daySessions
+                    var firstCommuteToWork = commuteLookup
                         .Where(s => s.State == TrackingState.Commuting
                                  && s.CommuteDirection == CommuteDirection.ToWork
                                  && s.EndedAt.HasValue)
                         .OrderBy(s => s.StartedAt)
                         .FirstOrDefault();
-                    var firstCommuteToHome = daySessions
+                    var firstCommuteToHome = commuteLookup
                         .Where(s => s.State == TrackingState.Commuting
                                  && s.CommuteDirection == CommuteDirection.ToHome)
                         .OrderBy(s => s.StartedAt)
