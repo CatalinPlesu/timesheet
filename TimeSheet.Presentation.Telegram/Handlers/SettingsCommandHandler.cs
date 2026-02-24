@@ -121,31 +121,43 @@ public class SettingsCommandHandler(
         }
 
         var offsetString = commandParts[2];
-        if (!int.TryParse(offsetString, out var offsetHours))
+        if (!int.TryParse(offsetString, out var offsetValue))
         {
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid offset. Please provide a number between -12 and +14.\nExample: `/settings utc +2`",
+                text: "Invalid offset. Please provide hours (e.g. `+2`) or minutes (e.g. `120`).\nExample: `/settings utc +2`",
                 parseMode: ParseMode.Markdown,
                 cancellationToken: cancellationToken);
             return;
         }
 
-        // Validate range: -12 to +14
-        if (offsetHours < -12 || offsetHours > 14)
+        // Determine if the value is in hours or minutes.
+        // Values in -12..+14 are treated as hours.
+        // Values with absolute value > 60 (up to ±840) are treated as minutes — useful for
+        // fractional offsets like 330 min = UTC+5:30.
+        // Values with absolute value between 15 and 60 are ambiguous; reject them to avoid confusion.
+        int offsetMinutes;
+        if (offsetValue >= -12 && offsetValue <= 14)
+        {
+            // Treat as hours
+            offsetMinutes = offsetValue * 60;
+        }
+        else if (Math.Abs(offsetValue) > 60 && offsetValue >= -720 && offsetValue <= 840)
+        {
+            // Treat as minutes (e.g. 120 = UTC+2, -300 = UTC-5, 330 = UTC+5:30)
+            offsetMinutes = offsetValue;
+        }
+        else
         {
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "UTC offset must be between -12 and +14 hours.",
+                text: "UTC offset must be between -12 and +14 hours (or supply minutes like 120 for UTC+2).",
                 cancellationToken: cancellationToken);
             return;
         }
 
         using var scope = serviceScopeFactory.CreateScope();
         var userSettingsService = scope.ServiceProvider.GetRequiredService<IUserSettingsService>();
-
-        // Convert hours to minutes
-        var offsetMinutes = offsetHours * 60;
 
         // Update the user's UTC offset
         var updatedUser = await userSettingsService.UpdateUtcOffsetAsync(
@@ -162,9 +174,13 @@ public class SettingsCommandHandler(
             return;
         }
 
-        // Format display
-        var offsetSign = offsetHours >= 0 ? "+" : "";
-        var offsetDisplay = $"UTC{offsetSign}{offsetHours}";
+        // Format display: e.g. UTC+2, UTC-5, UTC+5:30
+        var totalHours = offsetMinutes / 60;
+        var remainingMinutes = Math.Abs(offsetMinutes % 60);
+        var sign = offsetMinutes >= 0 ? "+" : "-";
+        var offsetDisplay = remainingMinutes > 0
+            ? $"UTC{sign}{Math.Abs(totalHours)}:{remainingMinutes:D2}"
+            : $"UTC{sign}{Math.Abs(totalHours)}";
 
         await botClient.SendMessage(
             chatId: message.Chat.Id,

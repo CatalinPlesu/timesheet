@@ -137,7 +137,8 @@ public class UpdateHandler(
         {
             // Parse the command to see if it's a settings update
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length >= 2 && parts[1].Equals("utc", StringComparison.OrdinalIgnoreCase))
+            if (parts.Length >= 2 && (parts[1].Equals("utc", StringComparison.OrdinalIgnoreCase)
+                                    || parts[1].Equals("utcoffset", StringComparison.OrdinalIgnoreCase)))
             {
                 await settingsCommandHandler.HandleSettingsUtcAsync(botClient, message, parts, cancellationToken);
             }
@@ -153,9 +154,14 @@ public class UpdateHandler(
             {
                 await settingsCommandHandler.HandleSettingsForgotAsync(botClient, message, parts, cancellationToken);
             }
-            else if (parts.Length >= 2 && parts[1].Equals("officegoal", StringComparison.OrdinalIgnoreCase))
+            else if (parts.Length >= 2 && (parts[1].Equals("officegoal", StringComparison.OrdinalIgnoreCase)
+                                         || parts[1].Equals("targetoffice", StringComparison.OrdinalIgnoreCase)))
             {
                 await settingsCommandHandler.HandleSettingsOfficeGoalAsync(botClient, message, parts, cancellationToken);
+            }
+            else if (parts.Length >= 2 && parts[1].Equals("targetwork", StringComparison.OrdinalIgnoreCase))
+            {
+                await settingsCommandHandler.HandleSettingsTargetAsync(botClient, message, parts, cancellationToken);
             }
             else
             {
