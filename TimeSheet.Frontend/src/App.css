@@ -1,0 +1,6 @@
+/* App-level overrides — keep minimal, use Tailwind classes instead */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
