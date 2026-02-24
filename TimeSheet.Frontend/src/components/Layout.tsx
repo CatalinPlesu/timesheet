@@ -31,7 +31,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="container mx-auto flex h-14 max-w-screen-xl items-center px-4">
           {/* Logo + brand */}
           <div className="flex items-center gap-2.5 mr-6">
-            <img src="/logo.png" alt="TimeSheet" className="h-7 w-auto" />
+            <img src="/logo.png" alt="TimeSheet" className="h-7 w-7 rounded-full object-cover ring-2 ring-border" />
             <span className="font-semibold text-base tracking-tight hidden sm:inline">TimeSheet</span>
           </div>
 

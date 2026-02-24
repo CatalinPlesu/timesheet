@@ -68,21 +68,21 @@ export function LoginPage() {
               <label className="text-sm font-medium" htmlFor="mnemonic">
                 Mnemonic phrase
               </label>
-              <textarea
+              <input
+                type="password"
                 id="mnemonic"
                 value={mnemonic}
                 onChange={e => setMnemonic(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleLogin() } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleLogin() } }}
                 placeholder="word1 word2 word3 …"
-                autoComplete="off"
+                autoComplete="current-password"
                 autoCorrect="off"
                 spellCheck={false}
-                rows={3}
                 className={cn(
                   'w-full rounded-md border border-input bg-background px-3 py-2 text-sm',
                   'placeholder:text-muted-foreground',
                   'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background',
-                  'resize-none font-mono tracking-wide',
+                  'font-mono tracking-wide',
                   error && 'border-destructive focus:ring-destructive'
                 )}
               />
