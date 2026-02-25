@@ -415,7 +415,7 @@ toggle:
       API_PID=$!; \
       skate set "${RKEY}-api-pid@{{_db}}" "$API_PID"; \
       echo "  ✓ API started (PID $API_PID)"; \
-      (fuser -k "${FRONTEND_PORT:-8080}/tcp" 2>/dev/null || true; python3 -m http.server "${FRONTEND_PORT:-8080}" --directory TimeSheet.Frontend) > /tmp/timesheet-frontend.log 2>&1 & \
+      (fuser -k "${FRONTEND_PORT:-8080}/tcp" 2>/dev/null || true; [ ! -d TimeSheet.Frontend/dist ] && (cd TimeSheet.Frontend && npm run build) >> /tmp/timesheet-frontend.log 2>&1; python3 -m http.server "${FRONTEND_PORT:-8080}" --directory TimeSheet.Frontend/dist) > /tmp/timesheet-frontend.log 2>&1 & \
       FRONTEND_PID=$!; \
       skate set "${RKEY}-frontend-pid@{{_db}}" "$FRONTEND_PID"; \
       echo "  ✓ Frontend started (PID $FRONTEND_PID)"; \
