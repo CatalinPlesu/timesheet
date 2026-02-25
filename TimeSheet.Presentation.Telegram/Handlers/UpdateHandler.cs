@@ -25,6 +25,7 @@ public class UpdateHandler(
     LoginCommandHandler loginCommandHandler,
     NoteCommandHandler noteCommandHandler,
     ImportCommandHandler importCommandHandler,
+    ComplianceCommandHandler complianceCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -172,6 +173,22 @@ public class UpdateHandler(
         {
             await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken, expandedText: messageText);
         }
+        else if (messageText.StartsWith("/week", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleWeekAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/month", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleMonthAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/stats", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleStatsAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/compliance", StringComparison.OrdinalIgnoreCase))
+        {
+            await complianceCommandHandler.HandleComplianceAsync(botClient, message, cancellationToken, expandedText: messageText);
+        }
         else if (messageText.StartsWith("/status", StringComparison.OrdinalIgnoreCase))
         {
             await statusCommandHandler.HandleStatusAsync(botClient, message, cancellationToken);
@@ -306,7 +323,11 @@ public class UpdateHandler(
             { "/se", "/settings" },
             { "/r", "/report" },
             { "/s", "/status" },
-            { "/lo", "/login" }
+            { "/lo", "/login" },
+            { "/wk", "/week" },
+            { "/mo", "/month" },
+            { "/st", "/stats" },
+            { "/co", "/compliance" },
         };
 
         // Expand the command (first part)
@@ -337,6 +358,12 @@ public class UpdateHandler(
                 ("report", "c") => "commute",
                 ("report", "a") => "all",
                 ("report", "t") => "table",
+                ("report", "s") => "stats",
+
+                // /compliance subcommands
+                ("compliance", "t") => "today",
+                ("compliance", "w") => "week",
+                ("compliance", "m") => "month",
 
                 // /settings subcommands
                 ("settings", "u") => "utc",
