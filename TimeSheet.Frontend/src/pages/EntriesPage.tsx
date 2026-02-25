@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  fetchEntriesForRange, fetchViolations, deleteEntry, updateEntry,
+  fetchEntriesForRange, fetchViolations, deleteEntry, updateEntry, updateEntryNote,
   type Entry, type Violation
 } from '@/lib/api'
 import { useRequireAuth } from '@/hooks/useAuth'
@@ -115,10 +115,14 @@ function AdjustRow({ entryId, which, onApply, isLoading }: AdjustRowProps) {
 interface EditPanelProps {
   entry: Entry
   onApply: (id: string, which: 'start' | 'end', minutes: number) => void
+  onSaveNote: (id: string, note: string | null) => void
   isLoading: boolean
+  isNoteLoading: boolean
 }
 
-function EditPanel({ entry, onApply, isLoading }: EditPanelProps) {
+function EditPanel({ entry, onApply, onSaveNote, isLoading, isNoteLoading }: EditPanelProps) {
+  const [noteValue, setNoteValue] = useState(entry.note ?? '')
+
   return (
     <tr>
       <td colSpan={5} className="px-4 py-3 bg-muted/30">
@@ -130,6 +134,24 @@ function EditPanel({ entry, onApply, isLoading }: EditPanelProps) {
           {!entry.isActive && (
             <AdjustRow entryId={entry.id} which="end" onApply={onApply} isLoading={isLoading} />
           )}
+          {/* Note editing */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-muted-foreground w-10">Note:</span>
+            <input
+              type="text"
+              value={noteValue}
+              onChange={e => setNoteValue(e.target.value)}
+              placeholder="Add a note… (leave empty to clear)"
+              className="flex-1 text-xs px-2 py-1 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              onClick={() => onSaveNote(entry.id, noteValue.trim() || null)}
+              disabled={isNoteLoading}
+              className="text-xs px-3 py-1 rounded border border-border hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              {isNoteLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Save'}
+            </button>
+          </div>
         </div>
       </td>
     </tr>
@@ -178,8 +200,19 @@ export function EntriesPage() {
     },
   })
 
+  const noteMutation = useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string | null }) => updateEntryNote(id, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', start, end] })
+    },
+  })
+
   const handleApplyAdjust = (id: string, which: 'start' | 'end', minutes: number) => {
     adjustMutation.mutate({ id, which, minutes })
+  }
+
+  const handleSaveNote = (id: string, note: string | null) => {
+    noteMutation.mutate({ id, note })
   }
 
   const handlePeriodType = (type: PeriodType) => {
@@ -444,7 +477,9 @@ export function EntriesPage() {
                           key={`edit-${entry.id}`}
                           entry={entry}
                           onApply={handleApplyAdjust}
+                          onSaveNote={handleSaveNote}
                           isLoading={adjustMutation.isPending}
+                          isNoteLoading={noteMutation.isPending}
                         />
                       ),
                     ].filter(Boolean))
