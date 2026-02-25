@@ -149,7 +149,9 @@ export function StatsTab({ stats, breakdown, periodAggregate, violations, anaPer
           <p className="text-sm font-semibold mb-2">Period Totals</p>
           <div className="flex flex-wrap gap-4 text-sm">
             <span><span className="text-blue-500 font-medium">{fmtDur(periodAggregate.totalWorkHours)}</span> work</span>
-            <span><span className="text-green-500 font-medium">{fmtDur(periodAggregate.totalCommuteHours)}</span> commute</span>
+            <span><span className="text-green-400 font-medium">{fmtDur(periodAggregate.totalCommuteToWorkHours)}</span> commute →work</span>
+            <span><span className="text-green-600 font-medium">{fmtDur(periodAggregate.totalCommuteToHomeHours)}</span> commute →home</span>
+            <span><span className="text-green-500 font-medium">{fmtDur(periodAggregate.totalCommuteHours)}</span> commute total</span>
             <span><span className="text-orange-500 font-medium">{fmtDur(periodAggregate.totalLunchHours)}</span> lunch</span>
             <span className="text-muted-foreground">{periodAggregate.workDaysCount ?? '—'} work days</span>
             {avgOfficeSpan != null && (

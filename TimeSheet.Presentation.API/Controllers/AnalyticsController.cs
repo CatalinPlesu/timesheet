@@ -313,7 +313,8 @@ public class AnalyticsController : ControllerBase
             var completedSessions = sessions.Where(s => s.EndedAt.HasValue).ToList();
 
             decimal totalWorkHours = 0;
-            decimal totalCommuteHours = 0;
+            decimal totalCommuteToWorkHours = 0;
+            decimal totalCommuteToHomeHours = 0;
             decimal totalLunchHours = 0;
 
             foreach (var session in completedSessions)
@@ -325,8 +326,11 @@ public class AnalyticsController : ControllerBase
                     case TrackingState.Working:
                         totalWorkHours += duration;
                         break;
-                    case TrackingState.Commuting:
-                        totalCommuteHours += duration;
+                    case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToWork:
+                        totalCommuteToWorkHours += duration;
+                        break;
+                    case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToHome:
+                        totalCommuteToHomeHours += duration;
                         break;
                     case TrackingState.Lunch:
                         totalLunchHours += duration;
@@ -374,7 +378,8 @@ public class AnalyticsController : ControllerBase
                 StartDate = startDate,
                 EndDate = endDate,
                 TotalWorkHours = totalWorkHours,
-                TotalCommuteHours = totalCommuteHours,
+                TotalCommuteToWorkHours = totalCommuteToWorkHours,
+                TotalCommuteToHomeHours = totalCommuteToHomeHours,
                 TotalLunchHours = totalLunchHours,
                 WorkDaysCount = workDays,
                 TotalDurationHours = totalDurationHours

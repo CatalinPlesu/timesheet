@@ -319,6 +319,10 @@ public class ReportCommandHandler(
         {
             builder.AppendLine($"Work days: {aggregate.WorkDaysCount}");
             builder.AppendLine($"Total work hours: {FormatHours(aggregate.TotalWorkHours)}");
+            if (aggregate.TotalCommuteToWorkHours > 0)
+                builder.AppendLine($"Commute to work: {FormatHours(aggregate.TotalCommuteToWorkHours)}");
+            if (aggregate.TotalCommuteToHomeHours > 0)
+                builder.AppendLine($"Commute to home: {FormatHours(aggregate.TotalCommuteToHomeHours)}");
             builder.AppendLine($"Total commute time: {FormatHours(aggregate.TotalCommuteHours)}");
             builder.AppendLine($"Total lunch time: {FormatHours(aggregate.TotalLunchHours)}");
 
@@ -332,12 +336,18 @@ public class ReportCommandHandler(
 
             // Calculate averages
             var avgWorkPerDay = aggregate.TotalWorkHours / aggregate.WorkDaysCount;
+            var avgCommuteToWorkPerDay = aggregate.TotalCommuteToWorkHours / aggregate.WorkDaysCount;
+            var avgCommuteToHomePerDay = aggregate.TotalCommuteToHomeHours / aggregate.WorkDaysCount;
             var avgCommutePerDay = aggregate.TotalCommuteHours / aggregate.WorkDaysCount;
             var avgLunchPerDay = aggregate.TotalLunchHours / aggregate.WorkDaysCount;
 
             builder.AppendLine("Daily averages:");
             builder.AppendLine($"  Work: {FormatHours(avgWorkPerDay)}");
-            builder.AppendLine($"  Commute: {FormatHours(avgCommutePerDay)}");
+            if (aggregate.TotalCommuteToWorkHours > 0)
+                builder.AppendLine($"  Commute →work: {FormatHours(avgCommuteToWorkPerDay)}");
+            if (aggregate.TotalCommuteToHomeHours > 0)
+                builder.AppendLine($"  Commute →home: {FormatHours(avgCommuteToHomePerDay)}");
+            builder.AppendLine($"  Commute total: {FormatHours(avgCommutePerDay)}");
             builder.AppendLine($"  Lunch: {FormatHours(avgLunchPerDay)}");
         }
 

@@ -129,11 +129,14 @@ public class ListCommandHandler(
 
         // --- Totals ---
         var workSessions = sessions.Where(s => s.State == TrackingState.Working && s.EndedAt.HasValue).ToList();
-        var commuteSessions = sessions.Where(s => s.State == TrackingState.Commuting && s.EndedAt.HasValue).ToList();
+        var commuteToWorkSessions = sessions.Where(s => s.State == TrackingState.Commuting && s.CommuteDirection == CommuteDirection.ToWork && s.EndedAt.HasValue).ToList();
+        var commuteToHomeSessions = sessions.Where(s => s.State == TrackingState.Commuting && s.CommuteDirection == CommuteDirection.ToHome && s.EndedAt.HasValue).ToList();
         var lunchSessions = sessions.Where(s => s.State == TrackingState.Lunch && s.EndedAt.HasValue).ToList();
 
         var totalWorkMinutes = workSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
-        var totalCommuteMinutes = commuteSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+        var totalCommuteToWorkMinutes = commuteToWorkSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+        var totalCommuteToHomeMinutes = commuteToHomeSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+        var totalCommuteMinutes = totalCommuteToWorkMinutes + totalCommuteToHomeMinutes;
         var totalLunchMinutes = lunchSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
 
         // Office span: from first session start to last session end (completed sessions only)
@@ -154,7 +157,21 @@ public class ListCommandHandler(
             builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalWorkMinutes)}");
         }
 
-        if (commuteSessions.Count > 0)
+        if (commuteToWorkSessions.Count > 0)
+        {
+            var label = "Commute →work".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalCommuteToWorkMinutes)}");
+        }
+
+        if (commuteToHomeSessions.Count > 0)
+        {
+            var label = "Commute →home".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalCommuteToHomeMinutes)}");
+        }
+
+        if (commuteToWorkSessions.Count > 0 || commuteToHomeSessions.Count > 0)
         {
             var label = "Commute total".PadRight(LabelWidth);
             var padding = new string(' ', TimeRangeWidth);

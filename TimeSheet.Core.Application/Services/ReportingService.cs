@@ -212,7 +212,8 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             cancellationToken);
 
         decimal totalWorkHours = 0;
-        decimal totalCommuteHours = 0;
+        decimal totalCommuteToWorkHours = 0;
+        decimal totalCommuteToHomeHours = 0;
         decimal totalLunchHours = 0;
 
         var workDays = sessions
@@ -234,7 +235,10 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
                     break;
 
                 case TrackingState.Commuting:
-                    totalCommuteHours += duration;
+                    if (session.CommuteDirection == CommuteDirection.ToWork)
+                        totalCommuteToWorkHours += duration;
+                    else
+                        totalCommuteToHomeHours += duration;
                     break;
 
                 case TrackingState.Lunch:
@@ -276,7 +280,8 @@ public class ReportingService(ITrackingSessionRepository trackingSessionReposito
             StartDate = startDate,
             EndDate = endDate,
             TotalWorkHours = totalWorkHours,
-            TotalCommuteHours = totalCommuteHours,
+            TotalCommuteToWorkHours = totalCommuteToWorkHours,
+            TotalCommuteToHomeHours = totalCommuteToHomeHours,
             TotalLunchHours = totalLunchHours,
             WorkDaysCount = workDays,
             TotalDurationHours = totalDurationHours
