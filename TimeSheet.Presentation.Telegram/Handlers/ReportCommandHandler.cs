@@ -11,13 +11,15 @@ using TimeSheet.Core.Domain.Enums;
 namespace TimeSheet.Presentation.Telegram.Handlers;
 
 /// <summary>
-/// Handles the /report command to show period aggregates.
+/// Handles the /report command to show period aggregates, plus standalone /week, /month, /stats commands.
 /// </summary>
 public class ReportCommandHandler(
     ILogger<ReportCommandHandler> logger,
     IServiceScopeFactory serviceScopeFactory,
     IChartGenerationService chartGenerationService)
 {
+    // ─── Public entry points ─────────────────────────────────────────────────
+
     /// <summary>
     /// Handles the /report command.
     /// </summary>
@@ -37,7 +39,6 @@ public class ReportCommandHandler(
 
         try
         {
-            // Parse command arguments (use expanded text if provided, otherwise use message text)
             var messageText = expandedText ?? message.Text ?? string.Empty;
             var parts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
@@ -46,11 +47,19 @@ public class ReportCommandHandler(
 
             using var scope = serviceScopeFactory.CreateScope();
             var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+
+            if (user == null)
+            {
+                await botClient.SendMessage(chatId: message.Chat.Id, text: "User not found.", cancellationToken: cancellationToken);
+                return;
+            }
 
             // Handle "all" subcommand: send every report as a separate message
             if (period == "all")
             {
-                await SendAllReportsAsync(botClient, message, reportingService, userId.Value, cancellationToken);
+                await SendAllReportsAsync(botClient, message, reportingService, userId.Value, user.UtcOffsetMinutes, cancellationToken);
                 logger.LogInformation("User {UserId} viewed all reports", userId.Value);
                 return;
             }
@@ -62,14 +71,12 @@ public class ReportCommandHandler(
             {
                 responseText = await GenerateCommuteReportAsync(reportingService, userId.Value, cancellationToken);
             }
-            else if (period == "daily")
+            else if (period is "daily" or "stats")
             {
                 responseText = await GenerateDailyAveragesReportAsync(reportingService, userId.Value, cancellationToken);
             }
             else if (period.StartsWith("chart"))
             {
-                // Chart report: /report chart [type]
-                // Types: breakdown, trend, activity, averages, commute
                 var chartParts = messageText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var chartType = chartParts.Length > 2 ? chartParts[2].ToLowerInvariant() : "breakdown";
                 var chartPeriod = chartParts.Length > 3 ? chartParts[3].ToLowerInvariant() : "week";
@@ -80,35 +87,33 @@ public class ReportCommandHandler(
             }
             else if (period.StartsWith("table"))
             {
-                // Table report: /report table [week|month|year]
                 var tableParts = period.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 var tablePeriod = tableParts.Length > 1 ? tableParts[1] : "week";
-
-                var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
-                var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
-                if (user == null)
-                {
-                    responseText = "User not found.";
-                }
-                else
-                {
-                    responseText = await GenerateTableReportAsync(reportingService, userId.Value, tablePeriod, user.UtcOffsetMinutes, cancellationToken);
-                }
+                responseText = await GenerateTableReportAsync(reportingService, userId.Value, tablePeriod, user.UtcOffsetMinutes, cancellationToken);
             }
             else
             {
-                // Calculate date range based on period
-                var (startDate, endDate, periodLabel) = GetDateRange(period);
+                // day / week / month / year
+                var (startDate, endDate, periodLabel) = GetDateRange(period, user.UtcOffsetMinutes);
 
-                // Generate the report
-                var aggregate = await reportingService.GetPeriodAggregateAsync(
-                    userId.Value,
-                    startDate,
-                    endDate,
-                    cancellationToken);
-
-                // Format the response
-                responseText = FormatPeriodReport(aggregate, periodLabel);
+                if (period is "day" or "today")
+                {
+                    responseText = await GenerateDailySummaryAsync(reportingService, userId.Value, startDate, periodLabel, user.TargetWorkHours, user.TargetOfficeHours, user.UtcOffsetMinutes, cancellationToken);
+                }
+                else if (period is "week" or "weekly")
+                {
+                    responseText = await GenerateWeeklyReportAsync(reportingService, userId.Value, startDate, endDate, periodLabel, user.UtcOffsetMinutes, cancellationToken);
+                }
+                else if (period is "month" or "monthly")
+                {
+                    responseText = await GenerateMonthlyReportAsync(reportingService, userId.Value, startDate, endDate, periodLabel, user.UtcOffsetMinutes, cancellationToken);
+                }
+                else
+                {
+                    // year / yearly — original aggregate format
+                    var aggregate = await reportingService.GetPeriodAggregateAsync(userId.Value, startDate, endDate, cancellationToken);
+                    responseText = FormatPeriodReport(aggregate, periodLabel);
+                }
             }
 
             await botClient.SendMessage(
@@ -123,22 +128,13 @@ public class ReportCommandHandler(
             logger.LogWarning(ex, "Invalid period argument for /report command from user {UserId}", userId.Value);
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: "Invalid period. Use: /report [day|week|month|year|commute|daily|table|chart|all]\n\n" +
+                text: "Invalid period. Use: /report [day|week|month|year|commute|daily|stats|table|chart|all]\n\n" +
                       "Examples:\n" +
-                      "  /report day - Today's summary\n" +
-                      "  /report week - This week\n" +
-                      "  /report month - This month\n" +
-                      "  /report year - This year\n" +
-                      "  /report commute - Commute patterns\n" +
-                      "  /report daily - Daily averages (7/30/90 days)\n" +
-                      "  /report table week - Daily breakdown table for week\n" +
-                      "  /report table month - Daily breakdown table for month\n" +
-                      "  /report chart breakdown week - Bar chart of daily work hours\n" +
-                      "  /report chart trend month - Line chart of work hours trend\n" +
-                      "  /report chart activity week - Stacked activity breakdown\n" +
-                      "  /report chart averages - Daily averages comparison (7/30/90 days)\n" +
-                      "  /report chart commute - Commute patterns by day of week\n" +
-                      "  /report all - All reports as separate messages",
+                      "  /report (or /r) — Today's summary\n" +
+                      "  /week — This week breakdown\n" +
+                      "  /month — This month breakdown\n" +
+                      "  /stats — Daily averages (7/30/90 days)\n" +
+                      "  /compliance — Compliance violations",
                 cancellationToken: cancellationToken);
         }
         catch (Exception ex)
@@ -152,6 +148,197 @@ public class ReportCommandHandler(
     }
 
     /// <summary>
+    /// Handles the /week command — weekly summary with day breakdown.
+    /// </summary>
+    public async Task HandleWeekAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null) return;
+
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            if (user == null) return;
+
+            var (startDate, endDate, periodLabel) = GetDateRange("week", user.UtcOffsetMinutes);
+            var text = await GenerateWeeklyReportAsync(reportingService, userId.Value, startDate, endDate, periodLabel, user.UtcOffsetMinutes, cancellationToken);
+
+            await botClient.SendMessage(chatId: message.Chat.Id, text: text, cancellationToken: cancellationToken);
+            logger.LogInformation("User {UserId} viewed /week report", userId.Value);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling /week command for user {UserId}", userId.Value);
+            await botClient.SendMessage(chatId: message.Chat.Id, text: "An error occurred. Please try again.", cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Handles the /month command — monthly summary with day breakdown.
+    /// </summary>
+    public async Task HandleMonthAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null) return;
+
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            if (user == null) return;
+
+            var (startDate, endDate, periodLabel) = GetDateRange("month", user.UtcOffsetMinutes);
+            var text = await GenerateMonthlyReportAsync(reportingService, userId.Value, startDate, endDate, periodLabel, user.UtcOffsetMinutes, cancellationToken);
+
+            await botClient.SendMessage(chatId: message.Chat.Id, text: text, cancellationToken: cancellationToken);
+            logger.LogInformation("User {UserId} viewed /month report", userId.Value);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling /month command for user {UserId}", userId.Value);
+            await botClient.SendMessage(chatId: message.Chat.Id, text: "An error occurred. Please try again.", cancellationToken: cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Handles the /stats command — averages over 7/30/90 days.
+    /// </summary>
+    public async Task HandleStatsAsync(
+        ITelegramBotClient botClient,
+        Message message,
+        CancellationToken cancellationToken)
+    {
+        var userId = message.From?.Id;
+        if (userId == null) return;
+
+        try
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            var reportingService = scope.ServiceProvider.GetRequiredService<IReportingService>();
+
+            var text = await GenerateDailyAveragesReportAsync(reportingService, userId.Value, cancellationToken);
+            await botClient.SendMessage(chatId: message.Chat.Id, text: text, cancellationToken: cancellationToken);
+            logger.LogInformation("User {UserId} viewed /stats", userId.Value);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error handling /stats command for user {UserId}", userId.Value);
+            await botClient.SendMessage(chatId: message.Chat.Id, text: "An error occurred. Please try again.", cancellationToken: cancellationToken);
+        }
+    }
+
+    // ─── Private generation helpers ──────────────────────────────────────────
+
+    /// <summary>
+    /// Generates a rich daily summary for today including idle time and targets.
+    /// </summary>
+    private static async Task<string> GenerateDailySummaryAsync(
+        IReportingService reportingService,
+        long userId,
+        DateTime startDate,
+        string periodLabel,
+        decimal? targetWorkHours,
+        decimal? targetOfficeHours,
+        int utcOffsetMinutes,
+        CancellationToken cancellationToken)
+    {
+        var endDate = startDate.AddDays(1);
+        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+
+        var day = breakdown.FirstOrDefault();
+
+        var builder = new StringBuilder();
+        builder.AppendLine($"Report: {periodLabel}");
+        builder.AppendLine();
+
+        if (day == null || !day.HasActivity)
+        {
+            builder.AppendLine("No activity recorded today.");
+            return builder.ToString();
+        }
+
+        // Core metrics
+        builder.AppendLine($"Work:      {FormatHours(day.WorkHours)}");
+
+        if (day.CommuteToWorkHours > 0)
+            builder.AppendLine($"Commute->: {FormatHours(day.CommuteToWorkHours)}");
+        if (day.CommuteToHomeHours > 0)
+            builder.AppendLine($"Commute<-: {FormatHours(day.CommuteToHomeHours)}");
+
+        if (day.LunchHours > 0)
+            builder.AppendLine($"Lunch:     {FormatHours(day.LunchHours)}");
+
+        // Office span and idle
+        if (day.TotalDurationHours.HasValue)
+        {
+            var officeSpan = day.TotalDurationHours.Value;
+            var idleHours = Math.Max(0m, officeSpan - day.WorkHours - day.LunchHours);
+            builder.AppendLine($"Office:    {FormatHours(officeSpan)}");
+            if (idleHours > 0.0833m) // only show if > 5 minutes
+                builder.AppendLine($"Idle:      {FormatHours(idleHours)}");
+        }
+
+        // Target progress
+        if (targetWorkHours.HasValue && targetWorkHours.Value > 0)
+        {
+            var pct = (int)Math.Round(day.WorkHours / targetWorkHours.Value * 100);
+            builder.AppendLine();
+            builder.AppendLine($"Work target: {FormatHours(targetWorkHours.Value)} ({pct}% done)");
+        }
+
+        if (targetOfficeHours.HasValue && targetOfficeHours.Value > 0 && day.TotalDurationHours.HasValue)
+        {
+            var pct = (int)Math.Round(day.TotalDurationHours.Value / targetOfficeHours.Value * 100);
+            builder.AppendLine($"Office target: {FormatHours(targetOfficeHours.Value)} ({pct}% done)");
+        }
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Generates a weekly report with a per-day table and totals/averages.
+    /// </summary>
+    private static async Task<string> GenerateWeeklyReportAsync(
+        IReportingService reportingService,
+        long userId,
+        DateTime startDate,
+        DateTime endDate,
+        string periodLabel,
+        int utcOffsetMinutes,
+        CancellationToken cancellationToken)
+    {
+        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+        return FormatPeriodBreakdownReport(breakdown, periodLabel);
+    }
+
+    /// <summary>
+    /// Generates a monthly report with a per-day table and totals/averages.
+    /// </summary>
+    private static async Task<string> GenerateMonthlyReportAsync(
+        IReportingService reportingService,
+        long userId,
+        DateTime startDate,
+        DateTime endDate,
+        string periodLabel,
+        int utcOffsetMinutes,
+        CancellationToken cancellationToken)
+    {
+        var breakdown = await reportingService.GetDailyBreakdownAsync(userId, startDate, endDate, cancellationToken);
+        return FormatPeriodBreakdownReport(breakdown, periodLabel);
+    }
+
+    /// <summary>
     /// Sends all report types as individual Telegram messages.
     /// </summary>
     private async Task SendAllReportsAsync(
@@ -159,53 +346,36 @@ public class ReportCommandHandler(
         Message message,
         IReportingService reportingService,
         long userId,
+        int utcOffsetMinutes,
         CancellationToken cancellationToken)
     {
         // Day
-        var (dayStart, dayEnd, dayLabel) = GetDateRange("day");
+        var (dayStart, dayEnd, dayLabel) = GetDateRange("day", utcOffsetMinutes);
         var dayAggregate = await reportingService.GetPeriodAggregateAsync(userId, dayStart, dayEnd, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: FormatPeriodReport(dayAggregate, dayLabel),
-            cancellationToken: cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: FormatPeriodReport(dayAggregate, dayLabel), cancellationToken: cancellationToken);
 
         // Week
-        var (weekStart, weekEnd, weekLabel) = GetDateRange("week");
-        var weekAggregate = await reportingService.GetPeriodAggregateAsync(userId, weekStart, weekEnd, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: FormatPeriodReport(weekAggregate, weekLabel),
-            cancellationToken: cancellationToken);
+        var (weekStart, weekEnd, weekLabel) = GetDateRange("week", utcOffsetMinutes);
+        var weekText = await GenerateWeeklyReportAsync(reportingService, userId, weekStart, weekEnd, weekLabel, utcOffsetMinutes, cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: weekText, cancellationToken: cancellationToken);
 
         // Month
-        var (monthStart, monthEnd, monthLabel) = GetDateRange("month");
-        var monthAggregate = await reportingService.GetPeriodAggregateAsync(userId, monthStart, monthEnd, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: FormatPeriodReport(monthAggregate, monthLabel),
-            cancellationToken: cancellationToken);
+        var (monthStart, monthEnd, monthLabel) = GetDateRange("month", utcOffsetMinutes);
+        var monthText = await GenerateMonthlyReportAsync(reportingService, userId, monthStart, monthEnd, monthLabel, utcOffsetMinutes, cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: monthText, cancellationToken: cancellationToken);
 
         // Year
-        var (yearStart, yearEnd, yearLabel) = GetDateRange("year");
+        var (yearStart, yearEnd, yearLabel) = GetDateRange("year", utcOffsetMinutes);
         var yearAggregate = await reportingService.GetPeriodAggregateAsync(userId, yearStart, yearEnd, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: FormatPeriodReport(yearAggregate, yearLabel),
-            cancellationToken: cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: FormatPeriodReport(yearAggregate, yearLabel), cancellationToken: cancellationToken);
 
         // Commute
         var commuteText = await GenerateCommuteReportAsync(reportingService, userId, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: commuteText,
-            cancellationToken: cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: commuteText, cancellationToken: cancellationToken);
 
         // Daily averages
         var dailyText = await GenerateDailyAveragesReportAsync(reportingService, userId, cancellationToken);
-        await botClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: dailyText,
-            cancellationToken: cancellationToken);
+        await botClient.SendMessage(chatId: message.Chat.Id, text: dailyText, cancellationToken: cancellationToken);
     }
 
     /// <summary>
@@ -231,28 +401,21 @@ public class ReportCommandHandler(
         long userId,
         CancellationToken cancellationToken)
     {
-        // Generate patterns for both directions
-        var toWorkPatterns = await reportingService.GetCommutePatternsAsync(
-            userId,
-            CommuteDirection.ToWork,
-            cancellationToken);
-
-        var toHomePatterns = await reportingService.GetCommutePatternsAsync(
-            userId,
-            CommuteDirection.ToHome,
-            cancellationToken);
-
-        // Format the response
+        var toWorkPatterns = await reportingService.GetCommutePatternsAsync(userId, CommuteDirection.ToWork, cancellationToken);
+        var toHomePatterns = await reportingService.GetCommutePatternsAsync(userId, CommuteDirection.ToHome, cancellationToken);
         return FormatCommutePatternsReport(toWorkPatterns, toHomePatterns);
     }
 
+    // ─── Date range helpers ───────────────────────────────────────────────────
+
     /// <summary>
-    /// Calculates the date range for the specified period.
+    /// Calculates the date range for the specified period, respecting the user's local timezone.
     /// </summary>
-    private static (DateTime startDate, DateTime endDate, string periodLabel) GetDateRange(string period)
+    private static (DateTime startDate, DateTime endDate, string periodLabel) GetDateRange(string period, int utcOffsetMinutes = 0)
     {
-        var now = DateTime.UtcNow;
-        var today = now.Date;
+        // Use user's local date via UTC offset
+        var localNow = DateTime.UtcNow.AddMinutes(utcOffsetMinutes);
+        var today = localNow.Date;
 
         return period switch
         {
@@ -264,50 +427,111 @@ public class ReportCommandHandler(
         };
     }
 
-    /// <summary>
-    /// Gets the date range for the current week (Monday-Sunday).
-    /// </summary>
     private static (DateTime startDate, DateTime endDate, string periodLabel) GetWeekRange(DateTime today)
     {
-        // Find Monday of current week
         var daysSinceMonday = ((int)today.DayOfWeek - (int)DayOfWeek.Monday + 7) % 7;
         var monday = today.AddDays(-daysSinceMonday);
         var nextMonday = monday.AddDays(7);
-
         return (monday, nextMonday, "This Week");
     }
 
-    /// <summary>
-    /// Gets the date range for the current month.
-    /// </summary>
     private static (DateTime startDate, DateTime endDate, string periodLabel) GetMonthRange(DateTime today)
     {
         var startOfMonth = new DateTime(today.Year, today.Month, 1);
         var startOfNextMonth = startOfMonth.AddMonths(1);
-
         var monthName = today.ToString("MMMM yyyy", CultureInfo.InvariantCulture);
-
         return (startOfMonth, startOfNextMonth, monthName);
     }
 
-    /// <summary>
-    /// Gets the date range for the current year.
-    /// </summary>
     private static (DateTime startDate, DateTime endDate, string periodLabel) GetYearRange(DateTime today)
     {
         var startOfYear = new DateTime(today.Year, 1, 1);
         var startOfNextYear = new DateTime(today.Year + 1, 1, 1);
-
         return (startOfYear, startOfNextYear, today.Year.ToString());
     }
 
+    // ─── Formatters ───────────────────────────────────────────────────────────
+
     /// <summary>
-    /// Formats the period aggregate report for display.
+    /// Formats a period breakdown report (used for week/month) with a per-day table plus totals.
+    /// </summary>
+    private static string FormatPeriodBreakdownReport(List<DailyBreakdownRow> breakdown, string periodLabel)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"Report: {periodLabel}");
+        builder.AppendLine();
+
+        var activeDays = breakdown.Where(d => d.HasActivity).ToList();
+
+        if (activeDays.Count == 0)
+        {
+            builder.AppendLine("No activity recorded in this period.");
+            return builder.ToString();
+        }
+
+        // Per-day table
+        builder.AppendLine("```");
+        builder.AppendLine("Date       Work  Comm  Lunch Idle  Office");
+        builder.AppendLine("---------- ----- ----- ----- ----- ------");
+
+        foreach (var day in activeDays)
+        {
+            var dateStr = day.Date.ToString("ddd dd/MM");
+            var workStr = FormatHoursCompact(day.WorkHours);
+            var commStr = FormatHoursCompact(day.CommuteToWorkHours + day.CommuteToHomeHours);
+            var lunchStr = FormatHoursCompact(day.LunchHours);
+
+            string idleStr;
+            string officeStr;
+            if (day.TotalDurationHours.HasValue)
+            {
+                var idle = Math.Max(0m, day.TotalDurationHours.Value - day.WorkHours - day.LunchHours);
+                idleStr = idle > 0.0833m ? FormatHoursCompact(idle) : "  -  ";
+                officeStr = FormatHoursCompact(day.TotalDurationHours.Value);
+            }
+            else
+            {
+                idleStr = "  -  ";
+                officeStr = "  -   ";
+            }
+
+            builder.AppendLine($"{dateStr} {workStr,5} {commStr,5} {lunchStr,5} {idleStr,5} {officeStr,6}");
+        }
+
+        builder.AppendLine("```");
+        builder.AppendLine();
+
+        // Totals
+        var totalWork = activeDays.Sum(d => d.WorkHours);
+        var totalComm = activeDays.Sum(d => d.CommuteToWorkHours + d.CommuteToHomeHours);
+        var totalLunch = activeDays.Sum(d => d.LunchHours);
+        var totalIdle = activeDays
+            .Where(d => d.TotalDurationHours.HasValue)
+            .Sum(d => Math.Max(0m, d.TotalDurationHours!.Value - d.WorkHours - d.LunchHours));
+
+        var n = activeDays.Count;
+        builder.AppendLine($"Work days: {n}");
+        builder.AppendLine($"Work:      {FormatHours(totalWork)}  (avg {FormatHours(totalWork / n)}/day)");
+
+        if (totalComm > 0)
+            builder.AppendLine($"Commute:   {FormatHours(totalComm)}  (avg {FormatHours(totalComm / n)}/day)");
+
+        if (totalLunch > 0)
+            builder.AppendLine($"Lunch:     {FormatHours(totalLunch)}  (avg {FormatHours(totalLunch / n)}/day)");
+
+        if (totalIdle > 0)
+            builder.AppendLine($"Idle:      {FormatHours(totalIdle)}  (avg {FormatHours(totalIdle / n)}/day)");
+
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Formats the period aggregate report (used for year).
     /// </summary>
     private static string FormatPeriodReport(PeriodAggregate aggregate, string periodLabel)
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"📈 Report: {periodLabel}");
+        builder.AppendLine($"Report: {periodLabel}");
         builder.AppendLine($"Period: {aggregate.StartDate:yyyy-MM-dd} to {aggregate.EndDate.AddDays(-1):yyyy-MM-dd}");
         builder.AppendLine();
 
@@ -318,44 +542,38 @@ public class ReportCommandHandler(
         else
         {
             builder.AppendLine($"Work days: {aggregate.WorkDaysCount}");
-            builder.AppendLine($"Total work hours: {FormatHours(aggregate.TotalWorkHours)}");
+            builder.AppendLine($"Work:      {FormatHours(aggregate.TotalWorkHours)}");
             if (aggregate.TotalCommuteToWorkHours > 0)
-                builder.AppendLine($"Commute to work: {FormatHours(aggregate.TotalCommuteToWorkHours)}");
+                builder.AppendLine($"Commute->: {FormatHours(aggregate.TotalCommuteToWorkHours)}");
             if (aggregate.TotalCommuteToHomeHours > 0)
-                builder.AppendLine($"Commute to home: {FormatHours(aggregate.TotalCommuteToHomeHours)}");
-            builder.AppendLine($"Total commute time: {FormatHours(aggregate.TotalCommuteHours)}");
-            builder.AppendLine($"Total lunch time: {FormatHours(aggregate.TotalLunchHours)}");
+                builder.AppendLine($"Commute<-: {FormatHours(aggregate.TotalCommuteToHomeHours)}");
+            if (aggregate.TotalCommuteHours > 0)
+                builder.AppendLine($"Commute:   {FormatHours(aggregate.TotalCommuteHours)}");
+            if (aggregate.TotalLunchHours > 0)
+                builder.AppendLine($"Lunch:     {FormatHours(aggregate.TotalLunchHours)}");
 
-            // Display average daily duration from first to last activity
             if (aggregate.TotalDurationHours.HasValue)
-            {
-                builder.AppendLine($"Avg daily duration (first to last): {FormatHours(aggregate.TotalDurationHours.Value)}");
-            }
+                builder.AppendLine($"Avg office span/day: {FormatHours(aggregate.TotalDurationHours.Value)}");
 
             builder.AppendLine();
 
-            // Calculate averages
-            var avgWorkPerDay = aggregate.TotalWorkHours / aggregate.WorkDaysCount;
-            var avgCommuteToWorkPerDay = aggregate.TotalCommuteToWorkHours / aggregate.WorkDaysCount;
-            var avgCommuteToHomePerDay = aggregate.TotalCommuteToHomeHours / aggregate.WorkDaysCount;
-            var avgCommutePerDay = aggregate.TotalCommuteHours / aggregate.WorkDaysCount;
-            var avgLunchPerDay = aggregate.TotalLunchHours / aggregate.WorkDaysCount;
+            var avgWork = aggregate.TotalWorkHours / aggregate.WorkDaysCount;
+            var avgCommute = aggregate.TotalCommuteHours / aggregate.WorkDaysCount;
+            var avgLunch = aggregate.TotalLunchHours / aggregate.WorkDaysCount;
 
             builder.AppendLine("Daily averages:");
-            builder.AppendLine($"  Work: {FormatHours(avgWorkPerDay)}");
-            if (aggregate.TotalCommuteToWorkHours > 0)
-                builder.AppendLine($"  Commute to work: {FormatHours(avgCommuteToWorkPerDay)}");
-            if (aggregate.TotalCommuteToHomeHours > 0)
-                builder.AppendLine($"  Commute to home: {FormatHours(avgCommuteToHomePerDay)}");
-            builder.AppendLine($"  Commute total: {FormatHours(avgCommutePerDay)}");
-            builder.AppendLine($"  Lunch: {FormatHours(avgLunchPerDay)}");
+            builder.AppendLine($"  Work:    {FormatHours(avgWork)}");
+            if (aggregate.TotalCommuteHours > 0)
+                builder.AppendLine($"  Commute: {FormatHours(avgCommute)}");
+            if (aggregate.TotalLunchHours > 0)
+                builder.AppendLine($"  Lunch:   {FormatHours(avgLunch)}");
         }
 
         return builder.ToString();
     }
 
     /// <summary>
-    /// Formats the daily averages report for display.
+    /// Formats the daily averages report (7/30/90 days) — the /stats output.
     /// </summary>
     private static string FormatDailyAveragesReport(
         DailyAveragesReport report7Days,
@@ -363,164 +581,107 @@ public class ReportCommandHandler(
         DailyAveragesReport report90Days)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("📊 Daily Averages Report");
+        builder.AppendLine("Stats — Daily Averages");
         builder.AppendLine();
 
-        // 7 days
-        builder.AppendLine("Last 7 days:");
-        if (report7Days.TotalWorkDays > 0)
-        {
-            builder.AppendLine($"  Work days: {report7Days.TotalWorkDays}");
-            builder.AppendLine($"  Avg work: {FormatHours(report7Days.AverageWorkHours)}");
-            builder.AppendLine($"  Avg commute to work: {FormatHours(report7Days.AverageCommuteToWorkHours)}");
-            builder.AppendLine($"  Avg commute to home: {FormatHours(report7Days.AverageCommuteToHomeHours)}");
-            builder.AppendLine($"  Avg lunch: {FormatHours(report7Days.AverageLunchHours)}");
-            builder.AppendLine($"  Avg total duration: {FormatHours(report7Days.AverageTotalDurationHours)}");
-        }
-        else
-        {
-            builder.AppendLine("  No data available");
-        }
-        builder.AppendLine();
-
-        // 30 days
-        builder.AppendLine("Last 30 days:");
-        if (report30Days.TotalWorkDays > 0)
-        {
-            builder.AppendLine($"  Work days: {report30Days.TotalWorkDays}");
-            builder.AppendLine($"  Avg work: {FormatHours(report30Days.AverageWorkHours)}");
-            builder.AppendLine($"  Avg commute to work: {FormatHours(report30Days.AverageCommuteToWorkHours)}");
-            builder.AppendLine($"  Avg commute to home: {FormatHours(report30Days.AverageCommuteToHomeHours)}");
-            builder.AppendLine($"  Avg lunch: {FormatHours(report30Days.AverageLunchHours)}");
-            builder.AppendLine($"  Avg total duration: {FormatHours(report30Days.AverageTotalDurationHours)}");
-        }
-        else
-        {
-            builder.AppendLine("  No data available");
-        }
-        builder.AppendLine();
-
-        // 90 days
-        builder.AppendLine("Last 90 days:");
-        if (report90Days.TotalWorkDays > 0)
-        {
-            builder.AppendLine($"  Work days: {report90Days.TotalWorkDays}");
-            builder.AppendLine($"  Avg work: {FormatHours(report90Days.AverageWorkHours)}");
-            builder.AppendLine($"  Avg commute to work: {FormatHours(report90Days.AverageCommuteToWorkHours)}");
-            builder.AppendLine($"  Avg commute to home: {FormatHours(report90Days.AverageCommuteToHomeHours)}");
-            builder.AppendLine($"  Avg lunch: {FormatHours(report90Days.AverageLunchHours)}");
-            builder.AppendLine($"  Avg total duration: {FormatHours(report90Days.AverageTotalDurationHours)}");
-        }
-        else
-        {
-            builder.AppendLine("  No data available");
-        }
+        AppendAveragesSection(builder, "Last 7 days", report7Days);
+        AppendAveragesSection(builder, "Last 30 days", report30Days);
+        AppendAveragesSection(builder, "Last 90 days", report90Days);
 
         return builder.ToString();
     }
 
+    private static void AppendAveragesSection(StringBuilder builder, string label, DailyAveragesReport report)
+    {
+        builder.AppendLine($"{label} ({report.TotalWorkDays} work days):");
+
+        if (report.TotalWorkDays == 0)
+        {
+            builder.AppendLine("  No data available");
+            builder.AppendLine();
+            return;
+        }
+
+        builder.AppendLine($"  Work:      {FormatHours(report.AverageWorkHours)}/day");
+
+        if (report.AverageCommuteToWorkHours > 0)
+            builder.AppendLine($"  Commute->: {FormatHours(report.AverageCommuteToWorkHours)}/day");
+        if (report.AverageCommuteToHomeHours > 0)
+            builder.AppendLine($"  Commute<-: {FormatHours(report.AverageCommuteToHomeHours)}/day");
+
+        if (report.AverageLunchHours > 0)
+            builder.AppendLine($"  Lunch:     {FormatHours(report.AverageLunchHours)}/day");
+
+        if (report.AverageTotalDurationHours > 0)
+        {
+            var avgIdle = Math.Max(0m, report.AverageTotalDurationHours - report.AverageWorkHours - report.AverageLunchHours);
+            builder.AppendLine($"  Office:    {FormatHours(report.AverageTotalDurationHours)}/day");
+            if (avgIdle > 0.0833m)
+                builder.AppendLine($"  Idle:      {FormatHours(avgIdle)}/day");
+        }
+
+        builder.AppendLine();
+    }
+
     /// <summary>
-    /// Formats the commute patterns report for display.
+    /// Formats the commute patterns report.
     /// </summary>
     private static string FormatCommutePatternsReport(
         List<CommutePattern> toWorkPatterns,
         List<CommutePattern> toHomePatterns)
     {
         var builder = new StringBuilder();
-        builder.AppendLine("🚗 Commute Pattern Analysis");
-        builder.AppendLine("(Based on last 90 days)");
+        builder.AppendLine("Commute Patterns (last 90 days)");
         builder.AppendLine();
 
-        // Check if we have any data at all
         if (toWorkPatterns.Count == 0 && toHomePatterns.Count == 0)
         {
             builder.AppendLine("No commute data available.");
             return builder.ToString();
         }
 
-        // Merge patterns by day of week
         var allDays = Enum.GetValues<DayOfWeek>()
-            .OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d) // Monday-Sunday order
+            .OrderBy(d => d == DayOfWeek.Sunday ? 7 : (int)d)
             .ToList();
 
         var toWorkByDay = toWorkPatterns.ToDictionary(p => p.DayOfWeek);
         var toHomeByDay = toHomePatterns.ToDictionary(p => p.DayOfWeek);
 
-        // Use monospace formatting for table alignment
         builder.AppendLine("```");
+        builder.AppendLine("Day       ->Work Best   <-Home Best  ");
+        builder.AppendLine("--------- ------ -----  ------ ------");
 
-        // Header
-        builder.AppendLine("Day       ToWork Best  Short ToHome Best  Short");
-        builder.AppendLine("          Avg    Time         Avg    Time       ");
-        builder.AppendLine("--------- ------ ----- ----- ------ ----- -----");
-
-        // Data rows
         foreach (var day in allDays)
         {
             var hasToWork = toWorkByDay.TryGetValue(day, out var toWorkPattern);
             var hasToHome = toHomeByDay.TryGetValue(day, out var toHomePattern);
 
-            // Skip days with no data
-            if (!hasToWork && !hasToHome)
-            {
-                continue;
-            }
+            if (!hasToWork && !hasToHome) continue;
 
             var dayName = GetDayName(day).PadRight(9);
 
-            // To Work columns
             var toWorkAvg = hasToWork && toWorkPattern != null
                 ? FormatHoursCompactFixed(toWorkPattern.AverageDurationHours, 6)
                 : "  -   ";
-            var toWorkBest = hasToWork && toWorkPattern != null && toWorkPattern.OptimalStartHour.HasValue
+            var toWorkBest = hasToWork && toWorkPattern?.OptimalStartHour.HasValue == true
                 ? $"{toWorkPattern.OptimalStartHour.Value:D2}:00"
-                : " -   ";
-            var toWorkShort = hasToWork && toWorkPattern != null && toWorkPattern.ShortestDurationHours.HasValue
-                ? FormatHoursCompactFixed(toWorkPattern.ShortestDurationHours.Value, 5)
                 : "  -  ";
 
-            // To Home columns
             var toHomeAvg = hasToHome && toHomePattern != null
                 ? FormatHoursCompactFixed(toHomePattern.AverageDurationHours, 6)
                 : "  -   ";
-            var toHomeBest = hasToHome && toHomePattern != null && toHomePattern.OptimalStartHour.HasValue
+            var toHomeBest = hasToHome && toHomePattern?.OptimalStartHour.HasValue == true
                 ? $"{toHomePattern.OptimalStartHour.Value:D2}:00"
-                : " -   ";
-            var toHomeShort = hasToHome && toHomePattern != null && toHomePattern.ShortestDurationHours.HasValue
-                ? FormatHoursCompactFixed(toHomePattern.ShortestDurationHours.Value, 5)
                 : "  -  ";
 
-            builder.AppendLine($"{dayName} {toWorkAvg} {toWorkBest} {toWorkShort} {toHomeAvg} {toHomeBest} {toHomeShort}");
+            builder.AppendLine($"{dayName} {toWorkAvg} {toWorkBest}  {toHomeAvg} {toHomeBest}");
         }
 
         builder.AppendLine("```");
         builder.AppendLine();
-
-        // Legend
-        builder.AppendLine("Legend:");
-        builder.AppendLine("  To Work / To Home Avg: Average commute duration");
-        builder.AppendLine("  Best Time: Optimal departure hour (requires 2+ samples)");
-        builder.AppendLine("  Short: Shortest average commute at best time");
+        builder.AppendLine("Best time = departure hour with shortest average commute (needs 2+ samples)");
 
         return builder.ToString();
-    }
-
-    /// <summary>
-    /// Gets the display name for a day of the week.
-    /// </summary>
-    private static string GetDayName(DayOfWeek day)
-    {
-        return day switch
-        {
-            DayOfWeek.Monday => "Monday",
-            DayOfWeek.Tuesday => "Tuesday",
-            DayOfWeek.Wednesday => "Wednesday",
-            DayOfWeek.Thursday => "Thursday",
-            DayOfWeek.Friday => "Friday",
-            DayOfWeek.Saturday => "Saturday",
-            DayOfWeek.Sunday => "Sunday",
-            _ => day.ToString()
-        };
     }
 
     /// <summary>
@@ -533,7 +694,7 @@ public class ReportCommandHandler(
         int utcOffsetMinutes,
         CancellationToken cancellationToken)
     {
-        var (startDate, endDate, periodLabel) = GetDateRange(period);
+        var (startDate, endDate, periodLabel) = GetDateRange(period, utcOffsetMinutes);
 
         var breakdown = await reportingService.GetDailyBreakdownAsync(
             userId,
@@ -545,7 +706,7 @@ public class ReportCommandHandler(
     }
 
     /// <summary>
-    /// Formats the daily breakdown report as a table.
+    /// Formats the daily breakdown report as a table (legacy table format).
     /// </summary>
     private static string FormatTableReport(
         List<DailyBreakdownRow> breakdown,
@@ -553,7 +714,7 @@ public class ReportCommandHandler(
         int utcOffsetMinutes)
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"📊 Daily Breakdown: {periodLabel}");
+        builder.AppendLine($"Daily Breakdown: {periodLabel}");
         builder.AppendLine();
 
         if (breakdown.Count == 0)
@@ -562,7 +723,6 @@ public class ReportCommandHandler(
             return builder.ToString();
         }
 
-        // Filter out days with no activity for cleaner display
         var activeDays = breakdown.Where(d => d.HasActivity).ToList();
 
         if (activeDays.Count == 0)
@@ -571,14 +731,10 @@ public class ReportCommandHandler(
             return builder.ToString();
         }
 
-        // Use monospace formatting for table alignment
         builder.AppendLine("```");
+        builder.AppendLine("Date       Work  C->W  C->H  Lunch Idle  Total");
+        builder.AppendLine("---------- ----- ----- ----- ----- ----- -----");
 
-        // Header
-        builder.AppendLine("Date       Work  C->W  C->H  Lunch Total");
-        builder.AppendLine("---------- ----- ----- ----- ----- -----");
-
-        // Data rows
         foreach (var day in activeDays)
         {
             var dateStr = day.Date.ToString("yyyy-MM-dd");
@@ -586,126 +742,57 @@ public class ReportCommandHandler(
             var commuteToWorkStr = FormatHoursCompact(day.CommuteToWorkHours);
             var commuteToHomeStr = FormatHoursCompact(day.CommuteToHomeHours);
             var lunchStr = FormatHoursCompact(day.LunchHours);
-            var totalStr = day.TotalDurationHours.HasValue
-                ? FormatHoursCompact(day.TotalDurationHours.Value)
-                : "  -  ";
 
-            builder.AppendLine($"{dateStr} {workStr,5} {commuteToWorkStr,5} {commuteToHomeStr,5} {lunchStr,5} {totalStr,5}");
+            string idleStr;
+            string totalStr;
+            if (day.TotalDurationHours.HasValue)
+            {
+                var idle = Math.Max(0m, day.TotalDurationHours.Value - day.WorkHours - day.LunchHours);
+                idleStr = idle > 0.0833m ? FormatHoursCompact(idle) : "  -  ";
+                totalStr = FormatHoursCompact(day.TotalDurationHours.Value);
+            }
+            else
+            {
+                idleStr = "  -  ";
+                totalStr = "  -  ";
+            }
+
+            builder.AppendLine($"{dateStr} {workStr,5} {commuteToWorkStr,5} {commuteToHomeStr,5} {lunchStr,5} {idleStr,5} {totalStr,5}");
         }
 
         builder.AppendLine("```");
         builder.AppendLine();
 
-        // Summary totals
         var totalWork = activeDays.Sum(d => d.WorkHours);
         var totalCommuteToWork = activeDays.Sum(d => d.CommuteToWorkHours);
         var totalCommuteToHome = activeDays.Sum(d => d.CommuteToHomeHours);
         var totalLunch = activeDays.Sum(d => d.LunchHours);
+        var totalIdle = activeDays
+            .Where(d => d.TotalDurationHours.HasValue)
+            .Sum(d => Math.Max(0m, d.TotalDurationHours!.Value - d.WorkHours - d.LunchHours));
 
         builder.AppendLine("Totals:");
         builder.AppendLine($"  Work: {FormatHours(totalWork)}");
-        builder.AppendLine($"  Commute to work: {FormatHours(totalCommuteToWork)}");
-        builder.AppendLine($"  Commute to home: {FormatHours(totalCommuteToHome)}");
-        builder.AppendLine($"  Lunch: {FormatHours(totalLunch)}");
+        if (totalCommuteToWork > 0)
+            builder.AppendLine($"  Commute to work: {FormatHours(totalCommuteToWork)}");
+        if (totalCommuteToHome > 0)
+            builder.AppendLine($"  Commute to home: {FormatHours(totalCommuteToHome)}");
+        if (totalLunch > 0)
+            builder.AppendLine($"  Lunch: {FormatHours(totalLunch)}");
+        if (totalIdle > 0)
+            builder.AppendLine($"  Idle: {FormatHours(totalIdle)}");
         builder.AppendLine();
         builder.AppendLine($"Work days: {activeDays.Count}");
 
         if (activeDays.Count > 0)
         {
-            var avgWork = totalWork / activeDays.Count;
-            builder.AppendLine($"Avg work per day: {FormatHours(avgWork)}");
+            builder.AppendLine($"Avg work per day: {FormatHours(totalWork / activeDays.Count)}");
         }
 
         return builder.ToString();
     }
 
-    /// <summary>
-    /// Formats hours as a compact string for table display (e.g., "7h30m" or "30m").
-    /// </summary>
-    private static string FormatHoursCompact(decimal hours)
-    {
-        if (hours == 0)
-        {
-            return "  -  ";
-        }
-
-        var totalMinutes = (int)Math.Round(hours * 60);
-        var h = totalMinutes / 60;
-        var m = totalMinutes % 60;
-
-        if (h > 0 && m > 0)
-        {
-            return $"{h}h{m}m";
-        }
-        else if (h > 0)
-        {
-            return $"{h}h";
-        }
-        else
-        {
-            return $"{m}m";
-        }
-    }
-
-    /// <summary>
-    /// Formats hours as a fixed-width compact string for table display.
-    /// </summary>
-    private static string FormatHoursCompactFixed(decimal hours, int width)
-    {
-        if (hours == 0)
-        {
-            return new string(' ', width);
-        }
-
-        var totalMinutes = (int)Math.Round(hours * 60);
-        var h = totalMinutes / 60;
-        var m = totalMinutes % 60;
-
-        string result;
-        if (h > 0 && m > 0)
-        {
-            result = $"{h}h{m}m";
-        }
-        else if (h > 0)
-        {
-            result = $"{h}h";
-        }
-        else
-        {
-            result = $"{m}m";
-        }
-
-        // Pad to fixed width
-        return result.PadLeft(width);
-    }
-
-    /// <summary>
-    /// Formats hours as a human-readable string.
-    /// </summary>
-    private static string FormatHours(decimal hours)
-    {
-        if (hours == 0)
-        {
-            return "0h";
-        }
-
-        var totalMinutes = (int)Math.Round(hours * 60);
-        var h = totalMinutes / 60;
-        var m = totalMinutes % 60;
-
-        if (h > 0 && m > 0)
-        {
-            return $"{h}h {m}m";
-        }
-        else if (h > 0)
-        {
-            return $"{h}h";
-        }
-        else
-        {
-            return $"{m}m";
-        }
-    }
+    // ─── Chart reports ────────────────────────────────────────────────────────
 
     /// <summary>
     /// Sends a chart report as an image to the user.
@@ -787,7 +874,6 @@ public class ReportCommandHandler(
                     return;
             }
 
-            // Send the chart as a photo
             using var stream = new MemoryStream(imageData);
             var inputFile = InputFile.FromStream(stream, $"chart_{chartType}_{period}.png");
 
@@ -805,5 +891,63 @@ public class ReportCommandHandler(
                 text: "An error occurred while generating the chart. Please try again.",
                 cancellationToken: cancellationToken);
         }
+    }
+
+    // ─── Formatting utilities ─────────────────────────────────────────────────
+
+    private static string GetDayName(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Monday",
+        DayOfWeek.Tuesday => "Tuesday",
+        DayOfWeek.Wednesday => "Wednesday",
+        DayOfWeek.Thursday => "Thursday",
+        DayOfWeek.Friday => "Friday",
+        DayOfWeek.Saturday => "Saturday",
+        DayOfWeek.Sunday => "Sunday",
+        _ => day.ToString()
+    };
+
+    /// <summary>
+    /// Formats hours as "Xh Ym" (e.g. "7h 30m").
+    /// </summary>
+    private static string FormatHours(decimal hours)
+    {
+        if (hours == 0) return "0h";
+        var totalMinutes = (int)Math.Round(hours * 60);
+        var h = totalMinutes / 60;
+        var m = totalMinutes % 60;
+        if (h > 0 && m > 0) return $"{h}h {m}m";
+        if (h > 0) return $"{h}h";
+        return $"{m}m";
+    }
+
+    /// <summary>
+    /// Formats hours as a compact string for table display (e.g., "7h30m" or "30m").
+    /// </summary>
+    private static string FormatHoursCompact(decimal hours)
+    {
+        if (hours == 0) return "  -  ";
+        var totalMinutes = (int)Math.Round(hours * 60);
+        var h = totalMinutes / 60;
+        var m = totalMinutes % 60;
+        if (h > 0 && m > 0) return $"{h}h{m}m";
+        if (h > 0) return $"{h}h";
+        return $"{m}m";
+    }
+
+    /// <summary>
+    /// Formats hours as a fixed-width compact string for table display.
+    /// </summary>
+    private static string FormatHoursCompactFixed(decimal hours, int width)
+    {
+        if (hours == 0) return new string(' ', width);
+        var totalMinutes = (int)Math.Round(hours * 60);
+        var h = totalMinutes / 60;
+        var m = totalMinutes % 60;
+        string result;
+        if (h > 0 && m > 0) result = $"{h}h{m}m";
+        else if (h > 0) result = $"{h}h";
+        else result = $"{m}m";
+        return result.PadLeft(width);
     }
 }

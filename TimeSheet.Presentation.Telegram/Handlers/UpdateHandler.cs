@@ -25,6 +25,7 @@ public class UpdateHandler(
     LoginCommandHandler loginCommandHandler,
     NoteCommandHandler noteCommandHandler,
     ImportCommandHandler importCommandHandler,
+    ComplianceCommandHandler complianceCommandHandler,
     RegistrationSessionStore registrationSessionStore)
 {
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -172,6 +173,22 @@ public class UpdateHandler(
         {
             await reportCommandHandler.HandleReportAsync(botClient, message, cancellationToken, expandedText: messageText);
         }
+        else if (messageText.StartsWith("/week", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleWeekAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/month", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleMonthAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/stats", StringComparison.OrdinalIgnoreCase))
+        {
+            await reportCommandHandler.HandleStatsAsync(botClient, message, cancellationToken);
+        }
+        else if (messageText.StartsWith("/compliance", StringComparison.OrdinalIgnoreCase))
+        {
+            await complianceCommandHandler.HandleComplianceAsync(botClient, message, cancellationToken, expandedText: messageText);
+        }
         else if (messageText.StartsWith("/status", StringComparison.OrdinalIgnoreCase))
         {
             await statusCommandHandler.HandleStatusAsync(botClient, message, cancellationToken);
@@ -291,25 +308,26 @@ public class UpdateHandler(
         }
 
         // Define command-level alias mappings
-        // Rules: 1 letter if unique, 2 letters when 1-letter collides, 3 max; letters from command name only
         var commandAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "/a", "/about" },        // /about   → /a  (unique)
-            { "/h", "/help" },         // /help    → /h  (unique)
-            { "/re", "/register" },    // /register→ /re (/r taken by /report)
-            { "/c", "/commute" },      // /commute → /c  (unique)
-            { "/w", "/work" },         // /work    → /w  (unique)
-            { "/l", "/lunch" },        // /lunch   → /l  (unique)
-            { "/e", "/edit" },         // /edit    → /e  (unique)
-            { "/d", "/delete" },       // /delete  → /d  (unique)
-            { "/n", "/note" },         // /note    → /n  (unique)
-            { "/g", "/generate" },     // /generate→ /g  (unique)
-            { "/i", "/import" },       // /import  → /i  (unique)
-            { "/li", "/list" },        // /list    → /li (/l taken by /lunch)
-            { "/se", "/settings" },    // /settings→ /se (/s taken by /status)
-            { "/r", "/report" },       // /report  → /r  (unique)
-            { "/s", "/status" },       // /status  → /s  (unique)
-            { "/lo", "/login" },       // /login   → /lo (/l taken by /lunch)
+            { "/a", "/about" },
+            { "/h", "/help" },
+            { "/re", "/register" },
+            { "/c", "/commute" },
+            { "/w", "/work" },
+            { "/l", "/lunch" },
+            { "/e", "/edit" },
+            { "/d", "/delete" },
+            { "/g", "/generate" },
+            { "/li", "/list" },
+            { "/se", "/settings" },
+            { "/r", "/report" },
+            { "/s", "/status" },
+            { "/lo", "/login" },
+            { "/wk", "/week" },
+            { "/mo", "/month" },
+            { "/st", "/stats" },
+            { "/co", "/compliance" },
         };
 
         // Expand the command (first part)
@@ -340,6 +358,12 @@ public class UpdateHandler(
                 ("report", "c") => "commute",
                 ("report", "a") => "all",
                 ("report", "t") => "table",
+                ("report", "s") => "stats",
+
+                // /compliance subcommands
+                ("compliance", "t") => "today",
+                ("compliance", "w") => "week",
+                ("compliance", "m") => "month",
 
                 // /settings subcommands
                 ("settings", "u") => "utc",

@@ -23,7 +23,7 @@ public class HelpCommandHandler(
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
         *View & Edit:* `/li` `/e` `/d` `/n` — list, edit, delete, note
-        *Reports:* `/r` [day|week|month|year|commute|daily|all]
+        *Reports:* `/r` today  `/wk` week  `/mo` month  `/st` stats  `/co` compliance
         *Settings:* `/se` — timezone, reminders, alerts
         *Web Login:* `/lo` `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
         *Import:* `/i` `/import` — import employer attendance data
@@ -37,7 +37,7 @@ public class HelpCommandHandler(
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
         *View & Edit:* `/li` `/e` `/d` `/n` — list, edit, delete, note
-        *Reports:* `/r` [day|week|month|year|commute|daily|all]
+        *Reports:* `/r` today  `/wk` week  `/mo` month  `/st` stats  `/co` compliance
         *Settings:* `/se` — timezone, reminders, alerts
         *Web Login:* `/lo` `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
         *Import:* `/i` `/import` — import employer attendance data
@@ -69,16 +69,23 @@ public class HelpCommandHandler(
     private const string ReportHelpMessage = """
         *Report Commands*
 
-        *Text Reports:*
-        `/report day` or `/r day` — Today's summary
-        `/report week` or `/r week` — This week
-        `/report month` or `/r month` — This month
-        `/report year` or `/r year` — This year
-        `/report commute` or `/r commute` — Commute patterns
-        `/report daily` or `/r daily` — Daily averages (7/30/90 days)
-        `/report table week` or `/r table week` — Daily table for week
-        `/report table month` or `/r table month` — Daily table for month
-        `/report all` or `/r all` — All reports as separate messages
+        *Quick commands:*
+        `/r` — Today's summary (work, commute, lunch, idle, target %)
+        `/week` or `/wk` — This week breakdown with daily table + totals
+        `/month` or `/mo` — This month breakdown with daily table + totals
+        `/stats` or `/st` — Daily averages (7/30/90 days) with idle time
+        `/compliance` or `/co` — Compliance violations this week
+
+        *Compliance periods:*
+        `/compliance today` — today only
+        `/compliance week` — this week (default)
+        `/compliance month` — this month
+
+        *Legacy subcommands (via /report or /r):*
+        `/report day` or `/r day` — today
+        `/report week` `/report month` `/report year`
+        `/report commute` — commute patterns  `/report daily` — averages  `/report all` — everything
+        `/report table week` — detailed table  `/report table month` — detailed table
 
         *Chart Reports:*
         `/report chart breakdown [period]` — Bar chart of daily work hours
@@ -88,11 +95,6 @@ public class HelpCommandHandler(
         `/report chart commute` — Commute patterns by day of week
 
         *Chart periods:* week (default), month, year
-
-        *Examples:*
-        `/r chart breakdown` — This week's work hours
-        `/r chart trend month` — This month's trend
-        `/r chart activity week` — This week's activities
         """;
 
     private const string SettingsHelpMessage = """
