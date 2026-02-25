@@ -1,7 +1,9 @@
+using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using TimeSheet.Core.Application.Common;
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Presentation.Telegram.Services;
@@ -127,6 +129,65 @@ public sealed class NotificationService(
                 "Failed to send auto-shutdown notification to user {UserId}",
                 telegramUserId);
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task SendEndOfDaySummaryAsync(
+        long telegramUserId,
+        PeriodAggregate daySummary,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var message = FormatEndOfDaySummary(daySummary);
+
+            await botClient.SendMessage(
+                chatId: telegramUserId,
+                text: message,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: cancellationToken);
+
+            logger.LogInformation("Sent end-of-day summary to user {UserId}", telegramUserId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send end-of-day summary to user {UserId}", telegramUserId);
+        }
+    }
+
+    /// <summary>
+    /// Formats the end-of-day summary message.
+    /// </summary>
+    private static string FormatEndOfDaySummary(PeriodAggregate summary)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("📋 *End of Day Summary*");
+        builder.AppendLine();
+
+        if (summary.WorkDaysCount == 0 || summary.TotalWorkHours == 0)
+        {
+            builder.AppendLine("No work sessions recorded today.");
+            return builder.ToString();
+        }
+
+        builder.AppendLine($"*Work:* {TimeFormatter.FormatDuration(summary.TotalWorkHours)}");
+
+        if (summary.TotalCommuteHours > 0)
+        {
+            builder.AppendLine($"*Commute:* {TimeFormatter.FormatDuration(summary.TotalCommuteHours)}");
+        }
+
+        if (summary.TotalLunchHours > 0)
+        {
+            builder.AppendLine($"*Lunch:* {TimeFormatter.FormatDuration(summary.TotalLunchHours)}");
+        }
+
+        if (summary.TotalDurationHours.HasValue && summary.TotalDurationHours.Value > 0)
+        {
+            builder.AppendLine($"*Total span:* {TimeFormatter.FormatDuration(summary.TotalDurationHours.Value)}");
+        }
+
+        return builder.ToString().TrimEnd();
     }
 
     /// <inheritdoc/>
