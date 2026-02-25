@@ -79,7 +79,12 @@ public class NoteCommandHandler(
         {
             using var scope = serviceScopeFactory.CreateScope();
             var trackingSessionRepository = scope.ServiceProvider.GetRequiredService<ITrackingSessionRepository>();
+            var userRepository = scope.ServiceProvider.GetRequiredService<IUserRepository>();
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            // Get user to apply their UTC offset when formatting timestamps
+            var user = await userRepository.GetByTelegramUserIdAsync(userId.Value, cancellationToken);
+            var utcOffsetMinutes = user?.UtcOffsetMinutes ?? 0;
 
             // Fetch N most recent sessions, take the Nth one
             var recentSessions = await trackingSessionRepository.GetRecentSessionsAsync(
@@ -112,9 +117,11 @@ public class NoteCommandHandler(
                 _ => session.State.ToString().ToLowerInvariant()
             };
 
+            // Use user's local time (apply UTC offset) when formatting the timestamp
+            var localStart = session.StartedAt.AddMinutes(utcOffsetMinutes);
             var reply = clearing
-                ? $"Note cleared on {stateDisplay} entry ({session.StartedAt:HH:mm})."
-                : $"Note saved on {stateDisplay} entry ({session.StartedAt:HH:mm}).";
+                ? $"Note cleared on {stateDisplay} entry ({localStart:HH:mm})."
+                : $"Note saved on {stateDisplay} entry ({localStart:HH:mm}).";
 
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
