@@ -344,9 +344,9 @@ public class ReportCommandHandler(
             builder.AppendLine("Daily averages:");
             builder.AppendLine($"  Work: {FormatHours(avgWorkPerDay)}");
             if (aggregate.TotalCommuteToWorkHours > 0)
-                builder.AppendLine($"  Commute →work: {FormatHours(avgCommuteToWorkPerDay)}");
+                builder.AppendLine($"  Commute to work: {FormatHours(avgCommuteToWorkPerDay)}");
             if (aggregate.TotalCommuteToHomeHours > 0)
-                builder.AppendLine($"  Commute →home: {FormatHours(avgCommuteToHomePerDay)}");
+                builder.AppendLine($"  Commute to home: {FormatHours(avgCommuteToHomePerDay)}");
             builder.AppendLine($"  Commute total: {FormatHours(avgCommutePerDay)}");
             builder.AppendLine($"  Lunch: {FormatHours(avgLunchPerDay)}");
         }
@@ -450,7 +450,7 @@ public class ReportCommandHandler(
         builder.AppendLine("```");
 
         // Header
-        builder.AppendLine("Day       →Work  Best  Short →Home  Best  Short");
+        builder.AppendLine("Day       ToWork Best  Short ToHome Best  Short");
         builder.AppendLine("          Avg    Time         Avg    Time       ");
         builder.AppendLine("--------- ------ ----- ----- ------ ----- -----");
 
@@ -498,7 +498,7 @@ public class ReportCommandHandler(
 
         // Legend
         builder.AppendLine("Legend:");
-        builder.AppendLine("  →Work/→Home Avg: Average commute duration");
+        builder.AppendLine("  To Work / To Home Avg: Average commute duration");
         builder.AppendLine("  Best Time: Optimal departure hour (requires 2+ samples)");
         builder.AppendLine("  Short: Shortest average commute at best time");
 

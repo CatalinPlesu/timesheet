@@ -159,14 +159,14 @@ public class ListCommandHandler(
 
         if (commuteToWorkSessions.Count > 0)
         {
-            var label = "Commute →work".PadRight(LabelWidth);
+            var label = "Commute to work".PadRight(LabelWidth);
             var padding = new string(' ', TimeRangeWidth);
             builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalCommuteToWorkMinutes)}");
         }
 
         if (commuteToHomeSessions.Count > 0)
         {
-            var label = "Commute →home".PadRight(LabelWidth);
+            var label = "Commute to home".PadRight(LabelWidth);
             var padding = new string(' ', TimeRangeWidth);
             builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalCommuteToHomeMinutes)}");
         }
