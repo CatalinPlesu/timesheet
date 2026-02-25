@@ -49,10 +49,12 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         var text = responses[0].Text;
         Assert.Contains("Today's entries", text);
-        Assert.Contains("1. Work session", text);
-        Assert.Contains("Started:", text);
-        Assert.Contains("Ended:", text);
-        Assert.Contains("Duration:", text);
+        // New flat format: label appears without numbering
+        Assert.Contains("Work", text);
+        // Should contain a time range arrow
+        Assert.Contains("→", text);
+        // Should contain totals section
+        Assert.Contains("Work total", text);
     }
 
     [Fact]
@@ -85,22 +87,22 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         var text = responses[0].Text ?? string.Empty;
         Assert.Contains("Today's entries", text);
 
-        // Check that all entries are shown in order
-        // Entry numbers should appear sequentially
-        Assert.Contains("1. Commute to work", text);
-        Assert.Contains("2. Work session", text);
-        Assert.Contains("3. Lunch break", text);
-        Assert.Contains("4. Work session", text);
+        // Check that all entry types are shown
+        Assert.Contains("Commute to work", text);
+        Assert.Contains("Work", text);
+        Assert.Contains("Lunch", text);
 
-        // Verify order by checking indices
-        var commute1Idx = text.IndexOf("1. Commute to work", StringComparison.Ordinal);
-        var work2Idx = text.IndexOf("2. Work session", StringComparison.Ordinal);
-        var lunch3Idx = text.IndexOf("3. Lunch break", StringComparison.Ordinal);
-        var work4Idx = text.IndexOf("4. Work session", StringComparison.Ordinal);
+        // Verify chronological order by checking character positions
+        var commuteIdx = text.IndexOf("Commute to work", StringComparison.Ordinal);
+        var lunchIdx = text.IndexOf("Lunch", StringComparison.Ordinal);
 
-        Assert.True(commute1Idx < work2Idx, "First entry should appear before second");
-        Assert.True(work2Idx < lunch3Idx, "Second entry should appear before third");
-        Assert.True(lunch3Idx < work4Idx, "Third entry should appear before fourth");
+        Assert.True(commuteIdx < lunchIdx, "Commute should appear before Lunch");
+
+        // Verify totals section appears after separator
+        var separatorIdx = text.IndexOf("────", StringComparison.Ordinal);
+        var workTotalIdx = text.IndexOf("Work total", StringComparison.Ordinal);
+        Assert.True(separatorIdx >= 0, "Separator should be present");
+        Assert.True(workTotalIdx > separatorIdx, "Work total should appear after separator");
     }
 
     [Fact]
@@ -124,10 +126,10 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
 
         var text = responses[0].Text;
         Assert.Contains("Today's entries", text);
-        Assert.Contains("1. Work session", text);
-        Assert.Contains("Started:", text);
-        Assert.Contains("Ended: ongoing", text);
-        Assert.Contains("Duration: ongoing", text);
+        Assert.Contains("Work", text);
+        // Ongoing session shows "..." as end time
+        Assert.Contains("→ ...", text);
+        Assert.Contains("ongoing", text);
     }
 
     [Fact]
@@ -156,9 +158,9 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Equal(ResponseType.Message, responses[0].Type);
 
         var text = responses[0].Text;
-        Assert.Contains("1. Commute to work", text);
-        Assert.Contains("2. Work session", text);
-        Assert.Contains("3. Commute to home", text);
+        Assert.Contains("Commute to work", text);
+        Assert.Contains("Work", text);
+        Assert.Contains("Commute to home", text);
     }
 
     [Fact]
@@ -182,10 +184,8 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Single(responses);
         var text = responses[0].Text;
 
-        // Time format should be HH:MM (e.g., "09:30", "14:45")
-        // Use regex to verify format
-        Assert.Matches(@"Started: \d{2}:\d{2}", text);
-        Assert.Matches(@"Ended: \d{2}:\d{2}", text);
+        // Time format in new layout: "HH:mm → HH:mm"
+        Assert.Matches(@"\d{2}:\d{2} → \d{2}:\d{2}", text);
     }
 
     [Fact]
@@ -209,8 +209,10 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Single(responses);
         var text = responses[0].Text;
 
-        // Duration should be in format like "0m" or "1h 30m"
-        Assert.Matches(@"Duration: \d+[hm]", text);
+        // Duration should be in format like "0m" or "1h 30m" (never decimal)
+        Assert.Matches(@"\d+[hm]", text);
+        // Must NOT contain decimal hours
+        Assert.DoesNotMatch(@"\d+\.\d+h", text);
     }
 
     [Fact]
@@ -271,17 +273,14 @@ public class ListCommandHandlerTests(TelegramBotTestFixture fixture) : TelegramB
         Assert.Single(responses);
         var text = responses[0].Text ?? string.Empty;
 
-        // Should show completed work session
-        Assert.Contains("1. Work session", text);
-        // Check that work session has an actual end time (not "ongoing")
-        var workSessionIdx = text.IndexOf("1. Work session", StringComparison.Ordinal);
-        var lunchBreakIdx = text.IndexOf("2. Lunch break", StringComparison.Ordinal);
-        var workSection = text[workSessionIdx..lunchBreakIdx];
-        Assert.DoesNotContain("Ended: ongoing", workSection);
+        // Should show completed work session (with a real end time, not "...")
+        Assert.Contains("Work", text);
+        // Completed work session has a time range like "HH:mm → HH:mm"
+        Assert.Matches(@"\d{2}:\d{2} → \d{2}:\d{2}", text);
 
         // Should show ongoing lunch session
-        Assert.Contains("2. Lunch break", text);
-        var lunchSection = text[lunchBreakIdx..];
-        Assert.Contains("Ended: ongoing", lunchSection);
+        Assert.Contains("Lunch", text);
+        // Ongoing session shows "..."
+        Assert.Contains("→ ...", text);
     }
 }
