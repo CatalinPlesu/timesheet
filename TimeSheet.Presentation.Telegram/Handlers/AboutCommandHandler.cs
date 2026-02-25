@@ -17,6 +17,14 @@ public class AboutCommandHandler(ILogger<AboutCommandHandler> logger)
 
         Track your work sessions, commutes, and breaks — then use the reports to spot trends, see where your time goes, and make informed decisions about your day.
 
+        *Command Aliases*
+        `/c` — /commute    `/w` — /work      `/l` — /lunch
+        `/s` — /status     `/e` — /edit      `/d` — /delete
+        `/n` — /note       `/r` — /report    `/se` — /settings
+        `/li` — /list      `/i` — /import    `/lo` — /login
+        `/g` — /generate   `/re` — /register
+        `/h` — /help       `/a` — /about
+
         *Registration Required*
         This is a private bot. You need a registration code from the administrator to use it.
 

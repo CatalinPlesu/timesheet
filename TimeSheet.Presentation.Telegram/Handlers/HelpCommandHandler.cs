@@ -22,11 +22,11 @@ public class HelpCommandHandler(
         *TimeSheet Bot*
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
-        *View & Edit:* `/li` `/e` `/d` — list, edit, delete
+        *View & Edit:* `/li` `/e` `/d` `/n` — list, edit, delete, note
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
-        *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
-        *Import:* `/import` — import employer attendance data
+        *Web Login:* `/lo` `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
+        *Import:* `/i` `/import` — import employer attendance data
         *Other:* `/a` `/h` — about, help
 
         For details: `/help tracking`, `/help report`, `/help settings`, `/help import`
@@ -36,11 +36,11 @@ public class HelpCommandHandler(
         *TimeSheet Bot*
 
         *Tracking:* `/c` `/w` `/l` `/s` — commute, work, lunch, status
-        *View & Edit:* `/li` `/e` `/d` — list, edit, delete
+        *View & Edit:* `/li` `/e` `/d` `/n` — list, edit, delete, note
         *Reports:* `/r` [day|week|month|year|commute|daily|all]
         *Settings:* `/se` — timezone, reminders, alerts
-        *Web Login:* `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
-        *Import:* `/import` — import employer attendance data
+        *Web Login:* `/lo` `/login` — get login code for {configuration["FrontendUrl"] ?? "web interface"}
+        *Import:* `/i` `/import` — import employer attendance data
         *Admin:* `/g` — generate registration mnemonic
         *Other:* `/a` `/h` — about, help
 

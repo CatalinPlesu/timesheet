@@ -291,22 +291,25 @@ public class UpdateHandler(
         }
 
         // Define command-level alias mappings
+        // Rules: 1 letter if unique, 2 letters when 1-letter collides, 3 max; letters from command name only
         var commandAliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            { "/a", "/about" },
-            { "/h", "/help" },
-            { "/re", "/register" },
-            { "/c", "/commute" },
-            { "/w", "/work" },
-            { "/l", "/lunch" },
-            { "/e", "/edit" },
-            { "/d", "/delete" },
-            { "/g", "/generate" },
-            { "/li", "/list" },
-            { "/se", "/settings" },
-            { "/r", "/report" },
-            { "/s", "/status" },
-            { "/lo", "/login" }
+            { "/a", "/about" },        // /about   → /a  (unique)
+            { "/h", "/help" },         // /help    → /h  (unique)
+            { "/re", "/register" },    // /register→ /re (/r taken by /report)
+            { "/c", "/commute" },      // /commute → /c  (unique)
+            { "/w", "/work" },         // /work    → /w  (unique)
+            { "/l", "/lunch" },        // /lunch   → /l  (unique)
+            { "/e", "/edit" },         // /edit    → /e  (unique)
+            { "/d", "/delete" },       // /delete  → /d  (unique)
+            { "/n", "/note" },         // /note    → /n  (unique)
+            { "/g", "/generate" },     // /generate→ /g  (unique)
+            { "/i", "/import" },       // /import  → /i  (unique)
+            { "/li", "/list" },        // /list    → /li (/l taken by /lunch)
+            { "/se", "/settings" },    // /settings→ /se (/s taken by /status)
+            { "/r", "/report" },       // /report  → /r  (unique)
+            { "/s", "/status" },       // /status  → /s  (unique)
+            { "/lo", "/login" },       // /login   → /lo (/l taken by /lunch)
         };
 
         // Expand the command (first part)
