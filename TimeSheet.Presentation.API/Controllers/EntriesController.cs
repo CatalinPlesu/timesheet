@@ -257,9 +257,9 @@ public class EntriesController : ControllerBase
             // Extract user ID from JWT token
             var userId = _jwtTokenService.GetUserIdFromToken(User);
 
-            // Validate: at least one must be non-null
-            if (request.StartAdjustmentMinutes == null && request.EndAdjustmentMinutes == null)
-                return Problem(statusCode: 400, title: "Invalid Request", detail: "At least one adjustment must be provided");
+            // Validate: at least one field must be provided
+            if (request.StartAdjustmentMinutes == null && request.EndAdjustmentMinutes == null && !request.UpdateNote)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "At least one field to update must be provided");
             if (request.StartAdjustmentMinutes == 0 || request.EndAdjustmentMinutes == 0)
                 return Problem(statusCode: 400, title: "Invalid Request", detail: "Adjustment cannot be zero");
 
@@ -310,6 +310,17 @@ public class EntriesController : ControllerBase
                     _logger.LogWarning(ex, "User {UserId} attempted invalid end adjustment on entry {EntryId}", userId, id);
                     return Problem(statusCode: 400, detail: ex.Message);
                 }
+            }
+
+            // Apply note update if requested
+            if (request.UpdateNote)
+            {
+                session.UpdateNote(request.Note);
+                _logger.LogInformation(
+                    "User {UserId} {Action} note on entry {EntryId}",
+                    userId,
+                    string.IsNullOrWhiteSpace(request.Note) ? "cleared" : "set",
+                    id);
             }
 
             // Update the session in the repository
@@ -423,6 +434,93 @@ public class EntriesController : ControllerBase
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",
                 detail: "An error occurred while deleting the entry");
+        }
+    }
+
+    /// <summary>
+    /// Updates the note on a tracking entry. Send null or empty string to clear the note.
+    /// </summary>
+    /// <param name="id">The entry ID.</param>
+    /// <param name="request">The note update request.</param>
+    /// <returns>The updated tracking entry.</returns>
+    /// <response code="200">Note updated successfully.</response>
+    /// <response code="401">Unauthorized - invalid or missing JWT token.</response>
+    /// <response code="404">Entry not found or does not belong to the authenticated user.</response>
+    /// <response code="500">Internal server error.</response>
+    [HttpPatch("{id}/note")]
+    [ProducesResponseType(typeof(TrackingEntryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<TrackingEntryDto>> UpdateEntryNote(Guid id, [FromBody] EntryNoteRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to update note on non-existent entry {EntryId}", userId, id);
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
+            }
+
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning(
+                    "User {UserId} attempted to update note on entry {EntryId} belonging to user {OwnerId}",
+                    userId, id, session.UserId);
+                return Problem(
+                    statusCode: StatusCodes.Status404NotFound,
+                    title: "Not Found",
+                    detail: "Entry not found");
+            }
+
+            session.UpdateNote(request.Note);
+            _sessionRepository.Update(session);
+            await _unitOfWork.CompleteAsync(cancellationToken);
+
+            var entryDto = new TrackingEntryDto
+            {
+                Id = session.Id,
+                State = session.State,
+                StartedAt = session.StartedAt,
+                EndedAt = session.EndedAt,
+                DurationHours = session.EndedAt.HasValue
+                    ? (decimal)(session.EndedAt.Value - session.StartedAt).TotalHours
+                    : null,
+                CommuteDirection = session.CommuteDirection,
+                IsActive = session.IsActive,
+                Note = session.Note
+            };
+
+            _logger.LogInformation(
+                "User {UserId} {Action} note on entry {EntryId}",
+                userId,
+                string.IsNullOrWhiteSpace(request.Note) ? "cleared" : "set",
+                id);
+
+            return Ok(entryDto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Authentication Failed",
+                detail: "Invalid user token");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating note on entry {EntryId}", id);
+            return Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Server Error",
+                detail: "An error occurred while updating the note");
         }
     }
 }
