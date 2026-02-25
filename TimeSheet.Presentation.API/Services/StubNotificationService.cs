@@ -1,4 +1,5 @@
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Application.Models;
 using TimeSheet.Core.Domain.Enums;
 
 namespace TimeSheet.Presentation.API.Services;
@@ -29,6 +30,12 @@ public sealed class StubNotificationService : INotificationService
     }
 
     public Task SendAutoShutdownNotificationAsync(long telegramUserId, TrackingState state, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        // API doesn't send notifications - this is a no-op
+        return Task.CompletedTask;
+    }
+
+    public Task SendEndOfDaySummaryAsync(long telegramUserId, PeriodAggregate daySummary, CancellationToken cancellationToken = default)
     {
         // API doesn't send notifications - this is a no-op
         return Task.CompletedTask;

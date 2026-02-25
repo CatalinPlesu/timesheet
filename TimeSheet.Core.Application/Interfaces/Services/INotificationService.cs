@@ -1,3 +1,5 @@
+using TimeSheet.Core.Application.Models;
+
 namespace TimeSheet.Core.Application.Interfaces.Services;
 
 /// <summary>
@@ -55,5 +57,17 @@ public interface INotificationService
         long telegramUserId,
         TimeSheet.Core.Domain.Enums.TrackingState state,
         TimeSpan duration,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends an end-of-day summary report to a user after their commute-to-home ends.
+    /// </summary>
+    /// <param name="telegramUserId">The Telegram user ID.</param>
+    /// <param name="daySummary">The aggregated statistics for the day.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task SendEndOfDaySummaryAsync(
+        long telegramUserId,
+        PeriodAggregate daySummary,
         CancellationToken cancellationToken = default);
 }
