@@ -1,6 +1,7 @@
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Application.Interfaces.Persistence;
 using TimeSheet.Core.Domain.Repositories;
@@ -16,6 +17,12 @@ public class ListCommandHandler(
     ILogger<ListCommandHandler> logger,
     IServiceScopeFactory serviceScopeFactory)
 {
+    // Column widths for monospace alignment
+    private const int LabelWidth = 17;
+    private const int TimeRangeWidth = 14; // "HH:mm → HH:mm" = 14 chars
+    private const int DurationWidth = 7;   // " 1h 30m"
+    private const string Separator = "────────────────────────────────────────";
+
     /// <summary>
     /// Handles the /list command.
     /// </summary>
@@ -60,6 +67,7 @@ public class ListCommandHandler(
             await botClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: responseText,
+                parseMode: ParseMode.Html,
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
@@ -78,9 +86,9 @@ public class ListCommandHandler(
     }
 
     /// <summary>
-    /// Formats the list of sessions for display.
+    /// Formats the list of sessions for display using a flat column-aligned monospace layout.
     /// </summary>
-    private static string FormatSessionsList(List<TrackingSession> sessions, DateTime date, int utcOffsetMinutes)
+    internal static string FormatSessionsList(List<TrackingSession> sessions, DateTime date, int utcOffsetMinutes)
     {
         if (sessions.Count == 0)
         {
@@ -89,53 +97,101 @@ public class ListCommandHandler(
 
         var builder = new StringBuilder();
         builder.AppendLine($"Today's entries ({date:yyyy-MM-dd}):");
-        builder.AppendLine();
+        builder.AppendLine("<pre>");
 
-        for (int i = 0; i < sessions.Count; i++)
+        // --- Session rows ---
+        foreach (var session in sessions)
         {
-            var session = sessions[i];
-            var entryNumber = i + 1;
+            var label = FormatSessionLabel(session).PadRight(LabelWidth);
 
-            // Format session type
-            var typeDisplay = FormatSessionType(session);
-
-            // Format times (converted to user's local timezone)
-            var startTime = FormatTime(session.StartedAt, utcOffsetMinutes);
-            var endTime = session.EndedAt.HasValue
-                ? FormatTime(session.EndedAt.Value, utcOffsetMinutes)
-                : "ongoing";
-
-            // Format duration
-            var duration = session.EndedAt.HasValue
-                ? FormatDuration(session.StartedAt, session.EndedAt.Value)
-                : "ongoing";
-
-            builder.AppendLine($"{entryNumber}. {typeDisplay}");
-            builder.AppendLine($"   Started: {startTime}");
-            builder.AppendLine($"   Ended: {endTime}");
-            builder.AppendLine($"   Duration: {duration}");
-
-            if (i < sessions.Count - 1)
+            string timeRange;
+            if (session.EndedAt.HasValue)
             {
-                builder.AppendLine();
+                var startStr = FormatTime(session.StartedAt, utcOffsetMinutes);
+                var endStr = FormatTime(session.EndedAt.Value, utcOffsetMinutes);
+                timeRange = $"{startStr} → {endStr}";
             }
+            else
+            {
+                var startStr = FormatTime(session.StartedAt, utcOffsetMinutes);
+                timeRange = $"{startStr} → ...";
+            }
+
+            var duration = session.EndedAt.HasValue
+                ? FormatDurationAligned(session.StartedAt, session.EndedAt.Value)
+                : "ongoing";
+
+            builder.AppendLine($"{label} {timeRange}  {duration}");
         }
+
+        // --- Separator ---
+        builder.AppendLine(Separator);
+
+        // --- Totals ---
+        var workSessions = sessions.Where(s => s.State == TrackingState.Working && s.EndedAt.HasValue).ToList();
+        var commuteSessions = sessions.Where(s => s.State == TrackingState.Commuting && s.EndedAt.HasValue).ToList();
+        var lunchSessions = sessions.Where(s => s.State == TrackingState.Lunch && s.EndedAt.HasValue).ToList();
+
+        var totalWorkMinutes = workSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+        var totalCommuteMinutes = commuteSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+        var totalLunchMinutes = lunchSessions.Sum(s => (s.EndedAt!.Value - s.StartedAt).TotalMinutes);
+
+        // Office span: from first session start to last session end (completed sessions only)
+        var completedSessions = sessions.Where(s => s.EndedAt.HasValue).ToList();
+        double officeSpanMinutes = 0;
+        if (completedSessions.Count > 0)
+        {
+            var firstStart = completedSessions.Min(s => s.StartedAt);
+            var lastEnd = completedSessions.Max(s => s.EndedAt!.Value);
+            officeSpanMinutes = (lastEnd - firstStart).TotalMinutes;
+        }
+
+        // Only show totals that have data
+        if (workSessions.Count > 0)
+        {
+            var label = "Work total".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalWorkMinutes)}");
+        }
+
+        if (commuteSessions.Count > 0)
+        {
+            var label = "Commute total".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalCommuteMinutes)}");
+        }
+
+        if (lunchSessions.Count > 0)
+        {
+            var label = "Lunch total".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(totalLunchMinutes)}");
+        }
+
+        if (officeSpanMinutes > 0)
+        {
+            var label = "Office span".PadRight(LabelWidth);
+            var padding = new string(' ', TimeRangeWidth);
+            builder.AppendLine($"{label} {padding}  {FormatMinutesAligned(officeSpanMinutes)}");
+        }
+
+        builder.Append("</pre>");
 
         return builder.ToString();
     }
 
     /// <summary>
-    /// Formats the session type for display.
+    /// Returns a human-readable label for a session.
     /// </summary>
-    private static string FormatSessionType(TrackingSession session)
+    private static string FormatSessionLabel(TrackingSession session)
     {
         return session.State switch
         {
             TrackingState.Commuting => session.CommuteDirection == CommuteDirection.ToWork
                 ? "Commute to work"
                 : "Commute to home",
-            TrackingState.Working => "Work session",
-            TrackingState.Lunch => "Lunch break",
+            TrackingState.Working => "Work",
+            TrackingState.Lunch => "Lunch",
             _ => session.State.ToString()
         };
     }
@@ -150,19 +206,31 @@ public class ListCommandHandler(
     }
 
     /// <summary>
-    /// Formats a duration between two timestamps.
+    /// Formats a duration between two timestamps, right-aligned in DurationWidth chars.
+    /// Format: "Xh Ym" or "  Ym" (never decimal hours).
     /// </summary>
-    private static string FormatDuration(DateTime start, DateTime end)
+    private static string FormatDurationAligned(DateTime start, DateTime end)
     {
-        var duration = end - start;
+        return FormatMinutesAligned((end - start).TotalMinutes);
+    }
 
-        if (duration.TotalHours >= 1)
-        {
-            var hours = (int)duration.TotalHours;
-            var minutes = duration.Minutes;
-            return minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
-        }
+    /// <summary>
+    /// Formats a total number of minutes into "Xh Ym" or "Ym", right-aligned in DurationWidth.
+    /// </summary>
+    private static string FormatMinutesAligned(double totalMinutes)
+    {
+        var totalMins = (int)Math.Round(totalMinutes);
+        var hours = totalMins / 60;
+        var minutes = totalMins % 60;
 
-        return $"{duration.Minutes}m";
+        string raw;
+        if (hours > 0 && minutes > 0)
+            raw = $"{hours}h {minutes}m";
+        else if (hours > 0)
+            raw = $"{hours}h";
+        else
+            raw = $"{minutes}m";
+
+        return raw.PadLeft(DurationWidth);
     }
 }
