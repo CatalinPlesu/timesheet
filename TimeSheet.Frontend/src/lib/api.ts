@@ -125,6 +125,10 @@ export async function updateEntry(id: string, opts: { startMinutes?: number; end
   return request<null>('PUT', `/api/entries/${id}`, body)
 }
 
+export async function updateEntryNote(id: string, note: string | null): Promise<Entry | null> {
+  return request<Entry>('PATCH', `/api/entries/${id}/note`, { note })
+}
+
 // ─── Analytics ───────────────────────────────────────────────────────────────
 
 export interface StatMetric {
