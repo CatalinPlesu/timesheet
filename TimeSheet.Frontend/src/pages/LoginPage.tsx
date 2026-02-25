@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTheme } from '@/lib/theme'
 import { apiLogin, auth } from '@/lib/api'
 import { useRedirectIfLoggedIn } from '@/hooks/useAuth'
@@ -12,13 +12,14 @@ export function LoginPage() {
   useRedirectIfLoggedIn()
 
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { theme, toggleTheme } = useTheme()
   const [mnemonic, setMnemonic] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const handleLogin = async () => {
-    const trimmed = mnemonic.trim()
+  const doLogin = async (phrase: string) => {
+    const trimmed = phrase.trim()
     if (!trimmed) return
     setLoading(true)
     setError('')
@@ -33,6 +34,19 @@ export function LoginPage() {
       setLoading(false)
     }
   }
+
+  const handleLogin = () => doLogin(mnemonic)
+
+  // Auto-login when ?m= query param is present
+  useEffect(() => {
+    const urlMnemonic = searchParams.get('m')
+    if (urlMnemonic) {
+      // Remove the mnemonic from the URL immediately to prevent it from lingering
+      window.history.replaceState(null, '', window.location.pathname)
+      doLogin(urlMnemonic)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
