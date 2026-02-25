@@ -126,7 +126,7 @@ public class ListCommandHandler(
             // Show note on the next line if present
             if (!string.IsNullOrWhiteSpace(session.Note))
             {
-                builder.AppendLine($"  📝 {session.Note}");
+                builder.AppendLine($"  📝 {System.Net.WebUtility.HtmlEncode(session.Note)}");
             }
         }
 
