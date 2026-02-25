@@ -113,11 +113,11 @@ public class AnalyticsController : ControllerBase
                         case TrackingState.Working:
                             totalWorkHours += duration;
                             break;
-                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToWork:
-                            totalCommuteToWorkHours += duration;
-                            break;
-                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToHome:
-                            totalCommuteToHomeHours += duration;
+                        case TrackingState.Commuting:
+                            if (session.CommuteDirection == CommuteDirection.ToHome)
+                                totalCommuteToHomeHours += duration;
+                            else // ToWork or null (legacy)
+                                totalCommuteToWorkHours += duration;
                             break;
                         case TrackingState.Lunch:
                             totalLunchHours += duration;
@@ -313,7 +313,8 @@ public class AnalyticsController : ControllerBase
             var completedSessions = sessions.Where(s => s.EndedAt.HasValue).ToList();
 
             decimal totalWorkHours = 0;
-            decimal totalCommuteHours = 0;
+            decimal totalCommuteToWorkHours = 0;
+            decimal totalCommuteToHomeHours = 0;
             decimal totalLunchHours = 0;
 
             foreach (var session in completedSessions)
@@ -326,7 +327,10 @@ public class AnalyticsController : ControllerBase
                         totalWorkHours += duration;
                         break;
                     case TrackingState.Commuting:
-                        totalCommuteHours += duration;
+                        if (session.CommuteDirection == CommuteDirection.ToHome)
+                            totalCommuteToHomeHours += duration;
+                        else // ToWork or null (legacy)
+                            totalCommuteToWorkHours += duration;
                         break;
                     case TrackingState.Lunch:
                         totalLunchHours += duration;
@@ -374,7 +378,8 @@ public class AnalyticsController : ControllerBase
                 StartDate = startDate,
                 EndDate = endDate,
                 TotalWorkHours = totalWorkHours,
-                TotalCommuteHours = totalCommuteHours,
+                TotalCommuteToWorkHours = totalCommuteToWorkHours,
+                TotalCommuteToHomeHours = totalCommuteToHomeHours,
                 TotalLunchHours = totalLunchHours,
                 WorkDaysCount = workDays,
                 TotalDurationHours = totalDurationHours
@@ -459,11 +464,11 @@ public class AnalyticsController : ControllerBase
                             case TrackingState.Working:
                                 workHours += duration;
                                 break;
-                            case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToWork:
-                                commuteToWorkHours += duration;
-                                break;
-                            case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToHome:
-                                commuteToHomeHours += duration;
+                            case TrackingState.Commuting:
+                                if (session.CommuteDirection == CommuteDirection.ToHome)
+                                    commuteToHomeHours += duration;
+                                else // ToWork or null (legacy)
+                                    commuteToWorkHours += duration;
                                 break;
                             case TrackingState.Lunch:
                                 lunchHours += duration;
@@ -721,11 +726,11 @@ public class AnalyticsController : ControllerBase
                         case TrackingState.Working:
                             work += dur;
                             break;
-                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToWork:
-                            commToW += dur;
-                            break;
-                        case TrackingState.Commuting when session.CommuteDirection == CommuteDirection.ToHome:
-                            commToH += dur;
+                        case TrackingState.Commuting:
+                            if (session.CommuteDirection == CommuteDirection.ToHome)
+                                commToH += dur;
+                            else // ToWork or null (legacy)
+                                commToW += dur;
                             break;
                         case TrackingState.Lunch:
                             lunch += dur;

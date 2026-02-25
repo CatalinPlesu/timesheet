@@ -21,9 +21,19 @@ public sealed class PeriodAggregateDto
     public required decimal TotalWorkHours { get; set; }
 
     /// <summary>
-    /// Gets or sets the total commute time in hours in the period.
+    /// Gets or sets the total commute-to-work time in hours in the period.
     /// </summary>
-    public required decimal TotalCommuteHours { get; set; }
+    public required decimal TotalCommuteToWorkHours { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total commute-to-home time in hours in the period.
+    /// </summary>
+    public required decimal TotalCommuteToHomeHours { get; set; }
+
+    /// <summary>
+    /// Gets or sets the total commute time (to-work + to-home) in hours in the period.
+    /// </summary>
+    public decimal TotalCommuteHours => TotalCommuteToWorkHours + TotalCommuteToHomeHours;
 
     /// <summary>
     /// Gets or sets the total lunch time in hours in the period.

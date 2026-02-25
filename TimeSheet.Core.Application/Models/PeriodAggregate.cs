@@ -21,9 +21,19 @@ public record PeriodAggregate
     public decimal TotalWorkHours { get; init; }
 
     /// <summary>
-    /// Gets the total commute time in hours in the period.
+    /// Gets the total commute-to-work time in hours in the period.
     /// </summary>
-    public decimal TotalCommuteHours { get; init; }
+    public decimal TotalCommuteToWorkHours { get; init; }
+
+    /// <summary>
+    /// Gets the total commute-to-home time in hours in the period.
+    /// </summary>
+    public decimal TotalCommuteToHomeHours { get; init; }
+
+    /// <summary>
+    /// Gets the total commute time (to-work + to-home) in hours in the period.
+    /// </summary>
+    public decimal TotalCommuteHours => TotalCommuteToWorkHours + TotalCommuteToHomeHours;
 
     /// <summary>
     /// Gets the total lunch time in hours in the period.

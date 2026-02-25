@@ -189,6 +189,8 @@ export async function fetchCommutePatterns(direction: 'ToWork' | 'ToHome'): Prom
 
 export interface PeriodAggregate {
   totalWorkHours: number
+  totalCommuteToWorkHours: number
+  totalCommuteToHomeHours: number
   totalCommuteHours: number
   totalLunchHours: number
   workDaysCount: number
