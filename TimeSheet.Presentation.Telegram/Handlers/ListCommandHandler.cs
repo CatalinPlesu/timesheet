@@ -122,6 +122,12 @@ public class ListCommandHandler(
                 : "ongoing";
 
             builder.AppendLine($"{label} {timeRange}  {duration}");
+
+            // Show note on the next line if present
+            if (!string.IsNullOrWhiteSpace(session.Note))
+            {
+                builder.AppendLine($"  📝 {session.Note}");
+            }
         }
 
         // --- Separator ---
