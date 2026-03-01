@@ -1,41 +1,46 @@
 # TimeSheet Bot
 
-A private Telegram bot for personal work-hour tracking. Not employer surveillance — the goal is to help you ensure work doesn't take more time than it should.
+A private Telegram bot that helps you track your own work hours — so work doesn't quietly consume more of your day than it should.
 
-## ✨ Features
+This is an **employee-side** tool for personal work-life balance. Your data stays on your own server. No telemetry, no third-party access, no employer visibility.
 
-### 🔄 Time Tracking
-- **`/commute`** (`/c`) - Track commute to work or to home
-- **`/work`** (`/w`) - Track work time  
-- **`/lunch`** (`/l`) - Track lunch break
+## Features
 
-### 📊 Reports & Analytics
-- **`/report`** - Generate visual reports with charts and graphs
-  - Daily breakdown with bar charts
-  - Work hours trend analysis
-  - Activity breakdown (work, commute, lunch)
-  - Daily averages comparison
-  - Commute patterns by day of week
-- **`/table`** - View data in formatted table format
+**Time tracking** via simple Telegram commands:
+- `/commute` (`/c`) — track commute to work or home (direction detected automatically)
+- `/work` (`/w`) — track work sessions (multiple per day, summed automatically)
+- `/lunch` (`/l`) — track lunch breaks
 
-### ✏️ Editing & Corrections
-- **`/edit`** - Edit the most recent entry (or N entries back)
-  - Inline keyboard with adjustment buttons: `-30m` `-5m` `-1m` `+1m` `+5m` `+30m`
-- **`/delete`** - Delete an entry with confirmation prompt
+Commands act as toggles: starting one stops the previous. A natural day looks like `/commute` → `/work` → `/lunch` → `/work` → `/commute`.
 
-### 📋 Management
-- **`/status`** - Show current tracking status
-- **`/list`** - List recent tracking entries
-- **`/settings`** - Configure user preferences
-- **`/help`** - Show available commands
+**Optional time parameters** on every command:
+- `/work -15m` — started 15 minutes ago
+- `/lunch +5m` — starting in 5 minutes
+- `/work 09:00` — exact start time
 
-## 🚀 Deploy (VPS / Production)
+**Editing and corrections:**
+- `/edit` — edit the most recent entry (or `/edit 2` to go back further)
+- Inline adjustment buttons: `-30m` `-5m` `-1m` `+1m` `+5m` `+30m`
+- `/delete` — delete an entry with confirmation
 
-Copy `compose.yaml` to your server alongside a `.env` file (see below).
+**Reports and analytics** (via web dashboard and Telegram):
+- Daily breakdown of work, commute, and lunch
+- Week / month summaries
+- Commute patterns by day of week
+- Compliance view (e.g. minimum office hours)
+
+**Notifications:**
+- Lunch reminder
+- Work hours alert
+- Auto-shutdown when a session runs suspiciously long
+
+**Web dashboard** — React frontend with charts, audit table, and edit capabilities.
+
+## Deploy (VPS / Production)
+
+Copy `compose.yaml` to your server alongside a `.env` file.
 
 ### 1. Generate a JWT secret
-
-The key must be at least 32 characters (256 bits) or the API will crash at login:
 
 ```bash
 openssl rand -base64 32
@@ -44,34 +49,20 @@ openssl rand -base64 32
 ### 2. `.env` file
 
 ```env
-# --- Required ---
+# Required
 BOT_TOKEN=123456789:ABCdef...
 JWT_SECRET_KEY=<output of openssl rand -base64 32>
 FRONTEND_EXTERNAL_URL=https://timesheet.example.com
 
-# --- Employer API (Timily) ---
+# Employer API (optional — Timily integration)
 EMPLOYER_API_BASE_URL=https://your-timily-instance.azurewebsites.net
 
-# --- Ports (must match Caddyfile) ---
+# Ports (must match Caddyfile)
 API_PORT=5004
 FRONTEND_PORT=3345
-OPENOBSERVE_PORT=5080
-
-# --- JWT (optional, defaults shown) ---
-# JWT_ISSUER=TimeSheet.API
-# JWT_AUDIENCE=TimeSheet.Web
-# JWT_EXPIRATION_MINUTES=60
-
-# --- Worker intervals (optional, defaults shown) ---
-# AUTO_SHUTDOWN_CHECK_INTERVAL=00:03:00
-# FORGOT_SHUTDOWN_CHECK_INTERVAL=00:03:00
-# LUNCH_REMINDER_CHECK_INTERVAL=00:03:00
-# WORK_HOURS_ALERT_CHECK_INTERVAL=00:03:00
 ```
 
-### 3. Caddy
-
-Caddy runs as a system service on the host. Containers bind to `127.0.0.1` only — not publicly exposed. Caddy proxies both the frontend and the API (the frontend JS calls `/api/*` relative URLs, which Caddy routes internally):
+### 3. Caddy (reverse proxy)
 
 ```
 timesheet.example.com {
@@ -80,240 +71,67 @@ timesheet.example.com {
 }
 ```
 
-### 4. Data directory
-
-Create the data directory before first run — this is where the SQLite database lives:
+### 4. Start
 
 ```bash
 mkdir -p data
-```
-
-### 5. Pull and start
-
-```bash
 podman compose pull
 podman compose up -d
 ```
 
-### 6. First login
+### 5. First login
 
-1. Register via the Telegram bot (see Registration section below)
-2. Run `/login` in the bot — it prints a 24-word mnemonic
-3. Enter it on the web login page within **15 minutes** (it expires)
-4. The mnemonic is single-use — generate a new one each session
+1. Register via Telegram (see Registration below)
+2. Run `/login` in the bot — it prints a one-time 24-word mnemonic
+3. Enter it on the web login page within 15 minutes
 
-### OpenObserve (logs)
+## Getting Started (Development)
 
-OpenObserve runs as a container and receives logs from the bot and API via **Serilog's OpenTelemetry sink** (OTLP/HTTP). No agent installation needed — logs are pushed directly.
+**Prerequisites:** .NET 10 SDK, a Telegram bot token from [@BotFather](https://t.me/botfather)
 
-**Access the UI** (SSH tunnel from your machine):
 ```bash
-ssh -L 5080:localhost:5080 user@yourserver
-# Then open http://localhost:5080 in your browser
-```
-
-Default credentials (set in `compose.yaml`):
-- Email: `root@example.com`
-- Password: `Complexpass#123`
-
-**View logs**: Logs → select stream `logs` → set time range → search.
-
-> To change the default password, update `ZO_ROOT_USER_PASSWORD` in `compose.yaml` and re-encode the Basic auth header for the Serilog config:
-> ```bash
-> echo -n "root@example.com:YourNewPassword" | base64
-> ```
-> Then update `Serilog__WriteTo__2__Args__headers__Authorization=Basic <new-value>` for both `telegram-bot` and `api` services.
-
-## 🚀 Getting Started (Development)
-
-### 1. Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Telegram account
-- Bot token from [@BotFather](https://t.me/botfather)
-
-### 2. Setup
-```bash
-# Clone the repository
 git clone <repository-url>
 cd TimeSheet
-
-# Restore dependencies
 dotnet restore
-
-# Build the solution
 dotnet build
 ```
 
-### 3. Configuration
-The bot requires a Telegram bot token. Configure it using one of these methods:
+Set your bot token via user secrets:
 
-#### Option 1: User Secrets (Recommended for Development)
 ```bash
 cd TimeSheet.Presentation.Telegram
 dotnet user-secrets set "Bot:Token" "YOUR_BOT_TOKEN_HERE"
-```
-
-#### Option 2: Environment Variable
-```bash
-export Bot__Token="YOUR_BOT_TOKEN_HERE"
 dotnet run
 ```
 
-#### Option 3: appsettings.json
-Edit `TimeSheet.Presentation.Telegram/appsettings.Development.json`:
-```json
-{
-  "Bot": {
-    "Token": "YOUR_BOT_TOKEN_HERE"
-  }
-}
+### Registration
+
+The first time the bot starts with no users, it logs a `/register [24-word mnemonic]` command to the console. Send that command to the bot to register as admin. Additional users get their own mnemonics, generated by the admin.
+
+## Architecture
+
+Clean Architecture with .NET 10 / C# 14:
+
+```
+TimeSheet.Core.Domain/               # Entities, domain logic
+TimeSheet.Core.Application/          # Use cases, service interfaces
+TimeSheet.Infrastructure.Persistence/ # SQLite via EF Core
+TimeSheet.Presentation.Telegram/     # Telegram bot
+TimeSheet.Presentation.API/          # REST API (JWT auth)
+TimeSheet.Frontend/                  # React + Vite web dashboard
+TimeSheet.Tests.Unit/
+TimeSheet.Tests.Integration/
 ```
 
-**Warning**: Never commit your bot token to source control.
+Run tests: `dotnet test`
 
-### 4. Registration
-1. Start the bot: `dotnet run`
-2. The console will display a registration command: `/register [24-word mnemonic]`
-3. Send this command to the bot to register as the first user (admin)
-4. For additional users, generate new mnemonics and share them privately
+## Privacy
 
-## 💡 How to Use
+- All data is stored in a local SQLite database on your own server.
+- No analytics, no telemetry, no external data sharing.
+- The bot ignores messages from unregistered users (except `/about`).
+- Mnemonics are single-use and expire after 15 minutes.
 
-### Basic Workflow
-1. **Start your day**: `/commute` - Tracks your commute to work
-2. **Start working**: `/work` - Tracks your work time
-3. **Take lunch**: `/lunch` - Tracks your lunch break
-4. **Resume work**: `/work` - After lunch break
-5. **Go home**: `/commute` - Tracks your commute home
-6. **End day**: `/commute` again to stop commute tracking
+## License
 
-### Command Behavior
-- **Toggle behavior**: Commands act as toggles
-  - Starting a new state stops the previous one
-  - Repeating the same command stops it
-- **Commute direction**: Automatically detects commute-to-work vs commute-to-home based on context
-- **Multiple work sessions**: Supported (split by lunch, etc.)
-
-### Time Parameters
-Commands support optional time parameters:
-- `-m` / `+m` — action started m minutes ago / will start m minutes from now
-- `[hh:mm]` — exact start time in 24h format
-
-Examples:
-- `/work -15m` - Started working 15 minutes ago
-- `/lunch +10m` - Will start lunch break in 10 minutes
-- `/work 09:00` - Started working at 9:00 AM
-
-### Editing Entries
-1. `/edit` - Edit the most recent entry
-2. `/edit 1` - Edit 1 entry back
-3. `/edit 2` - Edit 2 entries back
-4. Use inline keyboard buttons for quick adjustments
-
-### Viewing Reports
-- `/report` - Generate visual reports with charts
-- `/table` - View data in formatted table format
-- Reports include daily breakdowns, trends, and commute patterns
-
-## 📊 Report Examples
-
-The bot generates various types of visual reports:
-
-### Daily Breakdown Chart
-Shows work hours by day in a clean bar chart format.
-
-### Work Hours Trend
-Line chart tracking work hours over time with trend analysis.
-
-### Activity Breakdown
-Grouped bar chart comparing work, commute, and lunch time.
-
-### Commute Patterns
-Analysis of commute times by day of week to help optimize travel.
-
-## 🔧 Configuration
-
-### User Settings
-Configure via `/settings` command:
-- **UTC offset** - Timezone for accurate tracking
-- **Auto-shutdown** - Automatically close forgotten states (absolute time or percentage-based)
-
-### Background Workers
-The bot includes several background workers:
-- **AutoShutdownWorker** - Automatically closes forgotten tracking sessions
-- **ForgotShutdownWorker** - Alerts about sessions that might have been forgotten
-- **LunchReminderWorker** - Reminds to take lunch breaks
-- **WorkHoursAlertWorker** - Alerts when reaching daily work hour limits
-
-## 🏗️ Architecture
-
-This is a **Clean Architecture** application with .NET 10 / C# 14, featuring:
-
-- **Domain Layer** - Business logic and entities
-- **Application Layer** - Use cases and services
-- **Infrastructure Layer** - Data persistence (SQLite) and external integrations
-- **Presentation Layer** - Telegram bot interface
-
-### Key Technologies
-- **.NET 10** - Modern C# with latest features
-- **SQLite** - Local database for data persistence
-- **ScottPlot** - Chart generation for visual reports
-- **Serilog** - Structured logging
-- **Telegram.Bot** - Telegram API integration
-
-## 🧪 Testing
-
-The project includes comprehensive test coverage:
-
-- **Unit Tests** - Core logic and services
-- **Integration Tests** - Telegram bot functionality
-- **Test Coverage** - Mocks and fixtures for reliable testing
-
-Run tests:
-```bash
-dotnet test
-```
-
-## 📝 Development
-
-### Project Structure
-```
-TimeSheet/
-├── TimeSheet.Core.Domain/          # Domain entities and business logic
-├── TimeSheet.Core.Application/     # Use cases and application services
-├── TimeSheet.Infrastructure.Persistence/ # Data persistence
-├── TimeSheet.Presentation.Telegram/ # Telegram bot interface
-├── TimeSheet.Tests.Unit/           # Unit tests
-└── TimeSheet.Tests.Integration/    # Integration tests
-```
-
-### Issue Tracking
-This project uses **bd** (beads) for issue tracking. Available commands:
-- `bd ready` - Find available work
-- `bd show <id>` - View issue details
-- `bd close <id>` - Complete work
-- `bd sync` - Sync with git
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
-
-## 📄 License
-
-This project is private for personal use.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check existing issues in the bd tracker
-2. Create a new issue if needed
-3. Provide detailed description of the problem
-
----
-
-**Remember**: This bot is designed for personal productivity, not employer surveillance. Use it to maintain a healthy work-life balance! 🎯
+MIT — see [LICENSE](LICENSE).
