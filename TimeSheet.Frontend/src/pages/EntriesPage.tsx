@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchEntriesForRange, fetchViolations, deleteEntry, updateEntry, updateEntryNote,
   setEntryTimes, createEntry,
-  type Entry, type Violation, type EntryCreatePayload, type TrackingState
+  type Entry, type Violation, type EntryCreatePayload
 } from '@/lib/api'
 import { useRequireAuth } from '@/hooks/useAuth'
 import { fmtDur, fmtLocalDateTime, localDateISO, fmtDayLabel } from '@/lib/utils'

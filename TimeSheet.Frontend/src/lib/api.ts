@@ -14,7 +14,9 @@ export const auth = {
   getUtcOffset: (): number => parseInt(localStorage.getItem(UTC_OFFSET_KEY) ?? '0', 10),
 }
 
-async function refreshToken(): Promise<boolean> {
+let _refreshPromise: Promise<boolean> | null = null
+
+async function doRefresh(): Promise<boolean> {
   const token = auth.getToken()
   if (!token) return false
   try {
@@ -24,12 +26,20 @@ async function refreshToken(): Promise<boolean> {
       body: JSON.stringify({ refreshToken: token }),
     })
     if (!res.ok) return false
-    const data = await res.json() as { accessToken: string }
+    const data = await res.json() as { accessToken: string; utcOffsetMinutes?: number }
     auth.saveToken(data.accessToken)
+    if (data.utcOffsetMinutes !== undefined) auth.saveUtcOffset(data.utcOffsetMinutes)
     return true
   } catch {
     return false
   }
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!_refreshPromise) {
+    _refreshPromise = doRefresh().finally(() => { _refreshPromise = null })
+  }
+  return _refreshPromise
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T | null> {
@@ -47,7 +57,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     // Do not attempt to refresh if the failing request itself is an auth endpoint
     const isAuthEndpoint = path.startsWith('/api/auth/')
     if (!isAuthEndpoint) {
-      const refreshed = await refreshToken()
+      const refreshed = await tryRefresh()
       if (refreshed) {
         // Retry the original request with the new token
         const newToken = auth.getToken()
