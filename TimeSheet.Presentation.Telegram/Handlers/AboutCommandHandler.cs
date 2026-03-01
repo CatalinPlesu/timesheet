@@ -11,11 +11,13 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 public class AboutCommandHandler(ILogger<AboutCommandHandler> logger)
 {
     private const string AboutMessage = """
-        📊 *TimeSheet Bot*
+        *TimeSheet*
 
-        A personal time-awareness tool to help you understand your daily work and commute patterns, stay in control of your time, and maintain a healthy work-life balance.
+        A personal work-life balance tool. Track your own hours so work doesn't quietly take more of your day than it should.
 
-        Track your work sessions, commutes, and breaks — then use the reports to spot trends, see where your time goes, and make informed decisions about your day.
+        Log commutes, work sessions, and breaks with a simple command. Check weekly and monthly summaries to stay aware of patterns — and step back when needed.
+
+        Your data stays on your own server. No telemetry, no third parties.
 
         *Command Aliases*
         `/c` — /commute    `/w` — /work      `/l` — /lunch
@@ -29,8 +31,8 @@ public class AboutCommandHandler(ILogger<AboutCommandHandler> logger)
         This is a private bot. You need a registration code from the administrator to use it.
 
         *Self-Hosting*
-        This bot is open-source. Deploy your own instance:
-        🔗 [github.com/CatalinPlesu/timesheet](https://github.com/CatalinPlesu/timesheet)
+        Open-source — deploy your own instance:
+        [github.com/CatalinPlesu/timesheet](https://github.com/CatalinPlesu/timesheet)
         """;
 
     /// <summary>
