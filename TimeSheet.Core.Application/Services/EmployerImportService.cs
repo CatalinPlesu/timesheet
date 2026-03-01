@@ -14,7 +14,6 @@ namespace TimeSheet.Core.Application.Services;
 
 /// <summary>
 /// Fetches attendance data from the employer's external API (Timily) and persists it idempotently.
-/// Enforces a 7-day rate limit between imports per user.
 /// </summary>
 public class EmployerImportService : IEmployerImportService
 {
@@ -89,7 +88,6 @@ public class EmployerImportService : IEmployerImportService
     public async Task<ImportResult> ImportAsync(
         Guid userId,
         string bearerToken,
-        bool force = false,
         CancellationToken ct = default)
     {
         // 1. Check configuration
@@ -97,24 +95,7 @@ public class EmployerImportService : IEmployerImportService
             return new ImportResult(0, 0, 0,
                 Error: "Employer API not configured. Set EmployerApi:BaseUrl in appsettings.");
 
-        // 2. Rate limit check (unless force=true)
-        if (!force)
-        {
-            var lastImport = await _repo.GetLastImportAsync(userId, ct);
-            if (lastImport != null)
-            {
-                var daysSince = (DateTimeOffset.UtcNow - lastImport.CreatedAt).TotalDays;
-                if (daysSince < 7)
-                {
-                    var daysRemaining = (int)Math.Ceiling(7 - daysSince);
-                    return new ImportResult(0, 0, 0,
-                        RateLimited: true,
-                        RateLimitDaysRemaining: daysRemaining);
-                }
-            }
-        }
-
-        // 3. Call the employer API
+        // 2. Call the employer API
         var url = $"{_options.BaseUrl.TrimEnd('/')}{_options.AttendanceEndpoint}?dateOnly={DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);

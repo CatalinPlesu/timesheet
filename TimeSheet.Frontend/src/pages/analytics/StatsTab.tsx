@@ -13,10 +13,11 @@ function median(arr: number[]): number {
 interface StatsRowProps {
   label: string
   obj: StatMetric | null
-  med?: number
+  med?: number | null
+  hideTotal?: boolean
 }
 
-function StatsRow({ label, obj, med }: StatsRowProps) {
+function StatsRow({ label, obj, med, hideTotal }: StatsRowProps) {
   if (!obj) {
     return (
       <tr className="border-b border-border/30">
@@ -31,11 +32,11 @@ function StatsRow({ label, obj, med }: StatsRowProps) {
     <tr className="border-b border-border/30 hover:bg-muted/20 transition-colors">
       <td className="px-3 py-2 text-sm font-medium">{label}</td>
       <td className="px-3 py-2 text-sm tabular-nums">{fmtDur(obj.avg)}</td>
-      <td className="px-3 py-2 text-sm tabular-nums text-muted-foreground">{med !== undefined ? fmtDur(med) : '—'}</td>
+      <td className="px-3 py-2 text-sm tabular-nums text-muted-foreground">{med != null ? fmtDur(med) : '—'}</td>
       <td className="px-3 py-2 text-sm tabular-nums text-muted-foreground">{fmtDur(obj.min)}</td>
       <td className="px-3 py-2 text-sm tabular-nums text-muted-foreground">{fmtDur(obj.max)}</td>
       <td className="px-3 py-2 text-sm tabular-nums text-muted-foreground">{fmtDur(obj.stdDev)}</td>
-      <td className="px-3 py-2 text-sm tabular-nums">{fmtDur(obj.total)}</td>
+      <td className="px-3 py-2 text-sm tabular-nums">{hideTotal ? '—' : fmtDur(obj.total)}</td>
     </tr>
   )
 }
@@ -93,9 +94,21 @@ export function StatsTab({ stats, breakdown, periodAggregate, violations, anaPer
   }
 
   // Average office span
-  const officeSpanValues = breakdown.map(d => d.officeSpanHours).filter((h): h is number => h != null)
+  const officeSpanValues = breakdown.map(d => d.officeSpanHours).filter((h): h is number => h != null && h > 0)
   const avgOfficeSpan = officeSpanValues.length
     ? officeSpanValues.reduce((a, b) => a + b, 0) / officeSpanValues.length
+    : null
+
+  // Office span stat object
+  const officeSpanAvg = officeSpanValues.length ? officeSpanValues.reduce((a, b) => a + b, 0) / officeSpanValues.length : 0
+  const officeSpanMin = officeSpanValues.length ? Math.min(...officeSpanValues) : 0
+  const officeSpanMax = officeSpanValues.length ? Math.max(...officeSpanValues) : 0
+  const officeSpanTotal = officeSpanValues.reduce((a, b) => a + b, 0)
+  const officeSpanStdDev = officeSpanValues.length
+    ? Math.sqrt(officeSpanValues.reduce((a, b) => a + (b - officeSpanAvg) ** 2, 0) / officeSpanValues.length)
+    : 0
+  const officeSpanStatObj: StatMetric | null = officeSpanValues.length
+    ? { avg: officeSpanAvg, min: officeSpanMin, max: officeSpanMax, stdDev: officeSpanStdDev, total: officeSpanTotal }
     : null
 
   const periodLabel = anaPeriod === 3650
@@ -145,21 +158,11 @@ export function StatsTab({ stats, breakdown, periodAggregate, violations, anaPer
               <StatsRow label="Commute to home" obj={stats.commuteToHome} med={commuteHomeMedian} />
               <StatsRow label="Lunch" obj={stats.lunch} med={lunchMedian} />
               <StatsRow label="Idle (in office)" obj={idleStatObj} med={idleMedian} />
+              <StatsRow label="Office span" obj={officeSpanStatObj} med={null} hideTotal />
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Avg office span card */}
-      {avgOfficeSpan != null && (
-        <div className="inline-flex flex-col p-4 rounded-lg border border-border/50 bg-card">
-          <span className="text-xs text-muted-foreground">Avg office span</span>
-          <span className="text-2xl font-bold mt-0.5">{fmtDur(avgOfficeSpan)}</span>
-          <span className="text-xs text-muted-foreground mt-0.5">
-            {officeSpanValues.length} day{officeSpanValues.length !== 1 ? 's' : ''} with data
-          </span>
-        </div>
-      )}
 
       {/* Compliance */}
       {violations && (

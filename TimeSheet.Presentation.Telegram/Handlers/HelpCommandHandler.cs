@@ -133,7 +133,6 @@ public class HelpCommandHandler(
         *Import Command*
 
         `/import <bearer_token>` — Import employer attendance data
-        `/import <bearer_token> --force` — Override the 7-day rate limit
 
         Your bearer token is a short-lived JWT from your employer's time-tracking system.
         It expires in a few hours, so you'll need a fresh one each time.
@@ -146,8 +145,6 @@ public class HelpCommandHandler(
         *Usage:*
         `/import eyJhbGc...` — paste the raw token
         `/import Bearer eyJhbGc...` — "Bearer " prefix is stripped automatically
-
-        *Rate limit:* Once every 7 days. Use `--force` to override.
         """;
 
     private const string AdminHelpMessage = """

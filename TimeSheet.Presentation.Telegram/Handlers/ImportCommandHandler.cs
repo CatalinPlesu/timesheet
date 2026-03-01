@@ -9,7 +9,6 @@ namespace TimeSheet.Presentation.Telegram.Handlers;
 /// Handles the /import command for importing employer attendance data.
 /// Syntax:
 ///   /import &lt;bearer_token&gt;
-///   /import &lt;bearer_token&gt; --force
 /// </summary>
 public class ImportCommandHandler(
     ILogger<ImportCommandHandler> logger,
@@ -20,9 +19,6 @@ public class ImportCommandHandler(
 
         Your bearer token is a short-lived JWT from your employer's time-tracking system.
         It expires in a few hours, so you'll need to get a fresh one each time.
-
-        Import is rate-limited to once every 7 days.
-        Use /import <token> --force to override the rate limit.
         """;
 
     /// <summary>
@@ -59,20 +55,7 @@ public class ImportCommandHandler(
             return;
         }
 
-        // Parse --force flag (case-insensitive)
-        bool force = false;
-        string bearerToken;
-
-        var forceIndex = afterCommand.IndexOf("--force", StringComparison.OrdinalIgnoreCase);
-        if (forceIndex >= 0)
-        {
-            force = true;
-            bearerToken = afterCommand[..forceIndex].Trim();
-        }
-        else
-        {
-            bearerToken = afterCommand.Trim();
-        }
+        var bearerToken = afterCommand.Trim();
 
         if (string.IsNullOrWhiteSpace(bearerToken))
         {
@@ -88,10 +71,9 @@ public class ImportCommandHandler(
             bearerToken = bearerToken["Bearer ".Length..].Trim();
 
         logger.LogInformation(
-            "Import command from user {UserId} ({Username}), force={Force}",
+            "Import command from user {UserId} ({Username})",
             userId.Value,
-            username ?? "no username",
-            force);
+            username ?? "no username");
 
         // Send "⏳ Importing..." message immediately before the async call
         await botClient.SendMessage(
@@ -117,23 +99,11 @@ public class ImportCommandHandler(
                 return;
             }
 
-            var result = await importService.ImportAsync(user.Id, bearerToken, force, cancellationToken);
+            var result = await importService.ImportAsync(user.Id, bearerToken, cancellationToken);
 
             string responseText;
 
-            if (result.RateLimited)
-            {
-                var daysText = result.RateLimitDaysRemaining.HasValue
-                    ? $"{result.RateLimitDaysRemaining.Value} day{(result.RateLimitDaysRemaining.Value == 1 ? "" : "s")}"
-                    : "some days";
-
-                responseText = $"""
-                    ⏳ Import skipped — you imported recently.
-                    Next import available in {daysText}.
-                    Use /import <token> --force to override.
-                    """;
-            }
-            else if (result.Error != null)
+            if (result.Error != null)
             {
                 if (result.Error.Contains("Employer API not configured", StringComparison.OrdinalIgnoreCase) ||
                     result.Error.Contains("BaseUrl", StringComparison.OrdinalIgnoreCase))
@@ -164,12 +134,11 @@ public class ImportCommandHandler(
                 cancellationToken: cancellationToken);
 
             logger.LogInformation(
-                "Import completed for user {UserId}: imported={Imported}, skipped={Skipped}, total={Total}, rateLimited={RateLimited}, error={Error}",
+                "Import completed for user {UserId}: imported={Imported}, skipped={Skipped}, total={Total}, error={Error}",
                 userId.Value,
                 result.Imported,
                 result.Skipped,
                 result.TotalDaysProcessed,
-                result.RateLimited,
                 result.Error);
         }
         catch (Exception ex)
