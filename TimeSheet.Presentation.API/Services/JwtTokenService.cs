@@ -96,6 +96,57 @@ public sealed class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc/>
+    public ClaimsPrincipal ValidateTokenAllowExpired(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new SecurityTokenException("Token cannot be null or empty");
+        }
+
+        var jwtSettings = _configuration.GetSection("JwtSettings");
+        var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        var issuer = jwtSettings["Issuer"] ?? throw new InvalidOperationException("JWT Issuer not configured");
+        var audience = jwtSettings["Audience"] ?? throw new InvalidOperationException("JWT Audience not configured");
+        var graceDays = int.TryParse(jwtSettings["RefreshGraceDays"], out var days) ? days : 30;
+
+        // Validate signature, issuer, audience — but allow the token to be expired within the grace window
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = false,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        try
+        {
+            var principal = _tokenHandler.ValidateToken(token, validationParameters, out var validatedToken);
+
+            // Enforce the grace window: reject tokens that expired too long ago
+            var jwtToken = (JwtSecurityToken)validatedToken;
+            var expiry = jwtToken.ValidTo;
+            if (expiry != DateTime.MinValue && expiry < DateTime.UtcNow - TimeSpan.FromDays(graceDays))
+            {
+                throw new SecurityTokenException("Token expired beyond the refresh grace period");
+            }
+
+            return principal;
+        }
+        catch (SecurityTokenException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is ArgumentException)
+        {
+            throw new SecurityTokenException("Invalid token", ex);
+        }
+    }
+
+    /// <inheritdoc/>
     public long GetUserIdFromToken(ClaimsPrincipal principal)
     {
         if (principal == null)
