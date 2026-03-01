@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Moq;
 using TimeSheet.Core.Application.Interfaces.Services;
 using TimeSheet.Core.Domain.Enums;
@@ -86,6 +90,28 @@ public class ApiTestFixture : WebApplicationFactory<Program>, IDisposable
                 .Returns(Task.CompletedTask);
 
             services.AddSingleton(mockNotificationService.Object);
+
+            // Override JWT Bearer token validation parameters so that tokens generated
+            // with the test secret key pass middleware validation.
+            // ConfigureAppConfiguration alone is not sufficient for Minimal API apps
+            // because the JWT middleware captures the signing key at startup from the
+            // host configuration, which may be resolved before test overrides are applied.
+            const string testSecretKey = "test-secret-key-for-integration-tests-at-least-32-characters-long";
+            services.PostConfigureAll<JwtBearerOptions>(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = "TimeSheet.API.Test",
+                    ValidAudience = "TimeSheet.Web.Test",
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(testSecretKey)),
+                    ClockSkew = TimeSpan.Zero
+                };
+            });
         });
     }
 
