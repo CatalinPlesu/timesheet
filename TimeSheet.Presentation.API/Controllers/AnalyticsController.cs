@@ -476,21 +476,30 @@ public class AnalyticsController : ControllerBase
                         }
                     }
 
-                    // Calculate total duration (first to last activity)
+                    // Calculate total duration (first to last activity).
+                    // Use ALL day sessions (including any active session added out-of-order)
+                    // so that a retroactively-added session with an early StartedAt is included
+                    // in the span even when its EndedAt is null.
                     decimal? totalDurationHours = null;
-                    if (daySessions.Any())
+                    var durationSessions = allDaySessions ?? daySessions;
+                    if (durationSessions.Any())
                     {
-                        var firstActivity = daySessions.Min(s => s.StartedAt);
-                        var lastActivity = daySessions.Max(s => s.EndedAt!.Value);
-                        totalDurationHours = (decimal)(lastActivity - firstActivity).TotalHours;
+                        var firstActivity = durationSessions.Min(s => s.StartedAt);
+                        // For EndedAt, fall back to the completed-sessions max (active sessions
+                        // have no end time yet and should not artificially extend the span).
+                        var lastActivity = daySessions.Any()
+                            ? daySessions.Max(s => s.EndedAt!.Value)
+                            : (DateTime?)null;
+                        if (lastActivity.HasValue)
+                            totalDurationHours = (decimal)(lastActivity.Value - firstActivity).TotalHours;
                     }
 
                     // Calculate office span:
                     // clock-in  = EndedAt of first commute-to-work session
                     // clock-out = StartedAt of first commute-to-home session
                     // Search in ALL day sessions (not just completed ones) so that a work session
-                    // added out-of-order with EndedAt=null does not cause the home commute to be
-                    // excluded from the lookup (the commute sessions themselves are always completed).
+                    // added out-of-order with EndedAt=null does not exclude the home commute
+                    // from the lookup (the commute sessions themselves are always completed).
                     var commuteLookup = allDaySessions ?? daySessions;
                     decimal? officeSpanHours = null;
                     var firstCommuteToWork = commuteLookup
@@ -508,7 +517,10 @@ public class AnalyticsController : ControllerBase
                     {
                         var clockIn  = firstCommuteToWork.EndedAt!.Value;
                         var clockOut = firstCommuteToHome.StartedAt;
-                        officeSpanHours = (decimal)(clockOut - clockIn).TotalHours;
+                        var spanHours = (decimal)(clockOut - clockIn).TotalHours;
+                        // Guard against malformed data (clockOut before clockIn): return null.
+                        if (spanHours > 0)
+                            officeSpanHours = spanHours;
                     }
 
                     result.Add(new DailyBreakdownDto
