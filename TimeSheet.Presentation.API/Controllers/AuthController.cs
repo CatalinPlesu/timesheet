@@ -162,8 +162,9 @@ public class AuthController : ControllerBase
 
         try
         {
-            // Validate the current token
-            var principal = _jwtTokenService.ValidateToken(request.RefreshToken);
+            // Validate the token allowing it to be expired (within the configured grace window)
+            // so users can silently refresh without needing a new mnemonic from Telegram
+            var principal = _jwtTokenService.ValidateTokenAllowExpired(request.RefreshToken);
             var userId = _jwtTokenService.GetUserIdFromToken(principal);
 
             // Get the user from database to ensure they still exist and get current info

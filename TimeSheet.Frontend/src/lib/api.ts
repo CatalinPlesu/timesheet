@@ -14,6 +14,34 @@ export const auth = {
   getUtcOffset: (): number => parseInt(localStorage.getItem(UTC_OFFSET_KEY) ?? '0', 10),
 }
 
+let _refreshPromise: Promise<boolean> | null = null
+
+async function doRefresh(): Promise<boolean> {
+  const token = auth.getToken()
+  if (!token) return false
+  try {
+    const res = await fetch(API_BASE + '/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: token }),
+    })
+    if (!res.ok) return false
+    const data = await res.json() as { accessToken: string; utcOffsetMinutes?: number }
+    auth.saveToken(data.accessToken)
+    if (data.utcOffsetMinutes !== undefined) auth.saveUtcOffset(data.utcOffsetMinutes)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!_refreshPromise) {
+    _refreshPromise = doRefresh().finally(() => { _refreshPromise = null })
+  }
+  return _refreshPromise
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T | null> {
   const token = auth.getToken()
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -26,6 +54,30 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   })
 
   if (res.status === 401) {
+    // Do not attempt to refresh if the failing request itself is an auth endpoint
+    const isAuthEndpoint = path.startsWith('/api/auth/')
+    if (!isAuthEndpoint) {
+      const refreshed = await tryRefresh()
+      if (refreshed) {
+        // Retry the original request with the new token
+        const newToken = auth.getToken()
+        const retryHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (newToken) retryHeaders['Authorization'] = `Bearer ${newToken}`
+        const retryRes = await fetch(API_BASE + path, {
+          method,
+          headers: retryHeaders,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        })
+        if (retryRes.status === 401) {
+          auth.clearToken()
+          window.dispatchEvent(new CustomEvent('ts:logout'))
+          return null
+        }
+        if (!retryRes.ok) throw new Error(`HTTP ${retryRes.status}`)
+        const retryText = await retryRes.text()
+        return retryText ? (JSON.parse(retryText) as T) : null
+      }
+    }
     auth.clearToken()
     window.dispatchEvent(new CustomEvent('ts:logout'))
     return null
@@ -127,6 +179,25 @@ export async function updateEntry(id: string, opts: { startMinutes?: number; end
 
 export async function updateEntryNote(id: string, note: string | null): Promise<Entry | null> {
   return request<Entry>('PATCH', `/api/entries/${id}/note`, { note })
+}
+
+export interface EntryCreatePayload {
+  state: 'Working' | 'Commuting' | 'Lunch'
+  startedAt: string   // UTC ISO
+  endedAt: string     // UTC ISO
+  commuteDirection?: 'ToWork' | 'ToHome'
+  note?: string
+}
+
+export async function setEntryTimes(
+  id: string,
+  payload: { startedAt?: string; endedAt?: string }
+): Promise<null> {
+  return request<null>('PATCH', `/api/entries/${id}/times`, payload)
+}
+
+export async function createEntry(payload: EntryCreatePayload): Promise<Entry | null> {
+  return request<Entry>('POST', `/api/entries`, payload)
 }
 
 // ─── Analytics ───────────────────────────────────────────────────────────────

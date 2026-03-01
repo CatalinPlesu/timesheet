@@ -25,6 +25,16 @@ public interface IJwtTokenService
     ClaimsPrincipal ValidateToken(string token);
 
     /// <summary>
+    /// Validates a JWT token, allowing it to be expired within the configured grace period.
+    /// Used by the refresh endpoint so users can refresh a recently-expired token without
+    /// having to re-authenticate via the Telegram mnemonic flow.
+    /// </summary>
+    /// <param name="token">The JWT token to validate (may be expired within the grace window).</param>
+    /// <returns>The claims principal if the token signature and other claims are valid.</returns>
+    /// <exception cref="SecurityTokenException">Thrown when the token is invalid or expired beyond the grace period.</exception>
+    ClaimsPrincipal ValidateTokenAllowExpired(string token);
+
+    /// <summary>
     /// Extracts the user ID from a claims principal.
     /// </summary>
     /// <param name="principal">The claims principal.</param>
