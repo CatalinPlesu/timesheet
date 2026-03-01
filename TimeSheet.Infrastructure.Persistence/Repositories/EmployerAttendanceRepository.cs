@@ -28,7 +28,14 @@ public sealed class EmployerAttendanceRepository(AppDbContext dbContext) : IEmpl
             .FirstOrDefaultAsync(r => r.UserId == record.UserId && r.Date == record.Date, ct);
 
         if (existing != null)
-            dbContext.Entry(existing).CurrentValues.SetValues(record);
+        {
+            // SetValues copies ALL properties including the PK, which EF Core forbids modifying.
+            // Copy only non-key properties by skipping primary key columns.
+            var entry = dbContext.Entry(existing);
+            var newValues = dbContext.Entry(record);
+            foreach (var prop in entry.Properties.Where(p => !p.Metadata.IsPrimaryKey()))
+                prop.CurrentValue = newValues.Property(prop.Metadata.Name).CurrentValue;
+        }
         else
             await dbContext.EmployerAttendanceRecords.AddAsync(record, ct);
     }
