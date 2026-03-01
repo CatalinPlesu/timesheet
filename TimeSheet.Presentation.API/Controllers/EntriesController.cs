@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TimeSheet.Core.Application.Interfaces.Persistence;
 using TimeSheet.Core.Application.Interfaces.Services;
+using TimeSheet.Core.Domain.Entities;
+using TimeSheet.Core.Domain.Enums;
 using TimeSheet.Core.Domain.Repositories;
 using TimeSheet.Presentation.API.Models.Entries;
 
@@ -521,6 +523,170 @@ public class EntriesController : ControllerBase
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Internal Server Error",
                 detail: "An error occurred while updating the note");
+        }
+    }
+
+    /// <summary>
+    /// Sets the absolute start and/or end time of an entry directly (HH:MM picker).
+    /// For active sessions, only StartedAt may be set. At least one field must be provided.
+    /// </summary>
+    /// <param name="id">The entry ID.</param>
+    /// <param name="request">The set-times request.</param>
+    /// <returns>No content on success.</returns>
+    /// <response code="204">Times updated successfully.</response>
+    /// <response code="400">Invalid request or conflicting times.</response>
+    /// <response code="401">Unauthorized.</response>
+    /// <response code="404">Entry not found.</response>
+    /// <response code="500">Internal server error.</response>
+    [HttpPatch("{id}/times")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> SetEntryTimes(Guid id, [FromBody] EntrySetTimesRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            if (request.StartedAt == null && request.EndedAt == null)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "At least one of StartedAt or EndedAt must be provided");
+
+            var session = await _sessionRepository.GetByIdAsync(id, cancellationToken);
+
+            if (session == null)
+            {
+                _logger.LogWarning("User {UserId} attempted to set times on non-existent entry {EntryId}", userId, id);
+                return Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found", detail: "Entry not found");
+            }
+
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning("User {UserId} attempted to set times on entry {EntryId} belonging to user {OwnerId}", userId, id, session.UserId);
+                return Problem(statusCode: StatusCodes.Status404NotFound, title: "Not Found", detail: "Entry not found");
+            }
+
+            if (request.EndedAt.HasValue && session.IsActive)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "Cannot set end time on an active session");
+
+            if (request.StartedAt.HasValue && request.EndedAt.HasValue && request.StartedAt.Value >= request.EndedAt.Value)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "StartedAt must be before EndedAt");
+
+            // Also check against existing end time if only setting start
+            if (request.StartedAt.HasValue && !request.EndedAt.HasValue && session.EndedAt.HasValue && request.StartedAt.Value >= session.EndedAt.Value)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "StartedAt must be before the existing end time");
+
+            // Check against existing start time if only setting end
+            if (!request.StartedAt.HasValue && request.EndedAt.HasValue && request.EndedAt.Value <= session.StartedAt)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "EndedAt must be after the existing start time");
+
+            try
+            {
+                session.SetTimes(request.StartedAt, request.EndedAt);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                _logger.LogWarning(ex, "User {UserId} attempted invalid SetTimes on entry {EntryId}", userId, id);
+                return Problem(statusCode: 400, detail: ex.Message);
+            }
+
+            _sessionRepository.Update(session);
+            await _unitOfWork.CompleteAsync(cancellationToken);
+
+            _logger.LogInformation("User {UserId} set times on entry {EntryId} (start: {Start}, end: {End})", userId, id, request.StartedAt, request.EndedAt);
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Authentication Failed", detail: "Invalid user token");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting times on entry {EntryId}", id);
+            return Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error", detail: "An error occurred while setting times");
+        }
+    }
+
+    /// <summary>
+    /// Creates a completed tracking entry with explicit start and end times.
+    /// Used for adding past entries that were not recorded in real-time.
+    /// </summary>
+    /// <param name="request">The entry creation request.</param>
+    /// <returns>The newly created entry.</returns>
+    /// <response code="201">Entry created successfully.</response>
+    /// <response code="400">Invalid request data.</response>
+    /// <response code="401">Unauthorized.</response>
+    /// <response code="500">Internal server error.</response>
+    [HttpPost]
+    [ProducesResponseType(typeof(TrackingEntryDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<TrackingEntryDto>> CreateEntry([FromBody] EntryCreateRequest request, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var userId = _jwtTokenService.GetUserIdFromToken(User);
+
+            // Validate state
+            if (!Enum.TryParse<TrackingState>(request.State, ignoreCase: true, out var state) || state == TrackingState.Idle)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "State must be one of: Working, Commuting, Lunch");
+
+            // Validate times
+            if (request.StartedAt >= request.EndedAt)
+                return Problem(statusCode: 400, title: "Invalid Request", detail: "StartedAt must be before EndedAt");
+
+            // Validate commute direction
+            CommuteDirection? commuteDirection = null;
+            if (state == TrackingState.Commuting)
+            {
+                if (string.IsNullOrWhiteSpace(request.CommuteDirection))
+                    return Problem(statusCode: 400, title: "Invalid Request", detail: "CommuteDirection is required when State is Commuting");
+
+                if (!Enum.TryParse<CommuteDirection>(request.CommuteDirection, ignoreCase: true, out var dir))
+                    return Problem(statusCode: 400, title: "Invalid Request", detail: "CommuteDirection must be ToWork or ToHome");
+
+                commuteDirection = dir;
+            }
+
+            // Create the completed session
+            var session = new TrackingSession(userId, state, request.StartedAt, commuteDirection);
+            session.End(request.EndedAt);
+
+            if (!string.IsNullOrWhiteSpace(request.Note))
+                session.UpdateNote(request.Note);
+
+            await _sessionRepository.AddAsync(session, cancellationToken);
+            await _unitOfWork.CompleteAsync(cancellationToken);
+
+            var entryDto = new TrackingEntryDto
+            {
+                Id = session.Id,
+                State = session.State,
+                StartedAt = session.StartedAt,
+                EndedAt = session.EndedAt,
+                DurationHours = (decimal)(session.EndedAt!.Value - session.StartedAt).TotalHours,
+                CommuteDirection = session.CommuteDirection,
+                IsActive = session.IsActive,
+                Note = session.Note
+            };
+
+            _logger.LogInformation("User {UserId} created past entry {EntryId} ({State} {Start} – {End})", userId, session.Id, state, request.StartedAt, request.EndedAt);
+
+            return CreatedAtAction(nameof(GetEntry), new { id = session.Id }, entryDto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid user token");
+            return Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Authentication Failed", detail: "Invalid user token");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating entry");
+            return Problem(statusCode: StatusCodes.Status500InternalServerError, title: "Internal Server Error", detail: "An error occurred while creating the entry");
         }
     }
 }

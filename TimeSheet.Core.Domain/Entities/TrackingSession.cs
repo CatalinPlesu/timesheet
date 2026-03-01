@@ -152,6 +152,33 @@ public class TrackingSession : BaseEntity
     }
 
     /// <summary>
+    /// Sets the absolute start and/or end times of a session directly.
+    /// For active sessions, only StartedAt may be set (EndedAt must be null).
+    /// For completed sessions, both may be set and StartedAt must be before EndedAt.
+    /// </summary>
+    /// <param name="startedAt">The new start time (null to leave unchanged).</param>
+    /// <param name="endedAt">The new end time (null to leave unchanged). Must be null for active sessions.</param>
+    /// <exception cref="InvalidOperationException">Thrown when trying to set EndedAt on an active session.</exception>
+    /// <exception cref="ArgumentException">Thrown when the resulting times would be invalid.</exception>
+    public void SetTimes(DateTime? startedAt, DateTime? endedAt)
+    {
+        if (endedAt.HasValue && IsActive)
+            throw new InvalidOperationException("Cannot set end time on an active session.");
+
+        var effectiveStart = startedAt ?? StartedAt;
+        var effectiveEnd = endedAt ?? EndedAt;
+
+        if (effectiveEnd.HasValue && effectiveStart >= effectiveEnd.Value)
+            throw new ArgumentException("Start time must be before end time.");
+
+        if (startedAt.HasValue)
+            StartedAt = startedAt.Value;
+
+        if (endedAt.HasValue)
+            EndedAt = endedAt.Value;
+    }
+
+    /// <summary>
     /// Adjusts the start time of a session by a specified number of minutes.
     /// </summary>
     public void AdjustStartTime(int adjustmentMinutes)
