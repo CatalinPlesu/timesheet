@@ -12,6 +12,7 @@ services:
       - Database__EnableDetailedErrors=false
       - Bot__Token=${BOT_TOKEN}
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
+      - OpenTelemetry__Endpoint=http://openobserve:5080/api/default/v1/traces
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - EmployerApi__BaseUrl=${EMPLOYER_API_BASE_URL}
       - EmployerApi__AttendanceEndpoint=/api/TimeOff/getEmployeeAttendance
@@ -46,6 +47,7 @@ services:
       - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL}
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
+      - OpenTelemetry__Endpoint=http://openobserve:5080/api/default/v1/traces
     depends_on:
       - openobserve
     networks:

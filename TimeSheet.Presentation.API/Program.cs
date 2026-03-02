@@ -1,6 +1,8 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using Serilog;
 using System.Text;
@@ -104,6 +106,22 @@ builder.Services.AddPersistenceServices(builder.Configuration);
 // Register API-specific services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<INotificationService, StubNotificationService>();
+
+// Configure OpenTelemetry tracing
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(
+        builder.Configuration["OpenTelemetry:ServiceName"] ?? "timesheet-api"))
+    .WithTracing(tracing => tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddEntityFrameworkCoreInstrumentation()
+        .AddOtlpExporter(o =>
+        {
+            o.Endpoint = new Uri(builder.Configuration["OpenTelemetry:Endpoint"]
+                ?? "http://localhost:5080/api/default/v1/traces");
+            o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+            o.Headers = builder.Configuration["OpenTelemetry:Headers"] ?? "";
+        }));
 
 var app = builder.Build();
 

@@ -1,3 +1,5 @@
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using TimeSheet.Core.Application.Extensions;
 using TimeSheet.Infrastructure.Persistence.Extensions;
@@ -26,6 +28,20 @@ try
     builder.Services.AddPersistenceServices(builder.Configuration);
     builder.Services.AddApplicationServices();
     builder.Services.AddPresentationServices();
+
+    // Configure OpenTelemetry tracing
+    builder.Services.AddOpenTelemetry()
+        .ConfigureResource(r => r.AddService(
+            builder.Configuration["OpenTelemetry:ServiceName"] ?? "timesheet-bot"))
+        .WithTracing(tracing => tracing
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter(o =>
+            {
+                o.Endpoint = new Uri(builder.Configuration["OpenTelemetry:Endpoint"]
+                    ?? "http://localhost:5080/api/default/v1/traces");
+                o.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
+                o.Headers = builder.Configuration["OpenTelemetry:Headers"] ?? "";
+            }));
 
     // Register hosted services
     builder.Services.AddHostedService<Worker>();
