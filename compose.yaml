@@ -20,8 +20,7 @@ services:
       - Workers__LunchReminderCheckInterval=${LUNCH_REMINDER_CHECK_INTERVAL:-00:03:00}
       - Workers__WorkHoursAlertCheckInterval=${WORK_HOURS_ALERT_CHECK_INTERVAL:-00:03:00}
     depends_on:
-      openobserve:
-        condition: service_healthy
+      - openobserve
     networks:
       - timesheet-network
 
@@ -48,8 +47,7 @@ services:
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
     depends_on:
-      openobserve:
-        condition: service_healthy
+      - openobserve
     networks:
       - timesheet-network
 
@@ -74,12 +72,6 @@ services:
       - ZO_ROOT_USER_EMAIL=root@example.com
       - ZO_ROOT_USER_PASSWORD=Complexpass#123
       - ZO_DATA_DIR=/data
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5080/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
     networks:
       - timesheet-network
 
