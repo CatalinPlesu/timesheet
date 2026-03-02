@@ -461,7 +461,7 @@ build-local:
     echo "  ✓ timesheet-api:latest"
     echo ""
     echo "→ Building timesheet-frontend …"
-    docker build -t timesheet-frontend:latest TimeSheet.Frontend
+    docker build --no-cache -t timesheet-frontend:latest TimeSheet.Frontend
     echo "  ✓ timesheet-frontend:latest"
     echo ""
     echo "═══ All images ready. Run: just docker-up"
@@ -501,7 +501,7 @@ publish repo_owner="catalinplesu" image_tag="latest":
     echo "  ✓ timesheet-api pushed"
     echo ""
     echo "→ Building timesheet-frontend …"
-    docker build -t "ghcr.io/$OWNER/timesheet-frontend:$TAG" TimeSheet.Frontend
+    docker build --no-cache -t "ghcr.io/$OWNER/timesheet-frontend:$TAG" TimeSheet.Frontend
     docker push "ghcr.io/$OWNER/timesheet-frontend:$TAG"
     echo "  ✓ timesheet-frontend pushed"
     echo ""
