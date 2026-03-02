@@ -436,6 +436,36 @@ docker-up:
 docker-down:
     @docker compose down
 
+# Build all three container images locally (for use with local docker compose)
+build-local:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "═══ Building TimeSheet images locally"
+    echo ""
+    echo "→ Building timesheet-bot …"
+    dotnet publish TimeSheet.Presentation.Telegram \
+      -c Release \
+      --os linux --arch x64 \
+      /t:PublishContainer \
+      /p:ContainerRepository=timesheet-bot \
+      /p:ContainerImageTag=latest
+    echo "  ✓ timesheet-bot:latest"
+    echo ""
+    echo "→ Building timesheet-api …"
+    dotnet publish TimeSheet.Presentation.API \
+      -c Release \
+      --os linux --arch x64 \
+      /t:PublishContainer \
+      /p:ContainerRepository=timesheet-api \
+      /p:ContainerImageTag=latest
+    echo "  ✓ timesheet-api:latest"
+    echo ""
+    echo "→ Building timesheet-frontend …"
+    docker build -t timesheet-frontend:latest TimeSheet.Frontend
+    echo "  ✓ timesheet-frontend:latest"
+    echo ""
+    echo "═══ All images ready. Run: just docker-up"
+
 # Build and push all three container images to ghcr.io
 # Requires: REPO_OWNER and IMAGE_TAG env vars (or a .env file loaded before running)
 # Usage: REPO_OWNER=myuser IMAGE_TAG=latest just publish

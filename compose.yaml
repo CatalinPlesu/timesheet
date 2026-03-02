@@ -1,6 +1,6 @@
 services:
   telegram-bot:
-    image: ghcr.io/catalinplesu/timesheet-bot:latest
+    image: timesheet-bot:latest
     container_name: timesheet-telegram-bot
     restart: unless-stopped
     volumes:
@@ -11,10 +11,7 @@ services:
       - Database__EnableSensitiveDataLogging=false
       - Database__EnableDetailedErrors=false
       - Bot__Token=${BOT_TOKEN}
-      - Serilog__WriteTo__2__Name=OpenTelemetry
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
-      - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
-      - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
       - EmployerApi__BaseUrl=${EMPLOYER_API_BASE_URL}
       - EmployerApi__AttendanceEndpoint=/api/TimeOff/getEmployeeAttendance
@@ -23,12 +20,13 @@ services:
       - Workers__LunchReminderCheckInterval=${LUNCH_REMINDER_CHECK_INTERVAL:-00:03:00}
       - Workers__WorkHoursAlertCheckInterval=${WORK_HOURS_ALERT_CHECK_INTERVAL:-00:03:00}
     depends_on:
-      - openobserve
+      openobserve:
+        condition: service_healthy
     networks:
       - timesheet-network
 
   api:
-    image: ghcr.io/catalinplesu/timesheet-api:latest
+    image: timesheet-api:latest
     container_name: timesheet-api
     restart: unless-stopped
     ports:
@@ -48,17 +46,15 @@ services:
       - Cors__AllowedOrigins__0=http://localhost:${FRONTEND_PORT:-3000}
       - Cors__AllowedOrigins__1=${FRONTEND_EXTERNAL_URL}
       - FrontendUrl=${FRONTEND_EXTERNAL_URL}
-      - Serilog__WriteTo__2__Name=OpenTelemetry
       - Serilog__WriteTo__2__Args__endpoint=http://openobserve:5080/api/default/v1/logs
-      - Serilog__WriteTo__2__Args__protocol=HttpProtobuf
-      - Serilog__WriteTo__2__Args__headers__Authorization=Basic cm9vdEBleGFtcGxlLmNvbTpDb21wbGV4cGFzcyMxMjM=
     depends_on:
-      - openobserve
+      openobserve:
+        condition: service_healthy
     networks:
       - timesheet-network
 
   frontend:
-    image: ghcr.io/catalinplesu/timesheet-frontend:latest
+    image: timesheet-frontend:latest
     container_name: timesheet-frontend
     restart: unless-stopped
     ports:
@@ -67,7 +63,7 @@ services:
       - timesheet-network
 
   openobserve:
-    image: docker.io/openobserve/openobserve:latest 
+    image: docker.io/openobserve/openobserve:latest
     container_name: timesheet-openobserve
     restart: unless-stopped
     ports:
@@ -78,6 +74,12 @@ services:
       - ZO_ROOT_USER_EMAIL=root@example.com
       - ZO_ROOT_USER_PASSWORD=Complexpass#123
       - ZO_DATA_DIR=/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - timesheet-network
 

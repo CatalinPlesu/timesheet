@@ -62,6 +62,10 @@ Dockerfile
 # Beads
 .beads/
 
+# Agent worktrees and local-only dirs
+.claude/
+feat-settings-impl/
+
 # Misc
 timesheet.db
 justfile
